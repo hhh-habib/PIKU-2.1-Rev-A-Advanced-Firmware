@@ -1,0 +1,52 @@
+# PlatformIO and generated firmware output
+.pio/
+.pioenvs/
+.piolibdeps/
+*.bin
+*.elf
+*.map
+*.hex
+*.lst
+
+# Git metadata copied into nested folders
+.git/
+
+# Local backup material and archives
+backup/
+backups/
+archive/
+*.zip
+
+# Editor, assistant, and machine-local state
+.vscode/
+.idea/
+.codex/
+.agents/
+*.code-workspace
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*~
+
+# OS-generated files
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Local environment, credentials, and private keys
+.env
+.env.*
+!.env.example
+secrets.*
+!include/Secrets.example.h
+!include/Secrets.h
+credentials.*
+*.pem
+*.key
+*.p12
+*.pfx
