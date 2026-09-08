@@ -3,6 +3,7 @@
 
 NavigationManager::NavigationManager(MotorController& motors,
                                      SensorManager& sensors,
+                                     ImuManager& imu,
                                      ServoScanner& servoScanner,
                                      SafetyManager& safety,
                                      WebDashboard& dashboard,
@@ -13,6 +14,7 @@ NavigationManager::NavigationManager(MotorController& motors,
                                      WarningCallback warningCallback)
   : _motors(motors),
     _sensors(sensors),
+    _imu(imu),
     _servoScanner(servoScanner),
     _safety(safety),
     _dashboard(dashboard),
@@ -284,6 +286,110 @@ bool NavigationManager::driveForwardWithFreshGuard() {
   return true;
 }
 
+bool NavigationManager::executeAvoidanceTurn(bool turnLeft, bool nearRecovery) {
+  const unsigned long turnStartedMs = millis();
+  const ImuSnapshot& initial = _imu.snapshot();
+  bool usingGyro = initial.initialized && initial.healthy &&
+    isfinite(initial.gyroZ) && initial.lastSuccessMs != 0 &&
+    turnStartedMs - initial.lastSuccessMs <= RobotConfig::IMU_STALE_MS;
+  const float gyroBiasRadPerSecond = usingGyro ? initial.gyroZ : 0.0f;
+  unsigned long lastIntegratedSampleMs = usingGyro ? initial.sampleMs : 0;
+  float relativeTurnDeg = 0.0f;
+
+  if (turnLeft) {
+    _motors.leftTurn();
+  } else {
+    _motors.rightTurn();
+  }
+
+  if (!usingGyro) {
+    Serial.println("[AUTO TURN] IMU unavailable at turn start; using timed fallback");
+  }
+
+  while (millis() - turnStartedMs < RobotConfig::AUTO_AVOIDANCE_TURN_TIMEOUT_MS) {
+    if (_serviceCallback != nullptr) {
+      _serviceCallback();
+    }
+    if (abortIfOperatorRequested() || abortIfCritical()) {
+      _motors.stop();
+      return true;
+    }
+
+    const SensorSnapshot& controlSensors = _sensors.snapshot();
+    if (controlSensors.ultrasonicState == UltrasonicResultState::SensorFault ||
+        controlSensors.ultrasonicState == UltrasonicResultState::Stale) {
+      _motors.stop();
+      setState(NavigationState::InvalidStop, "TURN_ULTRASONIC_INVALID_STOP");
+      return true;
+    }
+    if (!nearRecovery && _safety.isNearObstacleHazardActive()) {
+      _motors.stop();
+      setState(NavigationState::NearObstacleHold, "TURN_NEAR_OBSTACLE_STOP");
+      if (_warningCallback != nullptr) {
+        _warningCallback();
+      }
+      return true;
+    }
+
+    const unsigned long now = millis();
+    if (usingGyro) {
+      const ImuSnapshot& sample = _imu.snapshot();
+      const bool sampleUsable = sample.initialized && sample.healthy &&
+        isfinite(sample.gyroZ) && sample.lastSuccessMs != 0 &&
+        now - sample.lastSuccessMs <= RobotConfig::IMU_STALE_MS;
+      if (!sampleUsable) {
+        usingGyro = false;
+        Serial.println("[AUTO TURN] IMU became invalid/stale; finishing with timed fallback");
+      } else if (sample.sampleMs != lastIntegratedSampleMs) {
+        const unsigned long sampleDeltaMs = sample.sampleMs - lastIntegratedSampleMs;
+        lastIntegratedSampleMs = sample.sampleMs;
+        if (sampleDeltaMs == 0 || sampleDeltaMs > RobotConfig::IMU_STALE_MS) {
+          usingGyro = false;
+          Serial.println("[AUTO TURN] IMU sample gap exceeded limit; finishing with timed fallback");
+        } else {
+          const float relativeRateDegPerSecond =
+            fabsf((sample.gyroZ - gyroBiasRadPerSecond) * RAD_TO_DEG);
+          if (relativeRateDegPerSecond >= RobotConfig::AUTO_AVOIDANCE_GYRO_DEADBAND_DPS) {
+            relativeTurnDeg += relativeRateDegPerSecond *
+              (static_cast<float>(sampleDeltaMs) / 1000.0f);
+          }
+          // Stop just beyond the nominal target by the configured tolerance.
+          // The one-way completion latch prevents target-boundary chatter.
+          if (relativeTurnDeg >= RobotConfig::AUTO_AVOIDANCE_TURN_TARGET_DEG +
+              RobotConfig::AUTO_AVOIDANCE_TURN_TOLERANCE_DEG) {
+            _motors.stop();
+            setState(_state, turnLeft
+              ? (nearRecovery ? "NEAR_LEFT_RELATIVE_TURN_COMPLETE" : "LEFT_RELATIVE_TURN_COMPLETE")
+              : (nearRecovery ? "NEAR_RIGHT_RELATIVE_TURN_COMPLETE" : "RIGHT_RELATIVE_TURN_COMPLETE"));
+            Serial.print("[AUTO TURN] Relative gyro-Z angle complete: ");
+            Serial.print(relativeTurnDeg, 1);
+            Serial.println(" deg");
+            return false;
+          }
+        }
+      }
+    }
+
+    if (!usingGyro &&
+        now - turnStartedMs >= RobotConfig::AUTO_AVOIDANCE_TIMED_FALLBACK_MS) {
+      _motors.stop();
+      setState(_state, turnLeft
+        ? (nearRecovery ? "NEAR_LEFT_TIMED_TURN_FALLBACK" : "LEFT_TIMED_TURN_FALLBACK")
+        : (nearRecovery ? "NEAR_RIGHT_TIMED_TURN_FALLBACK" : "RIGHT_TIMED_TURN_FALLBACK"));
+      return false;
+    }
+    delay(1);
+  }
+
+  _motors.stop();
+  setState(NavigationState::InvalidStop,
+           turnLeft ? "LEFT_TURN_TIMEOUT_STOP" : "RIGHT_TURN_TIMEOUT_STOP");
+  Serial.print("[AUTO TURN] Hard timeout at relative angle ");
+  Serial.print(relativeTurnDeg, 1);
+  Serial.println(" deg");
+  return false;
+}
+
 void NavigationManager::runObstacleAvoidance() {
   if (abortIfOperatorRequested() || abortIfCritical()) {
     return;
@@ -315,6 +421,8 @@ void NavigationManager::runObstacleAvoidance() {
     return;
   }
 
+  _currentServoPosition = "FRONT";
+  _sensors.setDistanceFacingFront(true);
   _servoScanner.center();
   if (responsiveDelay(400)) return;
   _servoScanner.detach();
@@ -374,16 +482,12 @@ void NavigationManager::choosePathAndTurn(const NavigationScanSample& leftSample
     Serial.println("Decision: LEFT");
     setState(nearRecovery ? NavigationState::NearObstacleTurn : NavigationState::TurnLeft,
              nearRecovery ? "NEAR_TURN_LEFT" : "LEFT");
-    _motors.leftTurn();
-    if (responsiveDelay(170)) return;
-    _motors.stop();
+    if (executeAvoidanceTurn(true, nearRecovery)) return;
   } else {
     Serial.println("Decision: RIGHT");
     setState(nearRecovery ? NavigationState::NearObstacleTurn : NavigationState::TurnRight,
              nearRecovery ? "NEAR_TURN_RIGHT" : "RIGHT");
-    _motors.rightTurn();
-    if (responsiveDelay(170)) return;
-    _motors.stop();
+    if (executeAvoidanceTurn(false, nearRecovery)) return;
   }
 }
 
@@ -453,6 +557,8 @@ bool NavigationManager::runNearObstacleRecovery() {
     return true;
   }
 
+  _currentServoPosition = "FRONT";
+  _sensors.setDistanceFacingFront(true);
   _servoScanner.center();
   if (responsiveDelay(400)) return true;
   _servoScanner.detach();
@@ -466,14 +572,10 @@ bool NavigationManager::runNearObstacleRecovery() {
   const bool rightSafe = scanPathDistance(right) > RobotConfig::AUTO_OBSTACLE_CM;
   if (leftIrTriggered && !rightIrTriggered && rightSafe) {
     setState(NavigationState::NearObstacleTurn, "LEFT_IR_TURN_RIGHT");
-    _motors.rightTurn();
-    if (responsiveDelay(170)) return true;
-    _motors.stop();
+    if (executeAvoidanceTurn(false, true)) return true;
   } else if (rightIrTriggered && !leftIrTriggered && leftSafe) {
     setState(NavigationState::NearObstacleTurn, "RIGHT_IR_TURN_LEFT");
-    _motors.leftTurn();
-    if (responsiveDelay(170)) return true;
-    _motors.stop();
+    if (executeAvoidanceTurn(true, true)) return true;
   } else {
     choosePathAndTurn(left, center, right, true);
   }

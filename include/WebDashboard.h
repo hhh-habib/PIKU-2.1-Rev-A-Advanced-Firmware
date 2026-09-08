@@ -4,7 +4,7 @@
 #include <Arduino.h>
 #include <Preferences.h>
 #include <WiFi.h>
-#include <WebServer.h>
+#include "PriorityWebServer.h"
 
 struct DashboardData {
   String product = "PIKU 2.1 Rev A";
@@ -36,14 +36,9 @@ struct DashboardData {
   unsigned long mq2WarmupAgeMs = 0;
   bool flameDetected = false;
   String flameState = "CLEAR";
-  int flameRaw = 0;
-  int flameFiltered = 0;
-  int flameBaseline = 0;
-  int flameDelta = 0;
+  int flameDigitalLevel = HIGH;
+  bool flameRawActive = false;
   bool flameSampleValid = false;
-  bool flameBaselineValid = false;
-  bool flameClassificationValid = false;
-  bool flameThresholdsConfigured = false;
   unsigned long flameSampleAgeMs = 0;
   int leftIrRaw = HIGH;
   int rightIrRaw = HIGH;
@@ -74,6 +69,13 @@ struct DashboardData {
   String staIp = "0.0.0.0";
   int staRssi = 0;
   int staSignalQuality = 0;
+  int softApChannel = 0;
+  int softApClients = 0;
+  uint32_t freeHeap = 0;
+  uint32_t minimumFreeHeap = 0;
+  uint32_t psramSize = 0;
+  String resetReason;
+  unsigned long maximumServiceLoopGapMs = 0;
 
   bool imuInitialized = false;
   bool imuHealthy = false;
@@ -93,6 +95,7 @@ struct DashboardData {
   unsigned long imuSampleAgeMs = 0;
 
   bool radioInitialized = false;
+  bool radioEnabled = true;
   bool radioChipDetected = false;
   bool radioListening = false;
   int radioChannel = 76;
@@ -121,9 +124,17 @@ enum class ManualSensorHeadCommand {
 
 class WebDashboard {
 public:
+  using CommandAcceptedCallback = void (*)(const String&, unsigned long, unsigned long);
+  using ModeAcceptedCallback = void (*)(const String&);
+
   WebDashboard();
   void begin(const char* ssid, const char* password, const char* staSsid = "", const char* staPassword = "");
   void loop();
+  void updateBackground();
+  void setControlCallbacks(CommandAcceptedCallback commandCallback, ModeAcceptedCallback modeCallback);
+  bool consumeControlActivity();
+  void markCommandApplied(const String& command, unsigned long sequence, const String& stopReason);
+  void markStopApplied(const String& stopReason);
   void setData(const DashboardData& data);
   void setNavigationDecision(const String& decision);
   void setControlMode(const String& mode);
@@ -139,10 +150,11 @@ public:
   bool consumeAlarmTestRequest();
   unsigned long modeCommandCounter() const;
   unsigned long lastCommandReceivedMs() const;
+  unsigned long pendingCommandSequence() const;
   IPAddress localIP() const;
 
 private:
-  WebServer _server;
+  PriorityWebServer _server;
   DashboardData _data;
   bool _initialized;
   Preferences _preferences;
@@ -163,6 +175,7 @@ private:
   bool _mdnsStarted;
   String _staSsid;
   String _staPassword;
+  bool _staCredentialsPendingPersistence;
   unsigned long _lastStaAttemptMs;
   bool _alarmEnabled;
   bool _alarmMuted;
@@ -170,6 +183,17 @@ private:
   unsigned long _modeCommandCounter;
   unsigned long _lastCommandReceivedMs;
   unsigned long _lastCommandSequence;
+  unsigned long _pendingCommandSequence;
+  unsigned long _lastCommandAcceptedMs;
+  unsigned long _lastCommandAppliedMs;
+  String _lastAcceptedCommand;
+  String _lastAppliedCommand;
+  String _lastStopReason;
+  unsigned long _httpErrorCount;
+  unsigned long _wifiReconnectCount;
+  bool _controlActivity;
+  CommandAcceptedCallback _commandAcceptedCallback;
+  ModeAcceptedCallback _modeAcceptedCallback;
   unsigned long _lastWiFiUpdateMs;
   unsigned long _lastWiFiTelemetryMs;
   String _pendingCommand;
@@ -186,6 +210,8 @@ private:
     String staIp = "0.0.0.0";
     int staRssi = 0;
     int staSignalQuality = 0;
+    int softApChannel = 0;
+    int softApClients = 0;
   } _wifiTelemetry;
 
   void handleRoot();
@@ -204,6 +230,7 @@ private:
   void handleWifiScan();
   void handleWifiConnect();
   void handleWifiForget();
+  void handleWifiReconnect();
   void handleModeAuto();
   void handleModeManual();
   void handleControlForward();
@@ -213,7 +240,7 @@ private:
   void handleControlStop();
   void applyMode(const String& mode);
   void applyTurnMode(const String& mode);
-  void applyCommand(const String& command, unsigned long sequence = 0, bool sequenced = false);
+  bool applyCommand(const String& command, unsigned long sequence = 0, bool sequenced = false);
   void configureSta(const String& ssid, const String& password, bool persist);
   void loadSavedStaCredentials(const char* fallbackSsid, const char* fallbackPassword);
   void clearStaCredentials();
@@ -225,6 +252,9 @@ private:
   void setStaStateFromWiFiStatus();
   const char* staStateName(StaState state) const;
   void sendWifiScanJson();
+  bool wifiProvisioningAllowed();
+  void prepareControlResponse();
+  void sendError(int status, const char* contentType, const char* body);
   int calculateSignalQuality(int rssi) const;
   void addCoordinatorCors();
   bool controlOriginAllowed();

@@ -54,15 +54,10 @@ struct SensorSnapshot {
   bool leftObstacleDetected = false;
   bool rightObstacleDetected = false;
   bool irObstacleDetected = false;
-  int flameRaw = 0;
-  int flameFiltered = 0;
-  int flameBaseline = 0;
-  int flameDelta = 0;
+  int flameDigitalLevel = HIGH;
+  bool flameRawActive = false;
   FlameState flameState = FlameState::Clear;
   bool flameSampleValid = false;
-  bool flameBaselineValid = false;
-  bool flameClassificationValid = false;
-  bool flameThresholdsConfigured = RobotConfig::FLAME_THRESHOLDS_CONFIGURED;
   bool flameDetected = false;
   unsigned long flameSampleMs = 0;
   unsigned long updatedMs = 0;
@@ -74,6 +69,7 @@ public:
 
   void begin();
   void update();
+  void updateControlSensors();
   void setDistanceFacingFront(bool facingFront);
   unsigned long requestDistanceSample(bool facingFront);
   bool isDistanceSampleInProgress() const;
@@ -101,13 +97,7 @@ private:
   size_t mq2SampleCount;
   size_t mq2SampleIndex;
   long mq2SampleSum;
-  int flameSamples[RobotConfig::FLAME_FILTER_SAMPLES];
-  size_t flameSampleCount;
-  size_t flameSampleIndex;
-  long flameSampleSum;
-  long flameBaselineSum;
-  size_t flameBaselineSampleCount;
-  FlameState flameCandidateState;
+  bool flameCandidateDetected;
   unsigned long flameCandidateSinceMs;
   bool nextDistanceFacingFront;
   enum class UltrasonicState {
@@ -130,7 +120,6 @@ private:
 
   void updateFastSensors(unsigned long now);
   void updateFlame(unsigned long now);
-  FlameState classifyFlameDelta(int delta) const;
   void updateEnvironment(unsigned long now);
   void updateDht(unsigned long now);
   void updateMq2(unsigned long now);

@@ -2,6 +2,7 @@
 #define NAVIGATIONMANAGER_H
 
 #include <Arduino.h>
+#include "ImuManager.h"
 #include "MotorController.h"
 #include "RobotConfig.h"
 #include "SafetyManager.h"
@@ -37,6 +38,7 @@ public:
 
   NavigationManager(MotorController& motors,
                     SensorManager& sensors,
+                    ImuManager& imu,
                     ServoScanner& servoScanner,
                     SafetyManager& safety,
                     WebDashboard& dashboard,
@@ -61,6 +63,7 @@ private:
 
   MotorController& _motors;
   SensorManager& _sensors;
+  ImuManager& _imu;
   ServoScanner& _servoScanner;
   SafetyManager& _safety;
   WebDashboard& _dashboard;
@@ -81,6 +84,7 @@ private:
   UltrasonicSample readAndPublishDistance(const char* servoPos);
   bool acquireFreshFrontDistance(UltrasonicSample& sample);
   bool driveForwardWithFreshGuard();
+  bool executeAvoidanceTurn(bool turnLeft, bool nearRecovery);
   void runObstacleAvoidance();
   void choosePathAndTurn(const NavigationScanSample& left,
                          const NavigationScanSample& center,

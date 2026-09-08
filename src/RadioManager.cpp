@@ -10,6 +10,10 @@ RadioManager::RadioManager()
 }
 
 bool RadioManager::begin() {
+  if (!RobotConfig::ENABLE_NRF24) {
+    Serial.println("[Radio] DISABLED by RobotConfig");
+    return false;
+  }
   snapshot_.initialized = false;
   snapshot_.chipDetected = false;
   snapshot_.listening = false;
@@ -44,7 +48,10 @@ void RadioManager::update(uint8_t alarmMask) {
   if (!snapshot_.initialized) return;
   pollReceive();
   const unsigned long now = millis();
-  if (lastHeartbeatMs_ == 0 || now - lastHeartbeatMs_ >= RobotConfig::NRF_HEARTBEAT_INTERVAL_MS) {
+  const unsigned long heartbeatInterval = snapshot_.consecutiveTxFailures >= 3
+    ? RobotConfig::NRF_OFFLINE_HEARTBEAT_INTERVAL_MS
+    : RobotConfig::NRF_HEARTBEAT_INTERVAL_MS;
+  if (lastHeartbeatMs_ == 0 || now - lastHeartbeatMs_ >= heartbeatInterval) {
     lastHeartbeatMs_ = now;
     sendHeartbeat(alarmMask);
   }
@@ -91,8 +98,10 @@ void RadioManager::sendHeartbeat(uint8_t alarmMask) {
     snapshot_.lastTxSuccessMs = snapshot_.lastTxMs;
     snapshot_.peerEverSeen = true;
     snapshot_.lastPeerSeenMs = snapshot_.lastTxMs;
+    snapshot_.consecutiveTxFailures = 0;
   } else {
     ++snapshot_.txFailure;
+    ++snapshot_.consecutiveTxFailures;
   }
   radio_.startListening();
   snapshot_.listening = true;
@@ -107,6 +116,7 @@ bool RadioManager::validatePacket(const RadioPacket& packet) const {
 
 const RadioSnapshot& RadioManager::snapshot() const { return snapshot_; }
 const char* RadioManager::hardwareStateName() const {
+  if (!RobotConfig::ENABLE_NRF24) return "DISABLED";
   return snapshot_.initialized && snapshot_.chipDetected ? "READY" : "ERROR";
 }
 const char* RadioManager::peerStateName() const {

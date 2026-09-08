@@ -4,14 +4,16 @@
 #include <Arduino.h>
 
 #ifndef PIKU_HOME_WIFI_SSID
-#define PIKU_HOME_WIFI_SSID "IUB-IRCPS"
+#define PIKU_HOME_WIFI_SSID nullptr
 #endif
 
 #ifndef PIKU_HOME_WIFI_PASSWORD
-#define PIKU_HOME_WIFI_PASSWORD "piku1234"
+#define PIKU_HOME_WIFI_PASSWORD nullptr
 #endif
 
 namespace WiFiConfig {
+  // This isolated lab profile receives its historical static address. Every
+  // other provisioned network uses DHCP.
   static constexpr const char* COORDINATOR_SSID = "IUB-IRCPS";
   static constexpr uint8_t COORDINATOR_STA_IP[4] = {192, 168, 10, 22};
   static constexpr uint8_t COORDINATOR_GATEWAY[4] = {192, 168, 10, 1};

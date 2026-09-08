@@ -73,8 +73,9 @@ void DisplayManager::renderPage(const DashboardData& data) {
       oled_.print("TEMP: "); if (data.temperatureValid) { printValue(data.temperature, 1); oled_.println(" C"); } else oled_.println("INVALID");
       oled_.print("HUM : "); if (data.humidityValid) { printValue(data.humidity, 1); oled_.println(" %"); } else oled_.println("INVALID");
       oled_.print("GAS : "); oled_.println(data.gasStatus);
-      oled_.print("FLAME: ");
-      oled_.println(data.flameClassificationValid ? data.flameState : "NOT CALIBRATED");
+      oled_.print("FLAME DO: ");
+      oled_.println(data.flameSampleValid ? data.flameState : "INVALID");
+      oled_.print("LEVEL: "); oled_.println(data.flameDigitalLevel == LOW ? "LOW" : "HIGH");
       break;
     case 2:
       oled_.println("IMU / MPU6050");

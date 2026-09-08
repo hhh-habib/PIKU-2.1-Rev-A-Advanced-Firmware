@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <esp_system.h>
 #include <SPI.h>
 #include <Wire.h>
 #include "BuzzerManager.h"
@@ -19,6 +20,7 @@
 #include "WiFiConfig.h"
 
 bool serviceLoop();
+bool handleManualControl();
 void publishCurrentTelemetry(bool force = false);
 void triggerObstacleWarning();
 
@@ -72,6 +74,7 @@ String manualMotorDisplayState = "";
 String currentServoPosition = "FRONT";
 NavigationManager navigation(motors,
                              sensors,
+                             imu,
                              servoScanner,
                              safety,
                              dashboard,
@@ -90,10 +93,62 @@ float lastManualFrontDistance = -1;
 bool criticalStopLatched = false;
 bool manualForwardBlockedByUltrasonic = false;
 bool manualMovementActive = false;
+bool allowSlowOutputsThisPass = true;
+unsigned long lastServiceLoopStartedMs = 0;
+
+const char* resetReasonName(esp_reset_reason_t reason) {
+  switch (reason) {
+    case ESP_RST_POWERON: return "POWER_ON";
+    case ESP_RST_SW: return "SOFTWARE";
+    case ESP_RST_PANIC: return "PANIC";
+    case ESP_RST_INT_WDT: return "INTERRUPT_WATCHDOG";
+    case ESP_RST_TASK_WDT: return "TASK_WATCHDOG";
+    case ESP_RST_WDT: return "WATCHDOG";
+    case ESP_RST_DEEPSLEEP: return "DEEP_SLEEP";
+    case ESP_RST_BROWNOUT: return "BROWNOUT";
+    default: return "OTHER";
+  }
+}
 
 void stopMotors() {
   motors.stop();
   manualMovementActive = false;
+}
+
+void onDashboardCommandAccepted(const String& command,
+                                unsigned long sequence,
+                                unsigned long acceptedMs) {
+  (void)acceptedMs;
+  if (command == "STOP") {
+    // MotorController::stop() writes PWM duty zero before changing GPIO state.
+    // This callback runs inside /cmd before WebServer formats its response.
+    stopMotors();
+    manualMotorDisplayState = "STOP";
+    dashboardData.motorState = "STOP";
+    dashboardData.navigationDecision = "OPERATOR_STOP";
+    dashboard.markCommandApplied("STOP", sequence, "OPERATOR_STOP");
+    return;
+  }
+
+  if (dashboard.getControlMode() != "MANUAL" ||
+      manualSensorHeadOperation.state != ManualSensorHeadState::Idle ||
+      currentServoPosition != "FRONT") {
+    return;
+  }
+
+  // Refresh only control-critical inputs before applying motion. DHT, IMU,
+  // OLED, nRF and serial work remain outside the HTTP handler.
+  sensors.updateControlSensors();
+  safety.update(sensors.snapshot());
+  handleManualControl();
+}
+
+void onDashboardModeAccepted(const String& mode) {
+  stopMotors();
+  manualMotorDisplayState = mode == "MANUAL" ? "STOP" : "";
+  dashboardData.motorState = "STOP";
+  dashboardData.navigationDecision = "MODE_CHANGE_STOP";
+  dashboard.markStopApplied("MODE_CHANGE");
 }
 
 void forward() {
@@ -148,8 +203,7 @@ String getGasStatus(const SensorSnapshot& snapshot) {
 uint8_t currentEnvironmentalAlarmMask() {
   const SensorSnapshot& snapshot = sensors.snapshot();
   uint8_t mask = 0;
-  if (snapshot.flameClassificationValid &&
-      snapshot.flameState == FlameState::FlameDetected) mask |= 0x01;
+  if (snapshot.flameSampleValid && snapshot.flameDetected) mask |= 0x01;
   if (!snapshot.mq2Warmup && snapshot.gasFiltered >= RobotConfig::GAS_HIGH_RELATIVE_THRESHOLD) mask |= 0x02;
   if (snapshot.temperatureValid && snapshot.temperature >= RobotConfig::TEMP_CRITICAL_C) mask |= 0x04;
   return mask;
@@ -217,6 +271,7 @@ void publishCurrentTelemetry(bool force) {
   dashboardData.motionState = imuState.motionState;
   dashboardData.imuSampleAgeMs = sampleAge(imuState.lastSuccessMs, now);
   dashboardData.radioInitialized = radioState.initialized;
+  dashboardData.radioEnabled = RobotConfig::ENABLE_NRF24;
   dashboardData.radioChipDetected = radioState.chipDetected;
   dashboardData.radioListening = radioState.listening;
   dashboardData.radioChannel = radioState.channel;
@@ -233,6 +288,9 @@ void publishCurrentTelemetry(bool force) {
   dashboardData.radioLastTxAgeMs = sampleAge(radioState.lastTxMs, now);
   dashboardData.radioLastRxAgeMs = sampleAge(radioState.lastRxMs, now);
   dashboardData.displayInitialized = display.initialized();
+  dashboardData.freeHeap = ESP.getFreeHeap();
+  dashboardData.minimumFreeHeap = ESP.getMinFreeHeap();
+  dashboardData.psramSize = ESP.getPsramSize();
   dashboardPublisher.publishSensorReadings(currentServoPosition,
                                            publishedServoAngle,
                                            snapshot,
@@ -252,7 +310,8 @@ void publishCurrentTelemetry(bool force) {
                                            dashboard.getTurnMode(),
                                            motors.getStateName(),
                                            manualMotorDisplayState,
-                                           navigationStatus);
+                                           navigationStatus,
+                                           allowSlowOutputsThisPass);
   lastDashboardPublishMs = now;
 }
 
@@ -426,7 +485,18 @@ bool updateManualSensorHeadOperation() {
 }
 
 bool serviceLoop() {
+  const unsigned long serviceStartedMs = millis();
+  if (lastServiceLoopStartedMs != 0) {
+    const unsigned long gap = serviceStartedMs - lastServiceLoopStartedMs;
+    if (gap > dashboardData.maximumServiceLoopGapMs) {
+      dashboardData.maximumServiceLoopGapMs = gap;
+    }
+  }
+  lastServiceLoopStartedMs = serviceStartedMs;
   dashboard.loop();
+  const bool controlActivity = dashboard.consumeControlActivity();
+  const bool controlPending = dashboard.getPendingCommand().length() > 0;
+  const bool allowBackgroundWork = !controlActivity && !controlPending;
   // Apply the operator's fail-safe STOP before sensor, TFT, or telemetry work.
   // Leave the command pending so the existing Manual/AUTO handlers retain
   // their state updates and AUTO stop-latch behavior.
@@ -440,7 +510,11 @@ bool serviceLoop() {
   if (speedChanged) {
     motors.setSpeedPercent(requestedSpeedPercent);
   }
-  sensors.update();
+  if (allowBackgroundWork) {
+    sensors.update();
+  } else {
+    sensors.updateControlSensors();
+  }
   safety.update(sensors.snapshot());
   if (safety.isCritical()) {
     if (!criticalStopLatched) {
@@ -451,9 +525,13 @@ bool serviceLoop() {
     manualMotorDisplayState = "STOP";
     dashboard.setPendingCommand("");
     dashboardData.navigationDecision = "SAFETY_STOP";
+    dashboard.markStopApplied("CRITICAL_SAFETY");
   }
-  imu.update();
-  radio.update(currentEnvironmentalAlarmMask());
+  dashboard.updateBackground();
+  if (allowBackgroundWork) {
+    imu.update();
+    radio.update(currentEnvironmentalAlarmMask());
+  }
   bool manualDeadmanTriggered = false;
   if (dashboard.getControlMode() == "MANUAL" &&
       manualMovementActive &&
@@ -463,6 +541,7 @@ bool serviceLoop() {
     manualMotorDisplayState = "STOP";
     dashboard.setPendingCommand("");
     dashboardData.navigationDecision = "MANUAL_DEADMAN_STOP";
+    dashboard.markStopApplied("MANUAL_DEADMAN");
     syncDashboardState("MANUAL");
     manualDeadmanTriggered = true;
     Serial.println("Manual command timeout. Motors stopped.");
@@ -486,6 +565,7 @@ bool serviceLoop() {
     manualMotorDisplayState = "STOP";
     // Preserve a directional request so Manual mode can recenter and revalidate FRONT.
     dashboardData.navigationDecision = "MANUAL_INSPECTION_STOP";
+    dashboard.markStopApplied("MANUAL_SIDE_OBSTACLE");
   }
 
   if (safety.isCritical()) {
@@ -501,11 +581,14 @@ bool serviceLoop() {
     buzzer.setMode(BuzzerMode::Off);
   }
   buzzer.update();
+  allowSlowOutputsThisPass = allowBackgroundWork;
   publishCurrentTelemetry(safetyChanged);
+  allowSlowOutputsThisPass = true;
   return safetyChanged;
 }
 bool handleManualControl() {
   String command = dashboard.getPendingCommand();
+  const unsigned long commandSequence = dashboard.pendingCommandSequence();
 
   if (command.length() == 0) {
     return false;
@@ -517,6 +600,7 @@ bool handleManualControl() {
     manualMotorDisplayState = "STOP";
     dashboard.setPendingCommand("");
     dashboardData.navigationDecision = "MANUAL_STALE_COMMAND_STOP";
+    dashboard.markCommandApplied("STOP", commandSequence, "MANUAL_DEADMAN");
     syncDashboardState("MANUAL");
     return false;
   }
@@ -526,6 +610,7 @@ bool handleManualControl() {
     manualMotorDisplayState = "STOP";
     dashboard.setPendingCommand("");
     dashboardData.navigationDecision = "SAFETY_STOP";
+    dashboard.markCommandApplied("STOP", commandSequence, "SAFETY_INTERLOCK");
     syncDashboardState("MANUAL");
     return false;
   }
@@ -535,6 +620,7 @@ bool handleManualControl() {
     manualMotorDisplayState = "STOP";
     dashboard.setPendingCommand("");
     dashboardData.navigationDecision = "MANUAL_FORWARD_HOLD";
+    dashboard.markCommandApplied("STOP", commandSequence, "ULTRASONIC_HOLD");
     syncDashboardState("MANUAL");
     return false;
   }
@@ -546,6 +632,7 @@ bool handleManualControl() {
     dashboardData.navigationDecision = safety.obstacleDecision(sensors.snapshot()) == "ULTRASONIC_BLOCK"
       ? "FORWARD_BLOCKED_ULTRASONIC"
       : "FORWARD_BLOCKED_BOTH_IR";
+    dashboard.markCommandApplied("STOP", commandSequence, "OBSTACLE_INTERLOCK");
     syncDashboardState("MANUAL");
     return false;
   }
@@ -561,6 +648,7 @@ bool handleManualControl() {
     manualMovementActive = false;
   }
   if (!result.executed) {
+    dashboard.markCommandApplied("STOP", commandSequence, "COMMAND_REJECTED");
     return false;
   }
 
@@ -569,6 +657,9 @@ bool handleManualControl() {
   }
   manualMotorDisplayState = result.motorDisplayState;
   dashboardData.navigationDecision = result.navigationDecision;
+  dashboard.markCommandApplied(command,
+                               commandSequence,
+                               command == "STOP" ? "OPERATOR_STOP" : "NONE");
   syncDashboardState("MANUAL");
   return true;
 }
@@ -622,6 +713,7 @@ void updateManualMode() {
         manualMotorDisplayState = "STOP";
         dashboard.setPendingCommand("");
         dashboardData.navigationDecision = "MANUAL_OBSTACLE_STOP";
+        dashboard.markStopApplied("ULTRASONIC_NEAR");
         syncDashboardState("MANUAL");
         Serial.println("Manual fresh HC-SR04 forward stop.");
       }
@@ -635,6 +727,7 @@ void updateManualMode() {
         manualMotorDisplayState = "STOP";
         dashboard.setPendingCommand("");
         dashboardData.navigationDecision = "MANUAL_ULTRASONIC_FAULT_STOP";
+        dashboard.markStopApplied("ULTRASONIC_FAULT");
         syncDashboardState("MANUAL");
       }
     }
@@ -646,6 +739,7 @@ void updateManualMode() {
     manualMotorDisplayState = "STOP";
     dashboard.setPendingCommand("");
     dashboardData.navigationDecision = "FORWARD_BLOCKED_NEAR";
+    dashboard.markStopApplied("NEAR_OBSTACLE");
     syncDashboardState("MANUAL");
     Serial.println("Manual near obstacle stop.");
   }
@@ -704,6 +798,8 @@ void setup() {
   dashboardData.scanOrientation = currentServoPosition;
   dashboardData.displayInitialized = display.initialized();
 
+  dashboardData.resetReason = resetReasonName(esp_reset_reason());
+  dashboard.setControlCallbacks(onDashboardCommandAccepted, onDashboardModeAccepted);
   dashboard.begin(PIKU_SOFTAP_SSID,
                   PIKU_SOFTAP_PASSWORD,
                   WiFiConfig::HOME_WIFI_SSID,

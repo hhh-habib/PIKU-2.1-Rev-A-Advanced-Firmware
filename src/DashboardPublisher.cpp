@@ -66,7 +66,8 @@ void DashboardPublisher::publishSensorReadings(const String& servoPos,
                                                const String& turnMode,
                                                const String& motorStateName,
                                                const String& manualMotorDisplayState,
-                                               const String& navigationStatus) {
+                                               const String& navigationStatus,
+                                               bool allowSlowOutputs) {
   data.temperature = snapshot.temperature;
   data.temperatureValid = snapshot.temperatureValid;
   data.humidity = snapshot.humidity;
@@ -87,14 +88,9 @@ void DashboardPublisher::publishSensorReadings(const String& servoPos,
   data.scanOrientation = servoPos;
   data.flameDetected = snapshot.flameDetected;
   data.flameState = flameStateName(snapshot.flameState);
-  data.flameRaw = snapshot.flameRaw;
-  data.flameFiltered = snapshot.flameFiltered;
-  data.flameBaseline = snapshot.flameBaseline;
-  data.flameDelta = snapshot.flameDelta;
+  data.flameDigitalLevel = snapshot.flameDigitalLevel;
+  data.flameRawActive = snapshot.flameRawActive;
   data.flameSampleValid = snapshot.flameSampleValid;
-  data.flameBaselineValid = snapshot.flameBaselineValid;
-  data.flameClassificationValid = snapshot.flameClassificationValid;
-  data.flameThresholdsConfigured = snapshot.flameThresholdsConfigured;
   data.leftIrRaw = snapshot.leftIrRaw;
   data.rightIrRaw = snapshot.rightIrRaw;
   data.leftObstacle = leftObstacleFiltered;
@@ -118,10 +114,14 @@ void DashboardPublisher::publishSensorReadings(const String& servoPos,
     data.motorState = motorStateName;
   }
 
-  display.updateDashboard(data);
+  if (allowSlowOutputs) {
+    display.updateDashboard(data);
+  }
 
   publishIfChanged();
-  logSensorReadings(servoPos, snapshot, leftObstacleFiltered, rightObstacleFiltered, motorStateName);
+  if (allowSlowOutputs) {
+    logSensorReadings(servoPos, snapshot, leftObstacleFiltered, rightObstacleFiltered, motorStateName);
+  }
 }
 
 bool DashboardPublisher::floatChanged(float current, float previous, float threshold) const {
@@ -155,11 +155,9 @@ bool DashboardPublisher::dashboardDataChanged(const DashboardData& current, cons
          current.mq2Warmup != previous.mq2Warmup ||
          current.flameDetected != previous.flameDetected ||
          current.flameState != previous.flameState ||
-         abs(current.flameRaw - previous.flameRaw) >= 4 ||
-         abs(current.flameFiltered - previous.flameFiltered) >= 4 ||
-         abs(current.flameBaseline - previous.flameBaseline) >= 4 ||
-         abs(current.flameDelta - previous.flameDelta) >= 4 ||
-         current.flameClassificationValid != previous.flameClassificationValid ||
+         current.flameDigitalLevel != previous.flameDigitalLevel ||
+         current.flameRawActive != previous.flameRawActive ||
+         current.flameSampleValid != previous.flameSampleValid ||
          current.leftIrRaw != previous.leftIrRaw ||
          current.rightIrRaw != previous.rightIrRaw ||
          current.leftObstacle != previous.leftObstacle ||
@@ -189,6 +187,11 @@ bool DashboardPublisher::dashboardDataChanged(const DashboardData& current, cons
          current.staIp != previous.staIp ||
          current.staRssi != previous.staRssi ||
          current.staSignalQuality != previous.staSignalQuality ||
+         current.softApChannel != previous.softApChannel ||
+         current.softApClients != previous.softApClients ||
+         current.freeHeap != previous.freeHeap ||
+         current.minimumFreeHeap != previous.minimumFreeHeap ||
+         current.maximumServiceLoopGapMs != previous.maximumServiceLoopGapMs ||
          current.imuInitialized != previous.imuInitialized ||
          current.imuHealthy != previous.imuHealthy ||
          current.imuHealthState != previous.imuHealthState ||
@@ -204,6 +207,7 @@ bool DashboardPublisher::dashboardDataChanged(const DashboardData& current, cons
          floatChanged(current.pitch, previous.pitch, 0.2f) ||
          current.motionState != previous.motionState ||
          current.radioInitialized != previous.radioInitialized ||
+         current.radioEnabled != previous.radioEnabled ||
          current.radioChipDetected != previous.radioChipDetected ||
          current.radioListening != previous.radioListening ||
          current.radioTxAttempts != previous.radioTxAttempts ||
@@ -249,11 +253,9 @@ void DashboardPublisher::logSensorReadings(const String& servoPos,
   if (snapshot.humidityValid) Serial.print(snapshot.humidity, 1); else Serial.print("INVALID");
   Serial.print(" gas="); Serial.print(snapshot.gasFiltered);
   Serial.print(" state="); Serial.print(data.gasStatus);
-  Serial.print(" flame_raw="); Serial.print(snapshot.flameRaw);
-  Serial.print(" filtered="); Serial.print(snapshot.flameFiltered);
-  Serial.print(" baseline="); Serial.print(snapshot.flameBaseline);
-  Serial.print(" delta="); Serial.print(snapshot.flameDelta);
-  Serial.print(" class="); Serial.print(flameStateName(snapshot.flameState));
-  Serial.print(" valid="); Serial.println(snapshot.flameClassificationValid ? "YES" : "NO");
+  Serial.print(" flame_do="); Serial.print(snapshot.flameDigitalLevel == LOW ? "LOW" : "HIGH");
+  Serial.print(" raw_active="); Serial.print(snapshot.flameRawActive ? "YES" : "NO");
+  Serial.print(" state="); Serial.print(flameStateName(snapshot.flameState));
+  Serial.print(" sample_valid="); Serial.println(snapshot.flameSampleValid ? "YES" : "NO");
   Serial.print("Motor   : "); Serial.println(motorStateName);
 }

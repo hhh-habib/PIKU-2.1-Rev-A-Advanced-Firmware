@@ -38,6 +38,7 @@ struct RadioSnapshot {
   uint32_t txAttempts = 0;
   uint32_t txSuccess = 0;
   uint32_t txFailure = 0;
+  uint32_t consecutiveTxFailures = 0;
   uint32_t rxPackets = 0;
   uint32_t lastTxMs = 0;
   uint32_t lastTxSuccessMs = 0;

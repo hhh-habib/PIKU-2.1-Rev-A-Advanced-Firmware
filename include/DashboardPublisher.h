@@ -34,7 +34,8 @@ public:
                              const String& turnMode,
                              const String& motorStateName,
                              const String& manualMotorDisplayState,
-                             const String& navigationStatus);
+                             const String& navigationStatus,
+                             bool allowSlowOutputs);
 
 private:
   WebDashboard& dashboard;

@@ -46,6 +46,7 @@ WebDashboard::WebDashboard()
     _mdnsStarted(false),
     _staSsid(""),
     _staPassword(""),
+    _staCredentialsPendingPersistence(false),
     _lastStaAttemptMs(0),
     _alarmEnabled(true),
     _alarmMuted(false),
@@ -53,6 +54,14 @@ WebDashboard::WebDashboard()
     _modeCommandCounter(0),
     _lastCommandReceivedMs(0),
     _lastCommandSequence(0),
+    _pendingCommandSequence(0),
+    _lastCommandAcceptedMs(0),
+    _lastCommandAppliedMs(0),
+    _httpErrorCount(0),
+    _wifiReconnectCount(0),
+    _controlActivity(false),
+    _commandAcceptedCallback(nullptr),
+    _modeAcceptedCallback(nullptr),
     _lastWiFiUpdateMs(0),
     _lastWiFiTelemetryMs(0),
     _pendingSpeedPercent(-1),
@@ -92,6 +101,7 @@ void WebDashboard::begin(const char* ssid, const char* password, const char* sta
   _server.on("/wifi/scan", [this]() { handleWifiScan(); });
   _server.on("/wifi/connect", HTTP_POST, [this]() { handleWifiConnect(); });
   _server.on("/wifi/forget", HTTP_POST, [this]() { handleWifiForget(); });
+  _server.on("/wifi/reconnect", HTTP_POST, [this]() { handleWifiReconnect(); });
   _server.on("/mode/auto", [this]() { handleModeAuto(); });
   _server.on("/mode/manual", [this]() { handleModeManual(); });
   _server.on("/control/forward", [this]() { handleControlForward(); });
@@ -99,6 +109,9 @@ void WebDashboard::begin(const char* ssid, const char* password, const char* sta
   _server.on("/control/left", [this]() { handleControlLeft(); });
   _server.on("/control/right", [this]() { handleControlRight(); });
   _server.on("/control/stop", [this]() { handleControlStop(); });
+  _server.onNotFound([this]() {
+    sendError(404, "application/json", R"json({"ok":false,"error":"not_found"})json");
+  });
   const char* collectedHeaders[] = {"Origin"};
   _server.collectHeaders(collectedHeaders, 1);
   _server.begin();
@@ -118,7 +131,39 @@ void WebDashboard::loop() {
   if (_initialized) {
     _server.handleClient();
   }
+}
+
+void WebDashboard::updateBackground() {
   updateWiFi();
+}
+
+void WebDashboard::setControlCallbacks(CommandAcceptedCallback commandCallback,
+                                       ModeAcceptedCallback modeCallback) {
+  _commandAcceptedCallback = commandCallback;
+  _modeAcceptedCallback = modeCallback;
+}
+
+bool WebDashboard::consumeControlActivity() {
+  const bool active = _controlActivity;
+  _controlActivity = false;
+  return active;
+}
+
+void WebDashboard::markCommandApplied(const String& command,
+                                      unsigned long sequence,
+                                      const String& stopReason) {
+  _lastAppliedCommand = command;
+  _lastCommandAppliedMs = millis();
+  if (sequence > _lastCommandSequence) {
+    _lastCommandSequence = sequence;
+  }
+  if (command == "STOP" && stopReason.length() > 0) {
+    _lastStopReason = stopReason;
+  }
+}
+
+void WebDashboard::markStopApplied(const String& stopReason) {
+  markCommandApplied("STOP", _lastCommandSequence, stopReason);
 }
 
 void WebDashboard::setData(const DashboardData& data) {
@@ -190,6 +235,10 @@ unsigned long WebDashboard::lastCommandReceivedMs() const {
   return _lastCommandReceivedMs;
 }
 
+unsigned long WebDashboard::pendingCommandSequence() const {
+  return _pendingCommandSequence;
+}
+
 IPAddress WebDashboard::localIP() const {
   return WiFi.softAPIP();
 }
@@ -229,15 +278,16 @@ void WebDashboard::handlePing() {
 
 void WebDashboard::handleMode() {
   if (!controlOriginAllowed()) return;
+  prepareControlResponse();
   if (!_server.hasArg("set")) {
-    _server.send(400, "text/plain", "ERR");
+    sendError(400, "text/plain", "ERR");
     return;
   }
 
   String mode = _server.arg("set");
   mode.toUpperCase();
   if (mode != "AUTO" && mode != "MANUAL") {
-    _server.send(400, "text/plain", "ERR");
+    sendError(400, "text/plain", "ERR");
     return;
   }
 
@@ -247,15 +297,16 @@ void WebDashboard::handleMode() {
 
 void WebDashboard::handleTurnMode() {
   if (!controlOriginAllowed()) return;
+  prepareControlResponse();
   if (!_server.hasArg("set")) {
-    _server.send(400, "text/plain", "ERR");
+    sendError(400, "text/plain", "ERR");
     return;
   }
 
   String mode = _server.arg("set");
   mode.toUpperCase();
   if (mode != "PIVOT" && mode != "SPIN") {
-    _server.send(400, "text/plain", "ERR");
+    sendError(400, "text/plain", "ERR");
     return;
   }
 
@@ -265,35 +316,38 @@ void WebDashboard::handleTurnMode() {
 
 void WebDashboard::handleSpeed() {
   if (!controlOriginAllowed()) return;
+  prepareControlResponse();
   if (!_server.hasArg("set")) {
-    _server.send(400, "text/plain", "ERR");
+    sendError(400, "text/plain", "ERR");
     return;
   }
 
   const String value = _server.arg("set");
   if (value.length() == 0 || value.length() > 3) {
-    _server.send(400, "text/plain", "ERR");
+    sendError(400, "text/plain", "ERR");
     return;
   }
   for (unsigned int i = 0; i < value.length(); i++) {
     if (!isDigit(value.charAt(i))) {
-      _server.send(400, "text/plain", "ERR");
+      sendError(400, "text/plain", "ERR");
       return;
     }
   }
 
   const int speedPercent = value.toInt();
   if (speedPercent < 0 || speedPercent > 100) {
-    _server.send(400, "text/plain", "ERR");
+    sendError(400, "text/plain", "ERR");
     return;
   }
   _pendingSpeedPercent = speedPercent;
+  _controlActivity = true;
   sendOk();
 }
 void WebDashboard::handleCommand() {
   if (!controlOriginAllowed()) return;
+  prepareControlResponse();
   if (!_server.hasArg("move")) {
-    _server.send(400, "text/plain", "ERR");
+    sendError(400, "text/plain", "ERR");
     return;
   }
 
@@ -301,7 +355,7 @@ void WebDashboard::handleCommand() {
   command.toUpperCase();
   if (command != "FORWARD" && command != "BACKWARD" && command != "LEFT" &&
       command != "RIGHT" && command != "STOP") {
-    _server.send(400, "text/plain", "ERR");
+    sendError(400, "text/plain", "ERR");
     return;
   }
 
@@ -310,30 +364,33 @@ void WebDashboard::handleCommand() {
   if (sequenced) {
     String sequenceText = _server.arg("seq");
     if (sequenceText.length() == 0) {
-      _server.send(400, "text/plain", "ERR");
+      sendError(400, "text/plain", "ERR");
       return;
     }
     for (unsigned int i = 0; i < sequenceText.length(); i++) {
       if (!isDigit(sequenceText.charAt(i))) {
-        _server.send(400, "text/plain", "ERR");
+        sendError(400, "text/plain", "ERR");
         return;
       }
     }
     sequence = strtoul(sequenceText.c_str(), nullptr, 10);
     if (sequence == 0) {
-      _server.send(400, "text/plain", "ERR");
+      sendError(400, "text/plain", "ERR");
       return;
     }
   }
 
-  applyCommand(command, sequence, sequenced);
-  sendOk();
+  if (applyCommand(command, sequence, sequenced)) {
+    sendOk();
+  } else {
+    sendError(409, "text/plain", "STALE_OR_MODE_REJECTED");
+  }
 }
 
 void WebDashboard::handleSensorHead() {
   if (!controlOriginAllowed()) return;
   if (!_server.hasArg("set")) {
-    _server.send(400, "text/plain", "Missing set value. Use LEFT, FRONT, or RIGHT.");
+    sendError(400, "text/plain", "Missing set value. Use LEFT, FRONT, or RIGHT.");
     return;
   }
 
@@ -346,12 +403,12 @@ void WebDashboard::handleSensorHead() {
   } else if (orientation == "RIGHT") {
     command = ManualSensorHeadCommand::Right;
   } else {
-    _server.send(400, "text/plain", "Invalid set value. Use LEFT, FRONT, or RIGHT.");
+    sendError(400, "text/plain", "Invalid set value. Use LEFT, FRONT, or RIGHT.");
     return;
   }
 
   if (_data.controlMode != "MANUAL") {
-    _server.send(409, "text/plain", "Manual mode required.");
+    sendError(409, "text/plain", "Manual mode required.");
     return;
   }
 
@@ -381,12 +438,22 @@ void WebDashboard::handleAlarmTest() {
 }
 
 void WebDashboard::handleWifiScan() {
+  if (!controlOriginAllowed()) return;
+  if (!wifiProvisioningAllowed()) {
+    sendError(409, "application/json", R"json({"ok":false,"error":"robot_must_be_stopped_in_manual"})json");
+    return;
+  }
   sendWifiScanJson();
 }
 
 void WebDashboard::handleWifiConnect() {
   if (!controlOriginAllowed()) return;
+  if (!wifiProvisioningAllowed()) {
+    sendError(409, "application/json", R"json({"ok":false,"error":"robot_must_be_stopped_in_manual"})json");
+    return;
+  }
   if (!_server.hasArg("ssid")) {
+    ++_httpErrorCount;
     _server.send(400, "application/json", "{\"ok\":false,\"error\":\"missing_ssid\"}");
     return;
   }
@@ -395,7 +462,13 @@ void WebDashboard::handleWifiConnect() {
   String password = _server.hasArg("password") ? _server.arg("password") : "";
   ssid.trim();
   if (ssid.length() == 0) {
+    ++_httpErrorCount;
     _server.send(400, "application/json", "{\"ok\":false,\"error\":\"empty_ssid\"}");
+    return;
+  }
+
+  if (ssid.length() > 32 || password.length() > 64) {
+    sendError(400, "application/json", R"json({"ok":false,"error":"invalid_credential_length"})json");
     return;
   }
 
@@ -405,8 +478,31 @@ void WebDashboard::handleWifiConnect() {
 
 void WebDashboard::handleWifiForget() {
   if (!controlOriginAllowed()) return;
+  if (!wifiProvisioningAllowed()) {
+    sendError(409, "application/json", R"json({"ok":false,"error":"robot_must_be_stopped_in_manual"})json");
+    return;
+  }
   clearStaCredentials();
   _server.send(200, "application/json", "{\"ok\":true}");
+}
+
+void WebDashboard::handleWifiReconnect() {
+  if (!controlOriginAllowed()) return;
+  if (!wifiProvisioningAllowed()) {
+    sendError(409, "application/json", R"json({"ok":false,"error":"robot_must_be_stopped_in_manual"})json");
+    return;
+  }
+  if (!_staConfigured) {
+    sendError(409, "application/json", R"json({"ok":false,"error":"wifi_not_configured"})json");
+    return;
+  }
+  WiFi.disconnect(false, false);
+  _staState = StaState::Connecting;
+  beginStaAssociation();
+  _staConnectStarted = true;
+  _lastStaAttemptMs = millis();
+  ++_wifiReconnectCount;
+  _server.send(202, "application/json", R"json({"ok":true,"state":"CONNECTING"})json");
 }
 
 void WebDashboard::handleModeAuto() {
@@ -423,30 +519,31 @@ void WebDashboard::handleModeManual() {
 
 void WebDashboard::handleControlForward() {
   if (!controlOriginAllowed()) return;
-  applyCommand("FORWARD");
-  sendOk();
+  prepareControlResponse();
+  if (applyCommand("FORWARD")) sendOk(); else sendError(409, "text/plain", "MODE_REJECTED");
 }
 
 void WebDashboard::handleControlBackward() {
   if (!controlOriginAllowed()) return;
-  applyCommand("BACKWARD");
-  sendOk();
+  prepareControlResponse();
+  if (applyCommand("BACKWARD")) sendOk(); else sendError(409, "text/plain", "MODE_REJECTED");
 }
 
 void WebDashboard::handleControlLeft() {
   if (!controlOriginAllowed()) return;
-  applyCommand("LEFT");
-  sendOk();
+  prepareControlResponse();
+  if (applyCommand("LEFT")) sendOk(); else sendError(409, "text/plain", "MODE_REJECTED");
 }
 
 void WebDashboard::handleControlRight() {
   if (!controlOriginAllowed()) return;
-  applyCommand("RIGHT");
-  sendOk();
+  prepareControlResponse();
+  if (applyCommand("RIGHT")) sendOk(); else sendError(409, "text/plain", "MODE_REJECTED");
 }
 
 void WebDashboard::handleControlStop() {
   if (!controlOriginAllowed()) return;
+  prepareControlResponse();
   applyCommand("STOP");
   sendOk();
 }
@@ -456,13 +553,18 @@ void WebDashboard::applyMode(const String& mode) {
   _pendingCommand = "";
   _pendingManualSensorHeadCommand = ManualSensorHeadCommand::None;
   _modeCommandCounter++;
+  _controlActivity = true;
+  if (_modeAcceptedCallback != nullptr) {
+    _modeAcceptedCallback(mode);
+  }
 }
 
 void WebDashboard::applyTurnMode(const String& mode) {
   _data.turnMode = mode;
+  _controlActivity = true;
 }
 
-void WebDashboard::applyCommand(const String& command, unsigned long sequence, bool sequenced) {
+bool WebDashboard::applyCommand(const String& command, unsigned long sequence, bool sequenced) {
   // STOP is an all-mode operator intervention. Directional commands remain
   // Manual-only and continue through the existing command handler.
   if (command == "STOP" || _data.controlMode == "MANUAL") {
@@ -473,7 +575,7 @@ void WebDashboard::applyCommand(const String& command, unsigned long sequence, b
         // STOP is fail-safe and remains accepted even from a newly opened
         // dashboard that has not synchronized the current sequence yet.
         if (command != "STOP") {
-          return;
+          return false;
         }
       } else {
         _lastCommandSequence = sequence;
@@ -485,8 +587,17 @@ void WebDashboard::applyCommand(const String& command, unsigned long sequence, b
       }
     }
     _pendingCommand = command;
+    _pendingCommandSequence = _lastCommandSequence;
     _lastCommandReceivedMs = millis();
+    _lastCommandAcceptedMs = _lastCommandReceivedMs;
+    _lastAcceptedCommand = command;
+    _controlActivity = true;
+    if (_commandAcceptedCallback != nullptr) {
+      _commandAcceptedCallback(command, _pendingCommandSequence, _lastCommandAcceptedMs);
+    }
+    return true;
   }
+  return false;
 }
 
 void WebDashboard::configureSta(const String& ssid, const String& password, bool persist) {
@@ -505,12 +616,9 @@ void WebDashboard::configureSta(const String& ssid, const String& password, bool
   _staPassword = nextPassword;
   _staConfigured = _staSsid.length() > 0;
 
-  if (persist) {
-    _preferences.begin("piku-wifi", false);
-    _preferences.putString("ssid", _staSsid);
-    _preferences.putString("password", _staPassword);
-    _preferences.end();
-  }
+  // Commit a provisioning candidate only after association succeeds. Failed
+  // credentials cannot replace the last known-good NVS network.
+  _staCredentialsPendingPersistence = persist;
 
   if (WiFi.getMode() != WIFI_AP_STA) {
     WiFi.mode(WIFI_AP_STA);
@@ -537,12 +645,14 @@ void WebDashboard::loadSavedStaCredentials(const char* fallbackSsid, const char*
   String savedPassword = _preferences.getString("password", "");
   _preferences.end();
 
-  if (hasText(fallbackSsid)) {
-    _staSsid = fallbackSsid;
-    _staPassword = hasText(fallbackPassword) ? fallbackPassword : "";
-  } else if (savedSsid.length() > 0) {
+  _staCredentialsPendingPersistence = false;
+
+  if (savedSsid.length() > 0) {
     _staSsid = savedSsid;
     _staPassword = savedPassword;
+  } else if (hasText(fallbackSsid)) {
+    _staSsid = fallbackSsid;
+    _staPassword = hasText(fallbackPassword) ? fallbackPassword : "";
   } else {
     _staSsid = "";
     _staPassword = "";
@@ -560,6 +670,7 @@ void WebDashboard::clearStaCredentials() {
 
   _staSsid = "";
   _staPassword = "";
+  _staCredentialsPendingPersistence = false;
   _staConfigured = false;
   _staConnectStarted = false;
   _staState = StaState::NotConfigured;
@@ -587,7 +698,22 @@ void WebDashboard::updateWiFi() {
   setStaStateFromWiFiStatus();
   if (WiFi.status() == WL_CONNECTED) {
     _staConnectStarted = false;
+    if (_staCredentialsPendingPersistence) {
+      _preferences.begin("piku-wifi", false);
+      _preferences.putString("ssid", _staSsid);
+      _preferences.putString("password", _staPassword);
+      _preferences.end();
+      _staCredentialsPendingPersistence = false;
+    }
     updateMdns(true);
+    refreshWiFiTelemetry(true);
+    return;
+  }
+
+  // Keep wrong-password failure visible without automatic radio churn. A new
+  // Connect or explicit Reconnect action starts another non-blocking attempt.
+  if (_staState == StaState::AuthFailed) {
+    updateMdns(false);
     refreshWiFiTelemetry(true);
     return;
   }
@@ -602,6 +728,7 @@ void WebDashboard::updateWiFi() {
     beginStaAssociation();
     _staConnectStarted = true;
     _lastStaAttemptMs = now;
+    ++_wifiReconnectCount;
   }
   refreshWiFiTelemetry(true);
 }
@@ -616,6 +743,8 @@ void WebDashboard::refreshWiFiTelemetry(bool force) {
 
   _lastWiFiTelemetryMs = now;
   _wifiTelemetry.softApIp = WiFi.softAPIP().toString();
+  _wifiTelemetry.softApChannel = WiFi.channel();
+  _wifiTelemetry.softApClients = WiFi.softAPgetStationNum();
   _wifiTelemetry.localHostname = "piku.local";
   _wifiTelemetry.mdnsActive = _mdnsStarted && WiFi.status() == WL_CONNECTED;
   _wifiTelemetry.staConfigured = _staConfigured;
@@ -646,6 +775,8 @@ void WebDashboard::applyCachedWiFiTelemetry() {
   _data.staIp = _wifiTelemetry.staIp;
   _data.staRssi = _wifiTelemetry.staRssi;
   _data.staSignalQuality = _wifiTelemetry.staSignalQuality;
+  _data.softApChannel = _wifiTelemetry.softApChannel;
+  _data.softApClients = _wifiTelemetry.softApClients;
 }
 
 void WebDashboard::beginStaAssociation() {
@@ -804,7 +935,9 @@ void WebDashboard::sendWifiScanJson() {
   WiFi.scanDelete();
   _scanStarted = false;
   setStaStateFromWiFiStatus();
-  _server.send(200, "application/json", json);
+  _server.send(200,
+               "application/json",
+               json);
 }
 
 int WebDashboard::calculateSignalQuality(int rssi) const {
@@ -840,8 +973,26 @@ bool WebDashboard::controlOriginAllowed() {
     return true;
   }
 
+  ++_httpErrorCount;
   _server.send(403, "application/json", "{\"ok\":false,\"error\":\"origin_not_allowed\"}");
   return false;
+}
+
+bool WebDashboard::wifiProvisioningAllowed() {
+  return _data.controlMode == "MANUAL" &&
+         _data.motorState == "STOP" &&
+         (_pendingCommand.length() == 0 || _pendingCommand == "STOP");
+}
+
+void WebDashboard::prepareControlResponse() {
+  WiFiClient client = _server.client();
+  client.setNoDelay(true);
+  client.setTimeout(RobotConfig::HTTP_CLIENT_TIMEOUT_SECONDS);
+}
+
+void WebDashboard::sendError(int status, const char* contentType, const char* body) {
+  ++_httpErrorCount;
+  _server.send(status, contentType, body);
 }
 
 void WebDashboard::sendOk() {
@@ -850,7 +1001,7 @@ void WebDashboard::sendOk() {
 
 void WebDashboard::sendJson() {
   String json;
-  json.reserve(4096);
+  json.reserve(6144);
   json = String("{\"node_id\":\"") + RobotConfig::NODE_ID + "\"" +
          ",\"telemetry_age_ms\":" + String(millis() - _data.uptimeMs) +
          ",\"product\":\"" + _data.product + "\"" +
@@ -885,14 +1036,13 @@ void WebDashboard::sendJson() {
          ",\"gasStatus\":\"" + _data.gasStatus + "\"" +
          ",\"flameDetected\":" + jsonBool(_data.flameDetected) +
          ",\"flame_state\":\"" + _data.flameState + "\"" +
-         ",\"flame_raw\":" + String(_data.flameRaw) +
-         ",\"flame_filtered\":" + String(_data.flameFiltered) +
-         ",\"flame_baseline\":" + String(_data.flameBaseline) +
-         ",\"flame_delta\":" + String(_data.flameDelta) +
+         ",\"flame_input\":\"DIGITAL_DO\"" +
+         ",\"flame_digital_level\":" + String(_data.flameDigitalLevel) +
+         ",\"flame_active_level\":\"HIGH\"" +
+         ",\"flame_raw_active\":" + jsonBool(_data.flameRawActive) +
          ",\"flame_sample_valid\":" + jsonBool(_data.flameSampleValid) +
-         ",\"flame_baseline_valid\":" + jsonBool(_data.flameBaselineValid) +
-         ",\"flame_classification_valid\":" + jsonBool(_data.flameClassificationValid) +
-         ",\"flame_thresholds_configured\":" + jsonBool(_data.flameThresholdsConfigured) +
+         ",\"flame_detect_persist_ms\":" + String(RobotConfig::FLAME_DETECT_PERSIST_MS) +
+         ",\"flame_clear_persist_ms\":" + String(RobotConfig::FLAME_CLEAR_PERSIST_MS) +
          ",\"flame_sample_age_ms\":" + String(_data.flameSampleAgeMs) +
          ",\"left_ir_raw\":" + String(_data.leftIrRaw) +
          ",\"right_ir_raw\":" + String(_data.rightIrRaw) +
@@ -956,5 +1106,32 @@ void WebDashboard::sendJson() {
          ",\"display\":{\"initialized\":" + jsonBool(_data.displayInitialized) + "}" +
          ",\"capabilities\":{\"mobile_drive\":true,\"manual_control\":true,\"autonomous_navigation\":true,\"ultrasonic\":true,\"dual_ir\":true,\"environmental_sensing\":true,\"imu\":true,\"wifi\":true,\"nrf24\":true,\"local_oled\":true}" +
          "}";
+  json.remove(json.length() - 1);
+  auto appendKey = [&json](const char* key) {
+    json += ',';
+    json += char(34);
+    json += key;
+    json += char(34);
+    json += ':';
+  };
+  appendKey("lastAcceptedCommand"); json += char(34); json += jsonEscape(_lastAcceptedCommand); json += char(34);
+  appendKey("lastAppliedCommand"); json += char(34); json += jsonEscape(_lastAppliedCommand); json += char(34);
+  appendKey("lastStopReason"); json += char(34); json += jsonEscape(_lastStopReason); json += char(34);
+  appendKey("commandAcceptedMs"); json += String(_lastCommandAcceptedMs);
+  appendKey("commandAppliedMs"); json += String(_lastCommandAppliedMs);
+  appendKey("commandAgeMs"); json += _lastCommandAcceptedMs == 0 ? "null" : String(millis() - _lastCommandAcceptedMs);
+  appendKey("handlerApplyLagMs"); json += _lastCommandAppliedMs == 0 || _lastCommandAppliedMs < _lastCommandAcceptedMs ? "null" : String(_lastCommandAppliedMs - _lastCommandAcceptedMs);
+  appendKey("httpErrorCount"); json += String(_httpErrorCount);
+  appendKey("httpTimeoutCount"); json += String(_server.timeoutCount());
+  appendKey("wifiReconnectCount"); json += String(_wifiReconnectCount);
+  appendKey("softApChannel"); json += String(_data.softApChannel);
+  appendKey("softApClients"); json += String(_data.softApClients);
+  appendKey("radioEnabled"); json += jsonBool(_data.radioEnabled);
+  appendKey("freeHeap"); json += String(_data.freeHeap);
+  appendKey("minimumFreeHeap"); json += String(_data.minimumFreeHeap);
+  appendKey("psramSize"); json += String(_data.psramSize);
+  appendKey("resetReason"); json += char(34); json += jsonEscape(_data.resetReason); json += char(34);
+  appendKey("maximumServiceLoopGapMs"); json += String(_data.maximumServiceLoopGapMs);
+  json += '}';
   _server.send(200, "application/json", json);
 }

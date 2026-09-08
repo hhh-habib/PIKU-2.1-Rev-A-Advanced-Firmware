@@ -4,12 +4,6 @@
 
 SensorManager* SensorManager::activeInstance = nullptr;
 
-static_assert(!RobotConfig::FLAME_THRESHOLDS_CONFIGURED ||
-              (RobotConfig::FLAME_ELEVATED_DELTA > 0 &&
-               RobotConfig::FLAME_ELEVATED_DELTA < RobotConfig::FLAME_POSSIBLE_DELTA &&
-               RobotConfig::FLAME_POSSIBLE_DELTA < RobotConfig::FLAME_DETECTED_DELTA),
-              "Configured flame deltas must be positive and strictly ordered");
-
 SensorManager::SensorManager()
   : lastFastSensorMs(0),
     lastDhtMs(0),
@@ -22,13 +16,7 @@ SensorManager::SensorManager()
     mq2SampleCount(0),
     mq2SampleIndex(0),
     mq2SampleSum(0),
-    flameSamples{},
-    flameSampleCount(0),
-    flameSampleIndex(0),
-    flameSampleSum(0),
-    flameBaselineSum(0),
-    flameBaselineSampleCount(0),
-    flameCandidateState(FlameState::Clear),
+    flameCandidateDetected(false),
     flameCandidateSinceMs(0),
     nextDistanceFacingFront(true),
     ultrasonicState(UltrasonicState::Idle),
@@ -48,11 +36,10 @@ void SensorManager::begin() {
   digitalWrite(PinConfig::TRIG_PIN, LOW);
   pinMode(PinConfig::LEFT_IR_PIN, INPUT);
   pinMode(PinConfig::RIGHT_IR_PIN, INPUT);
-  pinMode(PinConfig::FLAME_ANALOG, INPUT);
+  pinMode(PinConfig::FLAME_DIGITAL, INPUT_PULLUP);
   pinMode(PinConfig::MQ2_ANALOG, INPUT);
   analogReadResolution(12);
   analogSetPinAttenuation(PinConfig::MQ2_ANALOG, ADC_11db);
-  analogSetPinAttenuation(PinConfig::FLAME_ANALOG, ADC_11db);
   dht.begin();
   startedMs = millis();
   current.mq2Warmup = true;
@@ -64,6 +51,12 @@ void SensorManager::begin() {
 }
 
 void SensorManager::update() {
+  updateControlSensors();
+  unsigned long now = millis();
+  updateEnvironment(now);
+}
+
+void SensorManager::updateControlSensors() {
   unsigned long now = millis();
   unsigned long nowUs = micros();
   advanceDistanceSample(nowUs);
@@ -73,7 +66,6 @@ void SensorManager::update() {
   if (lastFlameMs == 0 || now - lastFlameMs >= RobotConfig::FLAME_SAMPLE_INTERVAL_MS) {
     updateFlame(now);
   }
-  updateEnvironment(now);
   if (ultrasonicState == UltrasonicState::Idle &&
       (current.distanceSampleMs == 0 || now - current.distanceSampleMs > RobotConfig::ULTRASONIC_STALE_MS)) {
     if (current.ultrasonicState != UltrasonicResultState::Stale) {
@@ -162,89 +154,39 @@ void SensorManager::updateFastSensors(unsigned long now) {
 
 void SensorManager::updateFlame(unsigned long now) {
   lastFlameMs = now;
-  const int sample = analogRead(PinConfig::FLAME_ANALOG);
-  current.flameRaw = sample;
-  current.flameSampleValid = sample >= 0 && sample <= 4095;
+  const int level = digitalRead(PinConfig::FLAME_DIGITAL);
+  const bool rawDetected = level == RobotConfig::FLAME_DIGITAL_ACTIVE_LEVEL;
+  current.flameDigitalLevel = level;
+  current.flameRawActive = rawDetected;
+  current.flameSampleValid = level == LOW || level == HIGH;
   current.flameSampleMs = now;
 
   if (!current.flameSampleValid) {
-    current.flameClassificationValid = false;
     current.flameDetected = false;
+    current.flameState = FlameState::Clear;
+    flameCandidateSinceMs = 0;
     return;
   }
 
-  if (flameSampleCount < RobotConfig::FLAME_FILTER_SAMPLES) {
-    flameSamples[flameSampleIndex] = sample;
-    flameSampleSum += sample;
-    flameSampleCount++;
-  } else {
-    flameSampleSum -= flameSamples[flameSampleIndex];
-    flameSamples[flameSampleIndex] = sample;
-    flameSampleSum += sample;
-  }
-  flameSampleIndex = (flameSampleIndex + 1) % RobotConfig::FLAME_FILTER_SAMPLES;
-  current.flameFiltered = flameSampleCount > 0
-    ? static_cast<int>(flameSampleSum / static_cast<long>(flameSampleCount))
-    : sample;
-
-  if (!current.flameBaselineValid) {
-    flameBaselineSum += sample;
-    flameBaselineSampleCount++;
-    if (flameBaselineSampleCount >= RobotConfig::FLAME_BASELINE_SAMPLES) {
-      current.flameBaseline = static_cast<int>(
-        flameBaselineSum / static_cast<long>(flameBaselineSampleCount));
-      current.flameBaselineValid = true;
-    }
-  }
-
-  if (current.flameBaselineValid) {
-    current.flameDelta = RobotConfig::FLAME_SIGNAL_DIRECTION ==
-        RobotConfig::FlameSignalDirection::DecreasesWithFlame
-      ? current.flameBaseline - current.flameFiltered
-      : current.flameFiltered - current.flameBaseline;
-  } else {
-    current.flameDelta = 0;
-  }
-
-  current.flameThresholdsConfigured = RobotConfig::FLAME_THRESHOLDS_CONFIGURED;
-  current.flameClassificationValid = current.flameBaselineValid &&
-    current.flameThresholdsConfigured;
-  FlameState candidate = current.flameClassificationValid
-    ? classifyFlameDelta(current.flameDelta)
-    : FlameState::Clear;
-
-  if (candidate == current.flameState) {
-    flameCandidateState = candidate;
+  if (rawDetected == current.flameDetected) {
+    flameCandidateDetected = rawDetected;
     flameCandidateSinceMs = 0;
-  } else if (candidate != flameCandidateState) {
-    flameCandidateState = candidate;
+  } else if (rawDetected != flameCandidateDetected) {
+    flameCandidateDetected = rawDetected;
     flameCandidateSinceMs = now;
   } else {
-    const unsigned long persistenceMs = candidate == FlameState::Clear
-      ? RobotConfig::FLAME_CLEAR_PERSIST_MS
-      : RobotConfig::FLAME_STATE_PERSIST_MS;
+    const unsigned long persistenceMs = rawDetected
+      ? RobotConfig::FLAME_DETECT_PERSIST_MS
+      : RobotConfig::FLAME_CLEAR_PERSIST_MS;
     if (flameCandidateSinceMs != 0 && now - flameCandidateSinceMs >= persistenceMs) {
-      current.flameState = candidate;
+      current.flameDetected = rawDetected;
       flameCandidateSinceMs = 0;
     }
   }
-  current.flameDetected = current.flameClassificationValid &&
-    current.flameState == FlameState::FlameDetected;
-
-  // Track slow clear-condition drift only while the classified state is clear.
-  if (current.flameBaselineValid && current.flameState == FlameState::Clear) {
-    current.flameBaseline +=
-      (current.flameFiltered - current.flameBaseline) /
-      static_cast<int>(1U << RobotConfig::FLAME_BASELINE_TRACKING_SHIFT);
-  }
+  current.flameState = current.flameDetected
+    ? FlameState::FlameDetected
+    : FlameState::Clear;
   current.updatedMs = now;
-}
-
-FlameState SensorManager::classifyFlameDelta(int delta) const {
-  if (delta >= RobotConfig::FLAME_DETECTED_DELTA) return FlameState::FlameDetected;
-  if (delta >= RobotConfig::FLAME_POSSIBLE_DELTA) return FlameState::PossibleFlame;
-  if (delta >= RobotConfig::FLAME_ELEVATED_DELTA) return FlameState::Elevated;
-  return FlameState::Clear;
 }
 
 void SensorManager::updateEnvironment(unsigned long now) {

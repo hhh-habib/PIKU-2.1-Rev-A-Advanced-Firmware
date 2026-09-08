@@ -18,7 +18,7 @@ const char DASHBOARD_HTML[] PROGMEM = R"html(
             <span class="brand-mark" aria-hidden="true">P</span>
             <div>
               <h1>PIKU 2.1 Rev A</h1>
-              <p>Stage-1 ESP32-S3 Robot</p>
+              <p>Embedded ESP32-S3 Robot</p>
             </div>
           </div>
           <div class="header-status">
@@ -38,7 +38,8 @@ const char DASHBOARD_HTML[] PROGMEM = R"html(
       <nav class="section-nav" aria-label="Dashboard sections" role="tablist">
         <button class="nav-btn active" type="button" role="tab" aria-selected="true" aria-controls="overview" data-section="overview">Overview</button>
         <button class="nav-btn" type="button" role="tab" aria-selected="false" aria-controls="control" data-section="control">Control</button>
-        <button class="nav-btn" type="button" role="tab" aria-selected="false" aria-controls="environment" data-section="environment">Sensors</button>
+        <button class="nav-btn" type="button" role="tab" aria-selected="false" aria-controls="sensors" data-section="sensors">Sensors</button>
+        <button class="nav-btn" type="button" role="tab" aria-selected="false" aria-controls="communication" data-section="communication">Communication</button>
         <button class="nav-btn" type="button" role="tab" aria-selected="false" aria-controls="system" data-section="system">System</button>
       </nav>
 
@@ -72,6 +73,21 @@ const char DASHBOARD_HTML[] PROGMEM = R"html(
               <span class="metric-label">Obstacle distance</span>
               <strong class="metric-value" data-bind="distance">-- cm</strong>
               <span class="metric-note">Scan: <span data-bind="scanOrientation">--</span></span>
+            </article>
+            <article class="metric-card">
+              <span class="metric-label">Environmental hazard</span>
+              <strong class="metric-value" data-bind="environmentHazard">--</strong>
+              <span class="metric-note">MQ-2 relative / flame digital DO</span>
+            </article>
+            <article class="metric-card">
+              <span class="metric-label">nRF24 link</span>
+              <strong class="metric-value" data-bind="radioSummary">--</strong>
+              <span class="metric-note">Standalone control remains local</span>
+            </article>
+            <article class="metric-card">
+              <span class="metric-label">Sensor health</span>
+              <strong class="metric-value" data-bind="sensorHealth">--</strong>
+              <span class="metric-note" data-bind="sensorHealthDetail">--</span>
             </article>
           </div>
 
@@ -153,13 +169,13 @@ const char DASHBOARD_HTML[] PROGMEM = R"html(
                 <strong>Control &amp; Radar</strong>
                 <span>Drive controls and live scan</span>
               </button>
-              <button class="quick-link" type="button" data-section="environment">
-                <strong>Environment</strong>
+              <button class="quick-link" type="button" data-section="sensors">
+                <strong>Sensors</strong>
                 <span>Detailed sensor readings</span>
               </button>
-              <button class="quick-link" type="button" data-section="system">
-                <strong>System</strong>
-                <span>Wi-Fi and alarm controls</span>
+              <button class="quick-link" type="button" data-section="communication">
+                <strong>Communication</strong>
+                <span>Wi-Fi, SoftAP and nRF24</span>
               </button>
             </div>
           </article>
@@ -206,6 +222,8 @@ const char DASHBOARD_HTML[] PROGMEM = R"html(
                   <div><span>Movement</span><strong id="motor">--</strong></div>
                   <div><span>Navigation</span><strong id="nav">--</strong></div>
                   <div><span>Turn mode</span><strong id="turnMode">--</strong></div>
+                  <div><span>Control RTT</span><strong id="controlRtt">--</strong></div>
+                  <div><span>Command age</span><strong id="controlCommandAge">--</strong></div>
                 </div>
 
                 <p class="control-note" id="controlAvailability">Manual controls are unavailable while AUTO mode is active.</p>
@@ -278,7 +296,7 @@ const char DASHBOARD_HTML[] PROGMEM = R"html(
           </div>
         </section>
 
-        <section class="dashboard-section" id="environment" role="tabpanel" aria-label="Sensors" hidden>
+        <section class="dashboard-section" id="sensors" role="tabpanel" aria-label="Sensors" hidden>
           <div class="section-heading">
             <div>
               <p class="eyebrow">Stage-2 live data</p>
@@ -354,7 +372,7 @@ const char DASHBOARD_HTML[] PROGMEM = R"html(
             </article>
 
             <article class="panel sensor-panel">
-              <div class="panel-heading"><div><p class="eyebrow">Environmental sensing</p><h3>DHT22, MQ-2 &amp; flame</h3></div><span class="panel-badge" data-bind="stage2Status">ACTIVE</span></div>
+              <div class="panel-heading"><div><p class="eyebrow">Environmental sensing</p><h3>DHT22, MQ-2 &amp; flame DO</h3></div><span class="panel-badge" data-bind="stage2Status">ACTIVE</span></div>
               <div class="detail-grid">
                 <div class="detail-item"><span>Temperature</span><strong id="envTemp">--</strong></div>
                 <div class="detail-item"><span>Humidity</span><strong id="envHum">--</strong></div>
@@ -364,9 +382,9 @@ const char DASHBOARD_HTML[] PROGMEM = R"html(
                 <div class="detail-item"><span>Flame</span><strong id="envFlame">--</strong></div>
                 <div class="detail-item full"><span>DHT22 diagnostics</span><strong id="envDhtDiag">--</strong></div>
                 <div class="detail-item full"><span>MQ-2 timing</span><strong id="envMq2Diag">--</strong></div>
-                <div class="detail-item full"><span>Flame AO diagnostics</span><strong id="envFlameDiag">--</strong></div>
+                <div class="detail-item full"><span>Flame DO diagnostics</span><strong id="envFlameDiag">--</strong></div>
               </div>
-              <p class="system-note">MQ-2 values are qualitative relative ADC bands, not calibrated ppm. Flame AO requires module-specific voltage verification and threshold calibration.</p>
+              <p class="system-note">MQ-2 values are qualitative relative ADC bands, not calibrated ppm. Flame sensing is the module's active-HIGH digital comparator output; it provides no distance or intensity measurement.</p>
             </article>
 
             <article class="panel sensor-panel">
@@ -382,29 +400,14 @@ const char DASHBOARD_HTML[] PROGMEM = R"html(
               </div>
             </article>
 
-            <article class="panel sensor-panel">
-              <div class="panel-heading"><div><p class="eyebrow">CPS communication</p><h3>nRF24 shared-SPI link</h3></div><span class="panel-badge" id="radioHardware">--</span></div>
-              <div class="detail-grid">
-                <div class="detail-item"><span>Peer</span><strong id="radioPeer">--</strong></div>
-                <div class="detail-item"><span>Listening</span><strong id="radioListening">--</strong></div>
-                <div class="detail-item"><span>Channel / rate</span><strong id="radioConfig">--</strong></div>
-                <div class="detail-item"><span>PA level</span><strong id="radioPa">--</strong></div>
-                <div class="detail-item"><span>TX attempts / success / fail</span><strong id="radioTx">--</strong></div>
-                <div class="detail-item"><span>RX packets</span><strong id="radioRx">--</strong></div>
-                <div class="detail-item"><span>Last TX age</span><strong id="radioTxAge">--</strong></div>
-                <div class="detail-item"><span>Last RX age</span><strong id="radioRxAge">--</strong></div>
-                <div class="detail-item"><span>OLED</span><strong id="displayState">--</strong></div>
-              </div>
-              <p class="system-note">PEER UNSEEN means no acknowledged heartbeat or valid packet yet; it is distinct from radio hardware ERROR.</p>
-            </article>
           </div>
         </section>
 
-        <section class="dashboard-section" id="system" role="tabpanel" aria-label="System" hidden>
+        <section class="dashboard-section" id="communication" role="tabpanel" aria-label="Communication" hidden>
           <div class="section-heading">
             <div>
-              <p class="eyebrow">Configuration</p>
-              <h2>System &amp; Connectivity</h2>
+              <p class="eyebrow">Recovery and links</p>
+              <h2>Communication</h2>
             </div>
             <span class="product-chip">PIKU 2.1 Rev A</span>
           </div>
@@ -420,6 +423,8 @@ const char DASHBOARD_HTML[] PROGMEM = R"html(
               </div>
               <div class="detail-grid">
                 <div class="detail-item"><span>SoftAP IP</span><strong id="apIp">--</strong></div>
+                <div class="detail-item"><span>Channel</span><strong id="apChannel">--</strong></div>
+                <div class="detail-item"><span>Connected clients</span><strong id="apClients">--</strong></div>
                 <div class="detail-item"><span>Local hostname</span><strong id="localHostname">--</strong></div>
                 <div class="detail-item full"><span>Access URL</span><strong id="apUrl">--</strong></div>
               </div>
@@ -453,7 +458,7 @@ const char DASHBOARD_HTML[] PROGMEM = R"html(
                 </div>
               </div>
               <div class="wifi-form">
-                <button class="wifi-btn" type="button" onclick="scanWifi(event)">Scan Wi-Fi</button>
+                <button class="wifi-btn wifi-provision-action" id="wifiScanBtn" type="button" onclick="scanWifi(event)">Scan networks</button>
                 <label for="wifiNetworks">Available networks</label>
                 <select id="wifiNetworks" onchange="selectWifiNetwork()">
                   <option value="">Select network</option>
@@ -463,11 +468,28 @@ const char DASHBOARD_HTML[] PROGMEM = R"html(
                 <label for="wifiPassword">Password</label>
                 <input id="wifiPassword" maxlength="64" placeholder="Network password" type="password" autocomplete="current-password">
                 <div class="wifi-actions">
-                  <button class="wifi-btn" type="button" onclick="connectWifi(event)">Connect</button>
-                  <button class="wifi-btn danger" type="button" onclick="forgetWifi(event)">Forget saved Wi-Fi</button>
+                  <button class="wifi-btn wifi-provision-action" id="wifiConnectBtn" type="button" onclick="connectWifi(event)">Connect</button>
+                  <button class="wifi-btn wifi-provision-action" id="wifiReconnectBtn" type="button" onclick="reconnectWifi(event)">Reconnect</button>
+                  <button class="wifi-btn danger wifi-provision-action" id="wifiForgetBtn" type="button" onclick="forgetWifi(event)">Forget</button>
                 </div>
                 <div class="wifi-note" id="wifiProvisionStatus">PIKU Wi-Fi remains available while Home Wi-Fi is configured.</div>
               </div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-heading">
+                <div><p class="eyebrow">Shared-SPI radio</p><h3>nRF24 link</h3></div>
+                <span class="panel-badge" id="commRadioHardware">--</span>
+              </div>
+              <div class="detail-grid">
+                <div class="detail-item"><span>Enabled</span><strong id="commRadioEnabled">--</strong></div>
+                <div class="detail-item"><span>Peer</span><strong id="commRadioPeer">--</strong></div>
+                <div class="detail-item"><span>Heartbeat / last TX</span><strong id="commRadioHeartbeat">--</strong></div>
+                <div class="detail-item"><span>Last RX</span><strong id="commRadioRxAge">--</strong></div>
+                <div class="detail-item"><span>TX success / fail</span><strong id="commRadioTx">--</strong></div>
+                <div class="detail-item"><span>RX packets</span><strong id="commRadioRx">--</strong></div>
+              </div>
+              <p class="system-note">Missing-peer traffic backs off; standalone sensing and control remain available.</p>
             </article>
 
             <article class="panel alarm-panel">
@@ -490,6 +512,53 @@ const char DASHBOARD_HTML[] PROGMEM = R"html(
                 <button class="alarm-btn danger" id="muteAlarmBtn" type="button" onclick="disableAlarm(event)">Mute alarm</button>
               </div>
               <p class="system-note">Browser audio requires a user action. Muting sound never hides visual warnings.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="dashboard-section" id="system" role="tabpanel" aria-label="System" hidden>
+          <div class="section-heading">
+            <div><p class="eyebrow">Engineering status</p><h2>System diagnostics</h2></div>
+            <span class="product-chip">PIKU 2.1 Rev A</span>
+          </div>
+          <div class="system-layout">
+            <article class="panel">
+              <div class="panel-heading"><div><p class="eyebrow">Runtime</p><h3>Firmware and memory</h3></div></div>
+              <div class="detail-grid">
+                <div class="detail-item"><span>Firmware</span><strong id="systemFirmware">--</strong></div>
+                <div class="detail-item"><span>Uptime</span><strong id="systemUptime">--</strong></div>
+                <div class="detail-item"><span>Free heap</span><strong id="systemFreeHeap">--</strong></div>
+                <div class="detail-item"><span>Minimum free heap</span><strong id="systemMinHeap">--</strong></div>
+                <div class="detail-item"><span>PSRAM</span><strong id="systemPsram">--</strong></div>
+                <div class="detail-item"><span>Reset reason</span><strong id="systemResetReason">--</strong></div>
+                <div class="detail-item"><span>Local OLED</span><strong id="displayState">--</strong></div>
+              </div>
+            </article>
+            <article class="panel">
+              <div class="panel-heading"><div><p class="eyebrow">Control path</p><h3>Timing and commands</h3></div></div>
+              <div class="detail-grid">
+                <div class="detail-item"><span>Maximum service-loop gap</span><strong id="systemLoopGap">--</strong></div>
+                <div class="detail-item"><span>HTTP errors</span><strong id="systemHttpErrors">--</strong></div>
+                <div class="detail-item"><span>HTTP client timeouts</span><strong id="systemHttpTimeouts">--</strong></div>
+                <div class="detail-item"><span>Browser telemetry timeouts</span><strong id="systemTelemetryTimeouts">0</strong></div>
+                <div class="detail-item"><span>Wi-Fi reconnects</span><strong id="systemWifiReconnects">--</strong></div>
+                <div class="detail-item"><span>Last accepted command</span><strong id="systemLastAccepted">--</strong></div>
+                <div class="detail-item"><span>Last applied command</span><strong id="systemLastApplied">--</strong></div>
+                <div class="detail-item"><span>Sequence</span><strong id="systemCommandSequence">--</strong></div>
+                <div class="detail-item"><span>Last STOP reason</span><strong id="systemStopReason">--</strong></div>
+                <div class="detail-item"><span>Command age</span><strong id="systemCommandAge">--</strong></div>
+                <div class="detail-item"><span>Handler-to-apply</span><strong id="systemApplyLag">--</strong></div>
+              </div>
+              <p class="system-note">Timing values are internal software diagnostics, not measured phone-to-motor latency.</p>
+            </article>
+            <article class="panel">
+              <div class="panel-heading"><div><p class="eyebrow">Health counters</p><h3>Sensor summary</h3></div></div>
+              <div class="detail-grid">
+                <div class="detail-item"><span>DHT errors</span><strong id="systemDhtErrors">--</strong></div>
+                <div class="detail-item"><span>Ultrasonic faults</span><strong id="systemUltrasonicFaults">--</strong></div>
+                <div class="detail-item"><span>IMU errors</span><strong id="systemImuErrors">--</strong></div>
+                <div class="detail-item"><span>nRF TX failures</span><strong id="systemRadioFailures">--</strong></div>
+              </div>
             </article>
           </div>
         </section>
@@ -596,6 +665,8 @@ h1 { margin-bottom:1px; font-size:20px; letter-spacing:.025em; }
 .connection-badge.is-live .connection-dot { background:var(--green); box-shadow:0 0 0 4px rgba(34,201,131,.12); }
 .connection-badge.is-offline { color:#ffd0d0; border-color:rgba(240,82,82,.45); }
 .connection-badge.is-offline .connection-dot { background:var(--red); box-shadow:0 0 0 4px rgba(240,82,82,.13); }
+.connection-badge.is-stale { color:#ffe3a3; border-color:rgba(245,185,66,.48); }
+.connection-badge.is-stale .connection-dot { background:var(--amber); }
 .alarm-indicator {
   display:flex;
   align-items:center;
@@ -627,7 +698,7 @@ h1 { margin-bottom:1px; font-size:20px; letter-spacing:.025em; }
   top:128px;
   z-index:15;
   display:grid;
-  grid-template-columns:repeat(4, minmax(0,1fr));
+  grid-template-columns:repeat(5, minmax(0,1fr));
   gap:7px;
   margin:12px 0 22px;
   padding:7px;
@@ -811,7 +882,7 @@ h1 { margin-bottom:1px; font-size:20px; letter-spacing:.025em; }
 .backward { grid-area:backward; }
 .left { grid-area:left; }
 .right { grid-area:right; }
-.dpad.auto button, .dpad button:disabled {
+.dpad.auto .hold, .dpad button:disabled {
   opacity:.32;
   filter:grayscale(.75);
   cursor:not-allowed;
@@ -920,7 +991,8 @@ h1 { margin-bottom:1px; font-size:20px; letter-spacing:.025em; }
   color:var(--text);
 }
 .wifi-btn, .alarm-btn { min-height:44px; padding:8px 12px; background:#12677f; }
-.wifi-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:2px; }
+.wifi-actions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-top:2px; }
+.wifi-provision-action:disabled { opacity:.38; cursor:not-allowed; filter:grayscale(.65); }
 .danger { background:#7d2735 !important; border-color:rgba(240,82,82,.46) !important; }
 .wifi-note, .system-note {
   margin:4px 0 0;
@@ -959,7 +1031,7 @@ h1 { margin-bottom:1px; font-size:20px; letter-spacing:.025em; }
     margin:0;
     box-shadow:0 12px 35px rgba(0,0,0,.48);
   }
-  .nav-btn { min-height:48px; padding:4px 2px; font-size:11px; }
+  .nav-btn { min-height:48px; padding:4px 2px; font-size:9px; }
   .dashboard-main { padding-top:14px; }
   .section-heading { align-items:flex-start; }
   .section-heading h2 { font-size:24px; }
@@ -1003,10 +1075,16 @@ let activeMove = null;
 let moveRefreshTimer = null;
 const MOVE_REFRESH_MS = 250;
 const TELEMETRY_INTERVAL_MS = 450;
+const TELEMETRY_TIMEOUT_MS = 1200;
 let commandSequence = 0;
 let moveRequestInFlight = false;
 let stopRequestsInFlight = 0;
 let pendingMove = null;
+let activePointerId = null;
+let moveAbortController = null;
+let dataAbortController = null;
+let lastControlRttMs = null;
+let telemetryTimeoutCount = 0;
 const scanSamples = [];
 let lastDistanceSampleSequence = 0;
 let latestData = null;
@@ -1067,7 +1145,15 @@ function previewSpeed(value) {
   }, 180);
 }
 function setMode(nextMode) {
-  fetch('/mode?set=' + encodeURIComponent(nextMode)).then(() => loadData()).catch(() => {});
+  explicitStop();
+  mode = nextMode;
+  updateModeButtons();
+  fetch('/mode?set=' + encodeURIComponent(nextMode), { cache:'no-store' })
+    .then(response => {
+      if (!response.ok) throw new Error('Mode request rejected');
+      return loadData();
+    })
+    .catch(() => loadData());
 }
 
 function setTurnMode(nextMode) {
@@ -1084,6 +1170,9 @@ function sendCmd(move) {
     // STOP bypasses a slow direction request. The higher sequence makes any
     // older direction harmless if it reaches the ESP32 afterward.
     pendingMove = null;
+    if (moveAbortController) moveAbortController.abort();
+    moveAbortController = null;
+    if (dataAbortController) dataAbortController.abort();
     stopRequestsInFlight += 1;
     return issueCmd(move)
       .catch(() => {})
@@ -1101,9 +1190,28 @@ function sendCmd(move) {
 
 function issueCmd(move) {
   commandSequence += 1;
+  const issuedSequence = commandSequence;
   const query = '/cmd?move=' + encodeURIComponent(move) +
-    '&seq=' + encodeURIComponent(commandSequence);
-  return fetch(query);
+    '&seq=' + encodeURIComponent(issuedSequence);
+  const controller = new AbortController();
+  if (move !== 'STOP') moveAbortController = controller;
+  const started = performance.now();
+  return fetch(query, {
+    signal:controller.signal,
+    cache:'no-store',
+    keepalive:move === 'STOP'
+  }).then(response => {
+    if (!response.ok) throw new Error('Control request rejected');
+    if (issuedSequence === commandSequence) {
+      lastControlRttMs = Math.max(0, Math.round(performance.now() - started));
+      setText('controlRtt', lastControlRttMs + ' ms');
+    }
+    return response;
+  }).finally(() => {
+    if (move !== 'STOP' && moveAbortController === controller) {
+      moveAbortController = null;
+    }
+  });
 }
 
 function flushMoveCommand() {
@@ -1163,12 +1271,14 @@ function startMove(move) {
 function stopMove() {
   if (!activePress) return;
   activePress = false;
+  activePointerId = null;
   clearMoveRefresh();
   sendCmd('STOP');
 }
 
 function explicitStop() {
   activePress = false;
+  activePointerId = null;
   clearMoveRefresh();
   sendCmd('STOP');
 }
@@ -1413,7 +1523,7 @@ function updateAlarmBanner(d) {
     (d.alarmReason === 'ULTRASONIC_WARNING' && (sensorFault || d.ultrasonicWarning));
   if (!primaryReasonAlreadyRepresented) addReason(reasons, readableAlarmReason(d.alarmReason));
   if (d.mq2Warmup) info.push('MQ-2 warming');
-  if (!d.flame_classification_valid) info.push('Flame classification not calibrated/valid');
+  if (!d.flame_sample_valid) info.push('Flame DO sample unavailable');
   if (d.alarmSoundState === 'MUTED') info.push('Alarm sound muted');
 
   let severity = 'normal';
@@ -1564,7 +1674,8 @@ function drawRadar(d) {
 }
 
 function radarLoop(timestamp) {
-  if (timestamp - lastRadarDraw >= 66) {
+  const controlSection = byId('control');
+  if (!document.hidden && controlSection && !controlSection.hidden && timestamp - lastRadarDraw >= 66) {
     lastRadarDraw = timestamp;
     drawRadar(latestData);
   }
@@ -1577,6 +1688,8 @@ function updateWiFi(d) {
   const mdnsHost = d.localHostname || 'piku.local';
   setText('apStatus', 'ALWAYS AVAILABLE');
   setText('apIp', softApIp);
+  setText('apChannel', d.softApChannel ?? '--');
+  setText('apClients', d.softApClients ?? 0);
   setText('localHostname', mdnsHost);
   setText('apUrl', 'http://' + softApIp);
   setText('staConfiguredStatus', d.staConfigured ? 'YES' : 'NO');
@@ -1602,6 +1715,14 @@ function updateWiFi(d) {
   setBound('wifiState', wifiState);
   setBound('wifiSummary', wifiSummary);
   setBound('softApIp', softApIp);
+  const provisioningAllowed = d.mode === 'MANUAL' && d.motorState === 'STOP';
+  document.querySelectorAll('.wifi-provision-action').forEach(button => {
+    button.disabled = !provisioningAllowed;
+    button.setAttribute('aria-disabled', provisioningAllowed ? 'false' : 'true');
+  });
+  if (!provisioningAllowed) {
+    setWifiProvisionStatus('Wi-Fi actions require MANUAL mode with the robot STOPPED. SoftAP remains available.');
+  }
 }
 
 function setWifiProvisionStatus(text) {
@@ -1623,6 +1744,10 @@ function scanWifi(event) {
       clearTimeout(wifiScanTimer);
       wifiScanTimer = null;
     }
+  }
+  if (!latestData || latestData.mode !== 'MANUAL' || latestData.motorState !== 'STOP') {
+    setWifiProvisionStatus('Stop the robot and select MANUAL before scanning');
+    return;
   }
   if (wifiScanInFlight) return;
   wifiScanInFlight = true;
@@ -1650,7 +1775,7 @@ function showWifiScan(result) {
     wifiScanTimer = null;
   }
   if (result.blocked) {
-    setWifiProvisionStatus('Scan disabled while Home Wi-Fi is connected');
+    setWifiProvisionStatus('Scan unavailable: ' + (result.reason || 'blocked'));
     return;
   }
   const select = byId('wifiNetworks');
@@ -1679,6 +1804,10 @@ function selectWifiNetwork() {
 
 function connectWifi(event) {
   if (event) event.preventDefault();
+  if (!latestData || latestData.mode !== 'MANUAL' || latestData.motorState !== 'STOP') {
+    setWifiProvisionStatus('Stop the robot and select MANUAL before connecting');
+    return;
+  }
   const ssidInput = byId('wifiSsid');
   const passwordInput = byId('wifiPassword');
   const select = byId('wifiNetworks');
@@ -1701,22 +1830,44 @@ function connectWifi(event) {
     headers:{ 'Content-Type':'application/x-www-form-urlencoded' },
     body
   })
-    .then(() => {
+    .then(response => {
+      if (!response.ok) return response.json().then(body => { throw new Error(body.error || 'Connect rejected'); });
       if (passwordInput) passwordInput.value = '';
+      setWifiProvisionStatus('Connecting; credentials save only after association succeeds');
       loadData();
     })
-    .catch(() => setWifiProvisionStatus('Connect request failed'));
+    .catch(error => setWifiProvisionStatus(error.message || 'Connect request failed'));
 }
 
 function forgetWifi(event) {
   if (event) event.preventDefault();
+  if (!latestData || latestData.mode !== 'MANUAL' || latestData.motorState !== 'STOP') {
+    setWifiProvisionStatus('Stop the robot and select MANUAL before forgetting Wi-Fi');
+    return;
+  }
   const passwordInput = byId('wifiPassword');
   fetch('/wifi/forget', { method:'POST' })
-    .then(() => {
+    .then(response => {
+      if (!response.ok) return response.json().then(body => { throw new Error(body.error || 'Forget rejected'); });
       if (passwordInput) passwordInput.value = '';
       loadData();
     })
-    .catch(() => setWifiProvisionStatus('Forget request failed'));
+    .catch(error => setWifiProvisionStatus(error.message || 'Forget request failed'));
+}
+
+function reconnectWifi(event) {
+  if (event) event.preventDefault();
+  if (!latestData || latestData.mode !== 'MANUAL' || latestData.motorState !== 'STOP') {
+    setWifiProvisionStatus('Stop the robot and select MANUAL before reconnecting');
+    return;
+  }
+  fetch('/wifi/reconnect', { method:'POST', cache:'no-store' })
+    .then(response => {
+      if (!response.ok) return response.json().then(body => { throw new Error(body.error || 'Reconnect rejected'); });
+      setWifiProvisionStatus('Reconnecting; SoftAP remains available');
+      return loadData();
+    })
+    .catch(error => setWifiProvisionStatus(error.message || 'Reconnect request failed'));
 }
 
 function renderTelemetry(d) {
@@ -1730,9 +1881,9 @@ function renderTelemetry(d) {
   const temperatureText = d.temperature === null ? '-- C' : d.temperature + ' C';
   const humidityText = d.humidity === null ? '-- %' : d.humidity + ' %';
   const distanceText = d.distanceValid ? d.distance + ' cm' : '-- cm';
-  const flameText = d.flame_classification_valid
-    ? (d.flame_state || (d.flameDetected ? 'FLAME_DETECTED' : 'CLEAR'))
-    : 'NOT_CALIBRATED';
+  const flameText = d.flame_sample_valid
+    ? (d.flameDetected ? 'FLAME_DETECTED' : 'CLEAR')
+    : 'INVALID';
   const imu = d.imu || {};
   const radio = d.radio || {};
   const display = d.display || {};
@@ -1770,7 +1921,7 @@ function renderTelemetry(d) {
   setText('envFlame', flameText);
   setText('envDhtDiag', 'age ' + ageText(d.environment_sample_age_ms) + ' / errors ' + (d.dht_error_count ?? 0));
   setText('envMq2Diag', 'sample ' + ageText(d.mq2_sample_age_ms) + ' / warm-up ' + ageText(d.mq2_warmup_age_ms));
-  setText('envFlameDiag', 'raw ' + (d.flame_raw ?? '--') + ' / filtered ' + (d.flame_filtered ?? '--') + ' / baseline ' + (d.flame_baseline ?? '--') + ' / delta ' + (d.flame_delta ?? '--') + ' / age ' + ageText(d.flame_sample_age_ms));
+  setText('envFlameDiag', 'input DIGITAL DO / level ' + (d.flame_digital_level === 0 ? 'LOW' : 'HIGH') + ' / active level ' + (d.flame_active_level || 'HIGH') + ' / raw active ' + (d.flame_raw_active ? 'YES' : 'NO') + ' / debounced ' + flameText + ' / detect/clear persistence ' + ageText(d.flame_detect_persist_ms) + '/' + ageText(d.flame_clear_persist_ms) + ' / logic sample ' + (d.flame_sample_valid ? 'VALID' : 'INVALID') + ' (not a connectivity self-test) / age ' + ageText(d.flame_sample_age_ms));
   setText('imuStatus', imu.health_state || (imu.initialized && imu.healthy ? 'HEALTHY' : 'ERROR'));
   setText('imuRoll', metric(imu.roll, 1, ' deg'));
   setText('imuPitch', metric(imu.pitch, 1, ' deg'));
@@ -1789,6 +1940,13 @@ function renderTelemetry(d) {
   setText('radioTxAge', ageText(radio.last_tx_age_ms));
   setText('radioRxAge', ageText(radio.last_rx_age_ms));
   setText('displayState', display.initialized ? 'READY' : 'ERROR');
+  setText('commRadioEnabled', d.radioEnabled ? 'ENABLED' : 'DISABLED');
+  setText('commRadioHardware', d.radioEnabled ? (radio.hardware || 'ERROR') : 'DISABLED');
+  setText('commRadioPeer', d.radioEnabled ? (radio.peer || 'UNSEEN') : 'DISABLED');
+  setText('commRadioHeartbeat', ageText(radio.last_tx_age_ms));
+  setText('commRadioRxAge', ageText(radio.last_rx_age_ms));
+  setText('commRadioTx', (radio.tx_success ?? 0) + ' / ' + (radio.tx_failure ?? 0));
+  setText('commRadioRx', radio.rx_packets ?? 0);
   setText('irObstacle', irText);
   setText('leftIrObstacle', leftIrText);
   setText('rightIrObstacle', rightIrText);
@@ -1811,6 +1969,29 @@ function renderTelemetry(d) {
   setText('nav', d.navigationDecision);
   setText('mode', d.mode);
   setText('turnMode', d.turnMode);
+  setText('controlCommandAge', ageText(d.commandAgeMs));
+  setText('controlRtt', lastControlRttMs === null ? '--' : lastControlRttMs + ' ms');
+
+  setText('systemFirmware', d.firmware || '--');
+  setText('systemUptime', uptimeText);
+  setText('systemFreeHeap', (d.freeHeap ?? 0) + ' bytes');
+  setText('systemMinHeap', (d.minimumFreeHeap ?? 0) + ' bytes');
+  setText('systemPsram', (d.psramSize ?? 0) > 0 ? d.psramSize + ' bytes' : 'NOT DETECTED');
+  setText('systemResetReason', d.resetReason || '--');
+  setText('systemLoopGap', ageText(d.maximumServiceLoopGapMs));
+  setText('systemHttpErrors', d.httpErrorCount ?? 0);
+  setText('systemHttpTimeouts', d.httpTimeoutCount ?? 0);
+  setText('systemWifiReconnects', d.wifiReconnectCount ?? 0);
+  setText('systemLastAccepted', d.lastAcceptedCommand || '--');
+  setText('systemLastApplied', d.lastAppliedCommand || '--');
+  setText('systemCommandSequence', d.commandSequence ?? 0);
+  setText('systemStopReason', d.lastStopReason || '--');
+  setText('systemCommandAge', ageText(d.commandAgeMs));
+  setText('systemApplyLag', ageText(d.handlerApplyLagMs));
+  setText('systemDhtErrors', d.dht_error_count ?? 0);
+  setText('systemUltrasonicFaults', d.ultrasonicFaultCount ?? 0);
+  setText('systemImuErrors', imu.error_count ?? 0);
+  setText('systemRadioFailures', radio.tx_failure ?? 0);
 
   setBound('temperature', temperatureText);
   setBound('humidity', humidityText);
@@ -1838,6 +2019,18 @@ function renderTelemetry(d) {
   setBound('uptime', uptimeText);
   setBound('firmware', d.firmware || '--');
   setBound('stage2Status', d.stage2Status || 'DISABLED');
+  const environmentHazard = d.flame_sample_valid && d.flameDetected
+    ? d.flame_state
+    : (d.mq2Warmup ? 'MQ-2 WARMING' : (d.gasStatus || 'CLEAR'));
+  const sensorFaults = [];
+  if (d.ultrasonicState === 'SENSOR_FAULT') sensorFaults.push('ultrasonic');
+  if (!d.temperature_valid || !d.humidity_valid) sensorFaults.push('DHT22');
+  if (!imu.healthy) sensorFaults.push('IMU');
+  if (!d.flame_sample_valid) sensorFaults.push('flame DO');
+  setBound('environmentHazard', environmentHazard);
+  setBound('radioSummary', d.radioEnabled ? (radio.hardware || 'ERROR') + ' / ' + (radio.peer || 'UNSEEN') : 'DISABLED');
+  setBound('sensorHealth', sensorFaults.length ? 'ATTENTION' : 'HEALTHY');
+  setBound('sensorHealthDetail', sensorFaults.length ? sensorFaults.join(', ') : 'All reporting valid');
 
   if (d.alarmSoundState === 'MUTED') {
     alarmEnabled = false;
@@ -1861,11 +2054,13 @@ function updateConnectionState(state) {
   indicator.className = 'status-badge connection-badge is-' + state;
   const label = indicator.querySelector('strong');
   if (label) {
-    label.textContent = state === 'live' ? 'Live' : (state === 'offline' ? 'Stale / Offline' : 'Updating');
+    label.textContent = state === 'live' ? 'Live' :
+      (state === 'stale' ? 'Stale' : (state === 'offline' ? 'Offline' : 'Updating'));
   }
 }
 
 function loadData() {
+  if (document.hidden) return Promise.resolve();
   if (dataRequestInFlight) return dataRequestPromise || Promise.resolve();
   if (telemetryTimer) {
     clearTimeout(telemetryTimer);
@@ -1873,33 +2068,48 @@ function loadData() {
   }
   dataRequestInFlight = true;
   if (!lastTelemetrySuccess) updateConnectionState('updating');
-  dataRequestPromise = fetch('/data')
+  const controller = new AbortController();
+  dataAbortController = controller;
+  let timedOut = false;
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, TELEMETRY_TIMEOUT_MS);
+  dataRequestPromise = fetch('/data', { signal:controller.signal, cache:'no-store' })
     .then(response => {
       if (!response.ok) throw new Error('Telemetry request failed');
       return response.json();
     })
     .then(data => {
       lastTelemetrySuccess = Date.now();
-      updateConnectionState('live');
+      updateConnectionState(Number(data.telemetry_age_ms) > 1200 ? 'stale' : 'live');
       renderTelemetry(data);
     })
     .catch(() => {
-      const stale = !lastTelemetrySuccess || Date.now() - lastTelemetrySuccess > 1200;
-      updateConnectionState(stale ? 'offline' : 'updating');
+      if (timedOut) {
+        telemetryTimeoutCount += 1;
+        setText('systemTelemetryTimeouts', telemetryTimeoutCount);
+      }
+      const age = lastTelemetrySuccess ? Date.now() - lastTelemetrySuccess : Number.POSITIVE_INFINITY;
+      updateConnectionState(age > 5000 ? 'offline' : 'stale');
     })
     .then(() => {
+      clearTimeout(timeout);
+      if (dataAbortController === controller) dataAbortController = null;
       dataRequestInFlight = false;
       dataRequestPromise = null;
-      telemetryTimer = setTimeout(() => {
-        telemetryTimer = null;
-        loadData();
-      }, TELEMETRY_INTERVAL_MS);
+      if (!document.hidden) {
+        telemetryTimer = setTimeout(() => {
+          telemetryTimer = null;
+          loadData();
+        }, TELEMETRY_INTERVAL_MS);
+      }
     });
   return dataRequestPromise;
 }
 
 function normalizedSectionName(value) {
-  return ['overview', 'control', 'environment', 'system'].includes(value) ? value : 'overview';
+  return ['overview', 'control', 'sensors', 'communication', 'system'].includes(value) ? value : 'overview';
 }
 
 function activateSection(sectionName, updateHash) {
@@ -1934,18 +2144,23 @@ function initializeControls() {
   document.querySelectorAll('.hold').forEach(button => {
     button.addEventListener('pointerdown', event => {
       event.preventDefault();
+      if (activePress) explicitStop();
+      activePointerId = event.pointerId;
+      try { button.setPointerCapture(event.pointerId); } catch (_) {}
       startMove(button.dataset.move);
     });
     button.addEventListener('pointerup', event => {
       event.preventDefault();
+      if (activePointerId !== null && event.pointerId !== activePointerId) return;
+      try { button.releasePointerCapture(event.pointerId); } catch (_) {}
       stopMove();
     });
-    button.addEventListener('pointercancel', stopMove);
-    button.addEventListener('pointerleave', stopMove);
-    button.addEventListener('touchend', event => {
-      event.preventDefault();
-      stopMove();
-    }, { passive:false });
+    button.addEventListener('pointercancel', event => {
+      if (activePointerId === null || event.pointerId === activePointerId) stopMove();
+    });
+    button.addEventListener('lostpointercapture', event => {
+      if (activePointerId !== null && event.pointerId === activePointerId) stopMove();
+    });
   });
   const stopButton = byId('stopBtn');
   if (stopButton) {
@@ -1954,6 +2169,18 @@ function initializeControls() {
       explicitStop();
     });
   }
+  window.addEventListener('pagehide', explicitStop);
+  window.addEventListener('beforeunload', explicitStop);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      if (telemetryTimer) clearTimeout(telemetryTimer);
+      telemetryTimer = null;
+      if (dataAbortController) dataAbortController.abort();
+      explicitStop();
+    } else {
+      loadData();
+    }
+  });
 }
 
 function initializeDashboard() {

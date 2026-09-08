@@ -4,11 +4,6 @@
 #include <Arduino.h>
 
 namespace RobotConfig {
-  enum class FlameSignalDirection : uint8_t {
-    DecreasesWithFlame,
-    IncreasesWithFlame
-  };
-
   static constexpr const char* NODE_ID = "PIKU_2_1_REV_A";
   static constexpr const char* PRODUCT_NAME = "PIKU 2.1 Rev A";
   static constexpr const char* FIRMWARE_VERSION = "2.1.0-revA-stage2";
@@ -41,19 +36,12 @@ namespace RobotConfig {
   // Change only this constant if both installed IR modules use active-HIGH output.
   static constexpr int IR_ACTIVE_LEVEL = LOW;
 
-  // GPIO6 is the flame module AO connection. These are relative ADC-count
-  // deltas from a learned clear-condition baseline, not universal flame values.
-  // Characterize the installed sensor and divider, then set the direction,
-  // three ordered thresholds, and FLAME_THRESHOLDS_CONFIGURED=true together.
-  static constexpr FlameSignalDirection FLAME_SIGNAL_DIRECTION =
-    FlameSignalDirection::DecreasesWithFlame;
-  static constexpr bool FLAME_THRESHOLDS_CONFIGURED = false;
-  static constexpr int FLAME_ELEVATED_DELTA = 0;
-  static constexpr int FLAME_POSSIBLE_DELTA = 0;
-  static constexpr int FLAME_DETECTED_DELTA = 0;
-  static constexpr size_t FLAME_FILTER_SAMPLES = 8;
-  static constexpr size_t FLAME_BASELINE_SAMPLES = 32;
-  static constexpr uint8_t FLAME_BASELINE_TRACKING_SHIFT = 6;
+  // The installed 3.3 V flame module uses its LM393-style DO comparator.
+  // Physical testing confirmed DO is active-HIGH: sustained HIGH means flame
+  // detected, while the no-flame level is LOW.
+  static constexpr int FLAME_DIGITAL_ACTIVE_LEVEL = HIGH;
+  static constexpr unsigned long FLAME_DETECT_PERSIST_MS = 100;
+  static constexpr unsigned long FLAME_CLEAR_PERSIST_MS = 200;
 
   static constexpr int CENTER_SCAN = 90;
   static constexpr int LEFT_SCAN = 160;
@@ -80,6 +68,7 @@ namespace RobotConfig {
   static constexpr unsigned long OLED_REFRESH_INTERVAL_MS = 250;
   static constexpr unsigned long OLED_PAGE_INTERVAL_MS = 2500;
   static constexpr unsigned long NRF_HEARTBEAT_INTERVAL_MS = 750;
+  static constexpr unsigned long NRF_OFFLINE_HEARTBEAT_INTERVAL_MS = 3000;
   static constexpr unsigned long NRF_PEER_STALE_MS = 5000;
   static constexpr unsigned long ULTRASONIC_INTERVAL_MS = 100;
   static constexpr unsigned long ULTRASONIC_GUARD_INTERVAL_MS = 100;
@@ -94,9 +83,17 @@ namespace RobotConfig {
   static constexpr unsigned long MANUAL_COMMAND_TIMEOUT_MS = 750;
   static constexpr unsigned long WIFI_STATUS_INTERVAL_MS = 1000;
   static constexpr unsigned long WIFI_STA_RETRY_MS = 15000;
+  // WiFiClient::setTimeout uses seconds in this Arduino-ESP32 release.
+  static constexpr unsigned long HTTP_CLIENT_TIMEOUT_SECONDS = 1;
+  static constexpr unsigned long HTTP_REQUEST_PARSE_TIMEOUT_MS = 250;
   static constexpr unsigned long IR_RECOVERY_SETTLE_MS = 1000;
   static constexpr unsigned long IR_RECOVERY_REVERSE_MS = 220;
-  static constexpr unsigned long AUTO_OBSTACLE_REVERSE_MS = 500;
+  static constexpr unsigned long AUTO_OBSTACLE_REVERSE_MS = 300;
+  static constexpr float AUTO_AVOIDANCE_TURN_TARGET_DEG = 20.0f;
+  static constexpr float AUTO_AVOIDANCE_TURN_TOLERANCE_DEG = 1.0f;
+  static constexpr float AUTO_AVOIDANCE_GYRO_DEADBAND_DPS = 2.0f;
+  static constexpr unsigned long AUTO_AVOIDANCE_TURN_TIMEOUT_MS = 2500;
+  static constexpr unsigned long AUTO_AVOIDANCE_TIMED_FALLBACK_MS = 900;
   static constexpr unsigned long IR_RECOVERY_COOLDOWN_MS = 1500;
   static constexpr unsigned long OBSTACLE_WARNING_MS = 1800;
   static constexpr int ULTRASONIC_WARNING_INVALID_COUNT = 3;
@@ -104,13 +101,12 @@ namespace RobotConfig {
   static constexpr unsigned long GAS_DEBOUNCE_MS = 600;
   static constexpr unsigned long GAS_CLEAR_DEBOUNCE_MS = 2000;
   static constexpr unsigned long FLAME_DEBOUNCE_MS = 80;
-  static constexpr unsigned long FLAME_STATE_PERSIST_MS = 150;
-  static constexpr unsigned long FLAME_CLEAR_PERSIST_MS = 300;
   static constexpr unsigned long IR_DEBOUNCE_MS = 80;
   static constexpr unsigned long TEMP_DEBOUNCE_MS = 1000;
   static constexpr unsigned long DIGITAL_CLEAR_DEBOUNCE_MS = 200;
 
   static constexpr uint8_t NRF_CHANNEL = 76;
+  static constexpr bool ENABLE_NRF24 = true;
   static constexpr uint32_t NRF_SPI_SPEED_HZ = 4000000;
   static constexpr uint8_t NRF_RETRY_DELAY = 5;
   static constexpr uint8_t NRF_RETRY_COUNT = 8;

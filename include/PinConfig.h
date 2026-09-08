@@ -20,8 +20,8 @@ namespace PinConfig {
 
   static constexpr int MQ2_ANALOG = 4;
   static constexpr int DHT22_PIN = 5;
-  // Analog-output (AO) pin from the installed flame module.
-  static constexpr int FLAME_ANALOG = 6;
+  // Digital comparator output (DO) from the 3.3 V flame module; AO is disconnected.
+  static constexpr int FLAME_DIGITAL = 6;
 
   // SH1106 and nRF24 share this single hardware SPI bus.
   static constexpr int SPI_MOSI = 11;

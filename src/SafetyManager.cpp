@@ -193,8 +193,7 @@ void SafetyManager::updateGas(const SensorSnapshot& snapshot, unsigned long now)
 }
 
 void SafetyManager::updateFlame(const SensorSnapshot& snapshot, unsigned long now) {
-  const bool detected = snapshot.flameClassificationValid &&
-    snapshot.flameState == FlameState::FlameDetected;
+  const bool detected = snapshot.flameSampleValid && snapshot.flameDetected;
   if (detected) {
     _flameClearSince = 0;
     if (_flameSince == 0) _flameSince = now;
