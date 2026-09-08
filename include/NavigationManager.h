@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include "MotorController.h"
+#include "RobotConfig.h"
 #include "SafetyManager.h"
 #include "SensorManager.h"
 #include "ServoScanner.h"
@@ -51,6 +52,13 @@ public:
   const char* stateName() const;
 
 private:
+  struct NavigationScanSample {
+    int angle = RobotConfig::CENTER_SCAN;
+    const char* direction = "UNKNOWN";
+    UltrasonicSample ultrasonic;
+    bool completed = false;
+  };
+
   MotorController& _motors;
   SensorManager& _sensors;
   ServoScanner& _servoScanner;
@@ -69,12 +77,17 @@ private:
 
   void setState(NavigationState state, const String& decision);
   bool responsiveDelay(unsigned long durationMs);
-  float scanAt(int angle, const String& name);
-  float readAndPublishDistance(const String& servoPos);
-  bool acquireFreshFrontDistance(float& distanceCm);
+  NavigationScanSample scanAt(int angle, const char* name);
+  UltrasonicSample readAndPublishDistance(const char* servoPos);
+  bool acquireFreshFrontDistance(UltrasonicSample& sample);
   bool driveForwardWithFreshGuard();
   void runObstacleAvoidance();
-  void choosePathAndTurn(float left, float center, float right, bool nearRecovery);
+  void choosePathAndTurn(const NavigationScanSample& left,
+                         const NavigationScanSample& center,
+                         const NavigationScanSample& right,
+                         bool nearRecovery);
+  bool scanSampleTrusted(const NavigationScanSample& sample) const;
+  float scanPathDistance(const NavigationScanSample& sample) const;
   bool runNearObstacleRecovery();
   bool abortIfOperatorRequested();
   bool abortIfCritical();

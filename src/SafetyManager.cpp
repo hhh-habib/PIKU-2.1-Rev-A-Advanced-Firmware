@@ -12,6 +12,8 @@ SafetyManager::SafetyManager()
     _ultrasonicCaution(false),
     _ultrasonicInvalid(true),
     _ultrasonicWarning(false),
+    _ultrasonicFault(false),
+    _ultrasonicStale(true),
     _nearObstacleHazard(false),
     _nearObstacleSource("NONE"),
     _lastCritical(false),
@@ -20,7 +22,6 @@ SafetyManager::SafetyManager()
     _lastNearObstacleSource("NONE"),
     _lastReason("NONE"),
     _changed(true),
-    _consecutiveInvalidDistance(0),
     _gasCriticalSince(0),
     _gasCriticalClearSince(0),
     _gasCautionSince(0),
@@ -48,7 +49,7 @@ void SafetyManager::update(const SensorSnapshot& snapshot) {
     _gasCaution = false;
   }
   if (RobotConfig::HAS_FLAME_SENSOR) {
-    updateFlame(snapshot.flameDetected, now);
+    updateFlame(snapshot, now);
   } else {
     _flameCritical = false;
   }
@@ -124,14 +125,16 @@ String SafetyManager::stateName() const {
 
 String SafetyManager::alarmReason() const {
   if (_flameCritical) return "FLAME";
-  if (_gasCritical) return "GAS_HIGH";
+  if (_gasCritical) return "GAS_HIGH_RELATIVE";
   if (_tempCritical) return "TEMP_HIGH";
   if (_nearObstacleHazard) return "NEAR_OBSTACLE";
   if (_leftIrObstacle && _rightIrObstacle) return "BOTH_IR_OBSTACLES";
   if (_leftIrObstacle) return "LEFT_IR_OBSTACLE";
   if (_rightIrObstacle) return "RIGHT_IR_OBSTACLE";
+  if (_ultrasonicFault) return "ULTRASONIC_SENSOR_FAULT";
+  if (_ultrasonicStale) return "ULTRASONIC_STALE";
   if (_ultrasonicWarning) return "ULTRASONIC_WARNING";
-  if (_gasCaution) return "GAS_CAUTION";
+  if (_gasCaution) return "GAS_ELEVATED_RELATIVE";
   if (_tempWarning) return "TEMP_WARN";
   return "NONE";
 }
@@ -151,7 +154,9 @@ String SafetyManager::obstacleDecision(const SensorSnapshot& snapshot) const {
   if (_rightIrObstacle) return "RIGHT_IR_BLOCK";
   if (snapshot.distanceFacingFront &&
       snapshot.ultrasonicState != UltrasonicResultState::DistanceValid) {
-    return "ULTRASONIC_TIMEOUT_IR_CLEAR";
+    if (snapshot.ultrasonicState == UltrasonicResultState::ClearNoEcho) return "CLEAR_NO_ECHO";
+    if (snapshot.ultrasonicState == UltrasonicResultState::SensorFault) return "ULTRASONIC_SENSOR_FAULT";
+    return "ULTRASONIC_STALE";
   }
   return "CLEAR";
 }
@@ -164,10 +169,10 @@ void SafetyManager::updateGas(const SensorSnapshot& snapshot, unsigned long now)
     return;
   }
 
-  if (!_gasCritical && snapshot.gasFiltered >= RobotConfig::GAS_HIGH_RISK_THRESHOLD) {
+  if (!_gasCritical && snapshot.gasFiltered >= RobotConfig::GAS_HIGH_RELATIVE_THRESHOLD) {
     if (_gasCriticalSince == 0) _gasCriticalSince = now;
     if (now - _gasCriticalSince >= RobotConfig::GAS_DEBOUNCE_MS) _gasCritical = true;
-  } else if (_gasCritical && snapshot.gasFiltered <= RobotConfig::GAS_HIGH_RISK_CLEAR_THRESHOLD) {
+  } else if (_gasCritical && snapshot.gasFiltered <= RobotConfig::GAS_HIGH_RELATIVE_CLEAR_THRESHOLD) {
     if (_gasCriticalClearSince == 0) _gasCriticalClearSince = now;
     if (now - _gasCriticalClearSince >= RobotConfig::GAS_CLEAR_DEBOUNCE_MS) _gasCritical = false;
   } else {
@@ -175,10 +180,10 @@ void SafetyManager::updateGas(const SensorSnapshot& snapshot, unsigned long now)
     _gasCriticalClearSince = 0;
   }
 
-  if (!_gasCaution && snapshot.gasFiltered >= RobotConfig::GAS_CAUTION_THRESHOLD) {
+  if (!_gasCaution && snapshot.gasFiltered >= RobotConfig::GAS_ELEVATED_RELATIVE_THRESHOLD) {
     if (_gasCautionSince == 0) _gasCautionSince = now;
     if (now - _gasCautionSince >= RobotConfig::GAS_DEBOUNCE_MS) _gasCaution = true;
-  } else if (_gasCaution && snapshot.gasFiltered <= RobotConfig::GAS_CAUTION_CLEAR_THRESHOLD) {
+  } else if (_gasCaution && snapshot.gasFiltered <= RobotConfig::GAS_ELEVATED_RELATIVE_CLEAR_THRESHOLD) {
     if (_gasCautionClearSince == 0) _gasCautionClearSince = now;
     if (now - _gasCautionClearSince >= RobotConfig::GAS_CLEAR_DEBOUNCE_MS) _gasCaution = false;
   } else {
@@ -187,7 +192,9 @@ void SafetyManager::updateGas(const SensorSnapshot& snapshot, unsigned long now)
   }
 }
 
-void SafetyManager::updateFlame(bool detected, unsigned long now) {
+void SafetyManager::updateFlame(const SensorSnapshot& snapshot, unsigned long now) {
+  const bool detected = snapshot.flameClassificationValid &&
+    snapshot.flameState == FlameState::FlameDetected;
   if (detected) {
     _flameClearSince = 0;
     if (_flameSince == 0) _flameSince = now;
@@ -250,23 +257,26 @@ void SafetyManager::updateTemperature(float temperature, bool valid, unsigned lo
 void SafetyManager::updateUltrasonic(const SensorSnapshot& snapshot) {
   _ultrasonicCaution = false;
   _ultrasonicInvalid = false;
+  _ultrasonicFault = false;
+  _ultrasonicStale = false;
 
   switch (snapshot.ultrasonicState) {
     case UltrasonicResultState::DistanceValid:
       _ultrasonicCaution = snapshot.distanceFacingFront && snapshot.distanceCm <= RobotConfig::OBSTACLE_CM;
-      _consecutiveInvalidDistance = 0;
       _ultrasonicWarning = false;
       break;
     case UltrasonicResultState::ClearNoEcho:
-      _consecutiveInvalidDistance = 0;
       _ultrasonicWarning = false;
       break;
     case UltrasonicResultState::SensorFault:
       _ultrasonicInvalid = true;
-      _consecutiveInvalidDistance = RobotConfig::ULTRASONIC_WARNING_INVALID_COUNT;
-      // Preserve diagnostic telemetry without blocking motion. PIKU restricts
-      // forward travel on positive nearby-obstacle evidence, not missing range.
-      _ultrasonicWarning = false;
+      _ultrasonicFault = true;
+      _ultrasonicWarning = snapshot.distanceFacingFront;
+      break;
+    case UltrasonicResultState::Stale:
+      _ultrasonicInvalid = true;
+      _ultrasonicStale = true;
+      _ultrasonicWarning = snapshot.distanceFacingFront;
       break;
   }
 }

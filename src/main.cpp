@@ -134,22 +134,23 @@ String getGasStatus(const SensorSnapshot& snapshot) {
     return "DISABLED";
   }
   if (snapshot.mq2Warmup) {
-    return "WARMUP";
+    return "WARMING";
   }
-  if (snapshot.gasFiltered >= RobotConfig::GAS_HIGH_RISK_THRESHOLD) {
-    return "HIGH";
+  if (snapshot.gasFiltered >= RobotConfig::GAS_HIGH_RELATIVE_THRESHOLD) {
+    return "HIGH_RELATIVE";
   }
-  if (snapshot.gasFiltered >= RobotConfig::GAS_CAUTION_THRESHOLD) {
-    return "CAUTION";
+  if (snapshot.gasFiltered >= RobotConfig::GAS_ELEVATED_RELATIVE_THRESHOLD) {
+    return "ELEVATED_RELATIVE";
   }
-  return "SAFE";
+  return "LOW_RELATIVE";
 }
 
 uint8_t currentEnvironmentalAlarmMask() {
   const SensorSnapshot& snapshot = sensors.snapshot();
   uint8_t mask = 0;
-  if (snapshot.flameDetected) mask |= 0x01;
-  if (!snapshot.mq2Warmup && snapshot.gasFiltered >= RobotConfig::GAS_HIGH_RISK_THRESHOLD) mask |= 0x02;
+  if (snapshot.flameClassificationValid &&
+      snapshot.flameState == FlameState::FlameDetected) mask |= 0x01;
+  if (!snapshot.mq2Warmup && snapshot.gasFiltered >= RobotConfig::GAS_HIGH_RELATIVE_THRESHOLD) mask |= 0x02;
   if (snapshot.temperatureValid && snapshot.temperature >= RobotConfig::TEMP_CRITICAL_C) mask |= 0x04;
   return mask;
 }
@@ -195,9 +196,15 @@ void publishCurrentTelemetry(bool force) {
     : logicalDashboardScanAngle(currentServoPosition);
   dashboardData.temperatureValid = snapshot.temperatureValid;
   dashboardData.humidityValid = snapshot.humidityValid;
-  dashboardData.environmentSampleAgeMs = sampleAge(snapshot.environmentSampleMs, now);
+  dashboardData.environmentSampleAgeMs = sampleAge(snapshot.environmentLastSuccessMs, now);
+  dashboardData.distanceSampleAgeMs = sampleAge(snapshot.distanceSampleMs, now);
+  dashboardData.mq2SampleAgeMs = sampleAge(snapshot.mq2SampleMs, now);
+  dashboardData.flameSampleAgeMs = sampleAge(snapshot.flameSampleMs, now);
   dashboardData.imuInitialized = imuState.initialized;
   dashboardData.imuHealthy = imuState.healthy;
+  dashboardData.imuHealthState = imuState.healthState;
+  dashboardData.imuErrorCount = imuState.errorCount;
+  dashboardData.imuConsecutiveFailures = imuState.consecutiveFailures;
   dashboardData.accelX = imuState.accelX;
   dashboardData.accelY = imuState.accelY;
   dashboardData.accelZ = imuState.accelZ;
@@ -208,7 +215,7 @@ void publishCurrentTelemetry(bool force) {
   dashboardData.pitch = imuState.pitch;
   dashboardData.imuTemperature = imuState.temperature;
   dashboardData.motionState = imuState.motionState;
-  dashboardData.imuSampleAgeMs = sampleAge(imuState.sampleMs, now);
+  dashboardData.imuSampleAgeMs = sampleAge(imuState.lastSuccessMs, now);
   dashboardData.radioInitialized = radioState.initialized;
   dashboardData.radioChipDetected = radioState.chipDetected;
   dashboardData.radioListening = radioState.listening;
@@ -618,9 +625,18 @@ void updateManualMode() {
         syncDashboardState("MANUAL");
         Serial.println("Manual fresh HC-SR04 forward stop.");
       }
-    } else if (snapshot.ultrasonicState == UltrasonicResultState::ClearNoEcho ||
-               snapshot.ultrasonicState == UltrasonicResultState::SensorFault) {
+    } else if (snapshot.ultrasonicState == UltrasonicResultState::ClearNoEcho) {
       manualForwardBlockedByUltrasonic = false;
+    } else if (snapshot.ultrasonicState == UltrasonicResultState::SensorFault ||
+               snapshot.ultrasonicState == UltrasonicResultState::Stale) {
+      manualForwardBlockedByUltrasonic = true;
+      if (motors.getState() == MotorState::Forward) {
+        stopMotors();
+        manualMotorDisplayState = "STOP";
+        dashboard.setPendingCommand("");
+        dashboardData.navigationDecision = "MANUAL_ULTRASONIC_FAULT_STOP";
+        syncDashboardState("MANUAL");
+      }
     }
   }
 

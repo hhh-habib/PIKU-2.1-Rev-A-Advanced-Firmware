@@ -4,10 +4,17 @@
 
 SensorManager* SensorManager::activeInstance = nullptr;
 
+static_assert(!RobotConfig::FLAME_THRESHOLDS_CONFIGURED ||
+              (RobotConfig::FLAME_ELEVATED_DELTA > 0 &&
+               RobotConfig::FLAME_ELEVATED_DELTA < RobotConfig::FLAME_POSSIBLE_DELTA &&
+               RobotConfig::FLAME_POSSIBLE_DELTA < RobotConfig::FLAME_DETECTED_DELTA),
+              "Configured flame deltas must be positive and strictly ordered");
+
 SensorManager::SensorManager()
   : lastFastSensorMs(0),
     lastDhtMs(0),
     lastMq2Ms(0),
+    lastFlameMs(0),
     startedMs(0),
     lastUltrasonicMs(0),
     dht(PinConfig::DHT22_PIN, DHT22),
@@ -15,6 +22,14 @@ SensorManager::SensorManager()
     mq2SampleCount(0),
     mq2SampleIndex(0),
     mq2SampleSum(0),
+    flameSamples{},
+    flameSampleCount(0),
+    flameSampleIndex(0),
+    flameSampleSum(0),
+    flameBaselineSum(0),
+    flameBaselineSampleCount(0),
+    flameCandidateState(FlameState::Clear),
+    flameCandidateSinceMs(0),
     nextDistanceFacingFront(true),
     ultrasonicState(UltrasonicState::Idle),
     activeDistanceFacingFront(true),
@@ -33,10 +48,11 @@ void SensorManager::begin() {
   digitalWrite(PinConfig::TRIG_PIN, LOW);
   pinMode(PinConfig::LEFT_IR_PIN, INPUT);
   pinMode(PinConfig::RIGHT_IR_PIN, INPUT);
-  pinMode(PinConfig::FLAME_DIGITAL, INPUT);
+  pinMode(PinConfig::FLAME_ANALOG, INPUT);
   pinMode(PinConfig::MQ2_ANALOG, INPUT);
   analogReadResolution(12);
   analogSetPinAttenuation(PinConfig::MQ2_ANALOG, ADC_11db);
+  analogSetPinAttenuation(PinConfig::FLAME_ANALOG, ADC_11db);
   dht.begin();
   startedMs = millis();
   current.mq2Warmup = true;
@@ -54,7 +70,18 @@ void SensorManager::update() {
   if (lastFastSensorMs == 0 || now - lastFastSensorMs >= RobotConfig::FAST_SENSOR_INTERVAL_MS) {
     updateFastSensors(now);
   }
+  if (lastFlameMs == 0 || now - lastFlameMs >= RobotConfig::FLAME_SAMPLE_INTERVAL_MS) {
+    updateFlame(now);
+  }
   updateEnvironment(now);
+  if (ultrasonicState == UltrasonicState::Idle &&
+      (current.distanceSampleMs == 0 || now - current.distanceSampleMs > RobotConfig::ULTRASONIC_STALE_MS)) {
+    if (current.ultrasonicState != UltrasonicResultState::Stale) {
+      current.ultrasonicInvalidCount++;
+    }
+    current.distanceValid = false;
+    current.ultrasonicState = UltrasonicResultState::Stale;
+  }
   if (ultrasonicState == UltrasonicState::Idle &&
       (lastUltrasonicMs == 0 || now - lastUltrasonicMs >= RobotConfig::ULTRASONIC_INTERVAL_MS)) {
     updateUltrasonic(now, nowUs);
@@ -77,6 +104,17 @@ bool SensorManager::isDistanceSampleInProgress() const {
 
 unsigned long SensorManager::distanceSampleSequence() const {
   return distanceSampleSequenceCounter;
+}
+
+UltrasonicSample SensorManager::latestUltrasonicSample() const {
+  UltrasonicSample sample;
+  sample.distanceCm = current.distanceCm;
+  sample.valid = current.distanceValid;
+  sample.facingFront = current.distanceFacingFront;
+  sample.state = current.ultrasonicState;
+  sample.sampleMs = current.distanceSampleMs;
+  sample.sequence = current.distanceSampleSequence;
+  return sample;
 }
 
 float SensorManager::forceDistanceSample() {
@@ -119,9 +157,94 @@ void SensorManager::updateFastSensors(unsigned long now) {
   current.leftObstacleDetected = current.leftIrRaw == RobotConfig::IR_ACTIVE_LEVEL;
   current.rightObstacleDetected = current.rightIrRaw == RobotConfig::IR_ACTIVE_LEVEL;
   current.irObstacleDetected = current.leftObstacleDetected || current.rightObstacleDetected;
-  current.flameRaw = digitalRead(PinConfig::FLAME_DIGITAL);
-  current.flameDetected = current.flameRaw == RobotConfig::FLAME_ACTIVE_LEVEL;
   current.updatedMs = now;
+}
+
+void SensorManager::updateFlame(unsigned long now) {
+  lastFlameMs = now;
+  const int sample = analogRead(PinConfig::FLAME_ANALOG);
+  current.flameRaw = sample;
+  current.flameSampleValid = sample >= 0 && sample <= 4095;
+  current.flameSampleMs = now;
+
+  if (!current.flameSampleValid) {
+    current.flameClassificationValid = false;
+    current.flameDetected = false;
+    return;
+  }
+
+  if (flameSampleCount < RobotConfig::FLAME_FILTER_SAMPLES) {
+    flameSamples[flameSampleIndex] = sample;
+    flameSampleSum += sample;
+    flameSampleCount++;
+  } else {
+    flameSampleSum -= flameSamples[flameSampleIndex];
+    flameSamples[flameSampleIndex] = sample;
+    flameSampleSum += sample;
+  }
+  flameSampleIndex = (flameSampleIndex + 1) % RobotConfig::FLAME_FILTER_SAMPLES;
+  current.flameFiltered = flameSampleCount > 0
+    ? static_cast<int>(flameSampleSum / static_cast<long>(flameSampleCount))
+    : sample;
+
+  if (!current.flameBaselineValid) {
+    flameBaselineSum += sample;
+    flameBaselineSampleCount++;
+    if (flameBaselineSampleCount >= RobotConfig::FLAME_BASELINE_SAMPLES) {
+      current.flameBaseline = static_cast<int>(
+        flameBaselineSum / static_cast<long>(flameBaselineSampleCount));
+      current.flameBaselineValid = true;
+    }
+  }
+
+  if (current.flameBaselineValid) {
+    current.flameDelta = RobotConfig::FLAME_SIGNAL_DIRECTION ==
+        RobotConfig::FlameSignalDirection::DecreasesWithFlame
+      ? current.flameBaseline - current.flameFiltered
+      : current.flameFiltered - current.flameBaseline;
+  } else {
+    current.flameDelta = 0;
+  }
+
+  current.flameThresholdsConfigured = RobotConfig::FLAME_THRESHOLDS_CONFIGURED;
+  current.flameClassificationValid = current.flameBaselineValid &&
+    current.flameThresholdsConfigured;
+  FlameState candidate = current.flameClassificationValid
+    ? classifyFlameDelta(current.flameDelta)
+    : FlameState::Clear;
+
+  if (candidate == current.flameState) {
+    flameCandidateState = candidate;
+    flameCandidateSinceMs = 0;
+  } else if (candidate != flameCandidateState) {
+    flameCandidateState = candidate;
+    flameCandidateSinceMs = now;
+  } else {
+    const unsigned long persistenceMs = candidate == FlameState::Clear
+      ? RobotConfig::FLAME_CLEAR_PERSIST_MS
+      : RobotConfig::FLAME_STATE_PERSIST_MS;
+    if (flameCandidateSinceMs != 0 && now - flameCandidateSinceMs >= persistenceMs) {
+      current.flameState = candidate;
+      flameCandidateSinceMs = 0;
+    }
+  }
+  current.flameDetected = current.flameClassificationValid &&
+    current.flameState == FlameState::FlameDetected;
+
+  // Track slow clear-condition drift only while the classified state is clear.
+  if (current.flameBaselineValid && current.flameState == FlameState::Clear) {
+    current.flameBaseline +=
+      (current.flameFiltered - current.flameBaseline) /
+      static_cast<int>(1U << RobotConfig::FLAME_BASELINE_TRACKING_SHIFT);
+  }
+  current.updatedMs = now;
+}
+
+FlameState SensorManager::classifyFlameDelta(int delta) const {
+  if (delta >= RobotConfig::FLAME_DETECTED_DELTA) return FlameState::FlameDetected;
+  if (delta >= RobotConfig::FLAME_POSSIBLE_DELTA) return FlameState::PossibleFlame;
+  if (delta >= RobotConfig::FLAME_ELEVATED_DELTA) return FlameState::Elevated;
+  return FlameState::Clear;
 }
 
 void SensorManager::updateEnvironment(unsigned long now) {
@@ -138,6 +261,11 @@ void SensorManager::updateDht(unsigned long now) {
   current.humidityValid = isfinite(humidity);
   if (current.temperatureValid) current.temperature = temperature;
   if (current.humidityValid) current.humidity = humidity;
+  if (current.temperatureValid && current.humidityValid) {
+    current.environmentLastSuccessMs = now;
+  } else {
+    current.dhtErrorCount++;
+  }
 }
 
 void SensorManager::updateMq2(unsigned long now) {
@@ -158,6 +286,7 @@ void SensorManager::updateMq2(unsigned long now) {
     ? static_cast<int>(mq2SampleSum / static_cast<long>(mq2SampleCount))
     : sample;
   current.mq2Warmup = now - startedMs < RobotConfig::MQ2_WARMUP_MS;
+  current.mq2WarmupAgeMs = now - startedMs;
   current.mq2SampleMs = now;
 }
 
@@ -226,7 +355,10 @@ void SensorManager::finishDistanceSample(float distanceCm, bool valid, Ultrasoni
   current.distanceFacingFront = activeDistanceFacingFront;
   current.distanceValid = valid;
   current.ultrasonicState = resultState;
-  current.updatedMs = millis();
+  current.distanceSampleMs = millis();
+  current.updatedMs = current.distanceSampleMs;
+  if (!valid) current.ultrasonicInvalidCount++;
+  if (resultState == UltrasonicResultState::SensorFault) current.ultrasonicFaultCount++;
   distanceSampleSequenceCounter++;
   current.distanceSampleSequence = distanceSampleSequenceCounter;
   ultrasonicState = UltrasonicState::Idle;
@@ -246,7 +378,10 @@ void SensorManager::finishAbnormalDistanceSample() {
   current.distanceFacingFront = activeDistanceFacingFront;
   current.distanceValid = false;
   current.ultrasonicState = resultState;
-  current.updatedMs = millis();
+  current.distanceSampleMs = millis();
+  current.updatedMs = current.distanceSampleMs;
+  current.ultrasonicInvalidCount++;
+  if (resultState == UltrasonicResultState::SensorFault) current.ultrasonicFaultCount++;
   distanceSampleSequenceCounter++;
   current.distanceSampleSequence = distanceSampleSequenceCounter;
   ultrasonicState = UltrasonicState::Idle;

@@ -66,18 +66,20 @@ void DisplayManager::renderPage(const DashboardData& data) {
       oled_.print("MOTOR: "); oled_.println(data.motorState);
       oled_.print("DIST: ");
       if (data.distanceValid) { printValue(data.frontDistance, 1); oled_.println(" cm"); }
-      else oled_.println("NO ECHO");
+      else oled_.println(data.ultrasonicState);
       break;
     case 1:
       oled_.println("ENVIRONMENT");
       oled_.print("TEMP: "); if (data.temperatureValid) { printValue(data.temperature, 1); oled_.println(" C"); } else oled_.println("INVALID");
       oled_.print("HUM : "); if (data.humidityValid) { printValue(data.humidity, 1); oled_.println(" %"); } else oled_.println("INVALID");
       oled_.print("GAS : "); oled_.println(data.gasStatus);
-      oled_.print("FLAME: "); oled_.println(data.flameDetected ? "DETECTED" : "CLEAR");
+      oled_.print("FLAME: ");
+      oled_.println(data.flameClassificationValid ? data.flameState : "NOT CALIBRATED");
       break;
     case 2:
       oled_.println("IMU / MPU6050");
-      if (!data.imuInitialized) { oled_.println("STATUS: ERROR"); break; }
+      oled_.print("STATUS: "); oled_.println(data.imuHealthState);
+      if (!data.imuInitialized || !data.imuHealthy) break;
       oled_.print("ROLL : "); printValue(data.roll, 1); oled_.println();
       oled_.print("PITCH: "); printValue(data.pitch, 1); oled_.println();
       oled_.print("MOTION: "); oled_.println(data.motionState);

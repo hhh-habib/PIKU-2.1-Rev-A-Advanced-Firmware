@@ -37,9 +37,8 @@ void NavigationManager::updateAuto() {
   _motors.stop();
 
   setState(NavigationState::ScanFront, "SENSE_FRONT");
-  float front = -1.0f;
+  UltrasonicSample front;
   bool frontTrusted = acquireFreshFrontDistance(front);
-  const SensorSnapshot& snapshot = _sensors.snapshot();
 
   if (abortIfOperatorRequested() || abortIfCritical()) {
     return;
@@ -52,8 +51,8 @@ void NavigationManager::updateAuto() {
     responsiveDelay(250);
   } else if (_safety.isNearObstacleHazardActive()) {
     runNearObstacleRecovery();
-  } else if (snapshot.ultrasonicState == UltrasonicResultState::DistanceValid &&
-             front <= RobotConfig::AUTO_OBSTACLE_CM) {
+  } else if (front.state == UltrasonicResultState::DistanceValid &&
+             front.distanceCm <= RobotConfig::AUTO_OBSTACLE_CM) {
     runObstacleAvoidance();
   } else if (!_safety.isCritical()) {
     driveForwardWithFreshGuard();
@@ -118,12 +117,15 @@ bool NavigationManager::responsiveDelay(unsigned long durationMs) {
   return false;
 }
 
-float NavigationManager::scanAt(int angle, const String& name) {
+NavigationManager::NavigationScanSample NavigationManager::scanAt(int angle, const char* name) {
+  NavigationScanSample result;
+  result.angle = angle;
+  result.direction = name;
   _motors.stop();
   _currentServoPosition = name;
-  _sensors.setDistanceFacingFront(name == "FRONT");
+  _sensors.setDistanceFacingFront(strcmp(name, "FRONT") == 0);
   if (responsiveDelay(250)) {
-    return -1;
+    return result;
   }
 
   if (angle == RobotConfig::CENTER_SCAN) {
@@ -137,30 +139,25 @@ float NavigationManager::scanAt(int angle, const String& name) {
   }
   if (responsiveDelay(700)) {
     _servoScanner.detach();
-    return -1;
+    return result;
   }
 
   unsigned long previousSequence = _sensors.distanceSampleSequence();
-  float distance = readAndPublishDistance(name);
-  const SensorSnapshot& snapshot = _sensors.snapshot();
+  result.ultrasonic = readAndPublishDistance(name);
+  result.completed = result.ultrasonic.sequence > previousSequence &&
+    result.ultrasonic.sampleMs != 0 &&
+    millis() - result.ultrasonic.sampleMs <= RobotConfig::ULTRASONIC_STALE_MS;
 
   _servoScanner.detach();
   if (responsiveDelay(250)) {
-    return -1.0f;
+    result.completed = false;
   }
-
-  if (snapshot.distanceSampleSequence <= previousSequence) {
-    return -1.0f;
-  }
-  if (snapshot.ultrasonicState == UltrasonicResultState::ClearNoEcho) {
-    return RobotConfig::ULTRASONIC_MAX_CM;
-  }
-  return distance;
+  return result;
 }
 
-float NavigationManager::readAndPublishDistance(const String& servoPos) {
+UltrasonicSample NavigationManager::readAndPublishDistance(const char* servoPos) {
   _currentServoPosition = servoPos;
-  bool facingFront = servoPos == "FRONT";
+  bool facingFront = strcmp(servoPos, "FRONT") == 0;
   _sensors.setDistanceFacingFront(facingFront);
   unsigned long targetSample = _sensors.requestDistanceSample(facingFront);
   unsigned long startMs = millis();
@@ -178,42 +175,37 @@ float NavigationManager::readAndPublishDistance(const String& servoPos) {
     delay(1);
   }
 
+  // Capture the complete result before telemetry callbacks or cooperative waits
+  // can advance SensorManager to a different sample.
+  UltrasonicSample result = _sensors.latestUltrasonicSample();
   _safety.update(_sensors.snapshot());
   if (_publishCallback != nullptr) {
     _publishCallback(true);
   }
-  return _sensors.snapshot().distanceCm;
+  return result;
 }
 
-bool NavigationManager::acquireFreshFrontDistance(float& distanceCm) {
+bool NavigationManager::acquireFreshFrontDistance(UltrasonicSample& sample) {
   _motors.stop();
   _currentServoPosition = "FRONT";
   _sensors.setDistanceFacingFront(true);
   _servoScanner.center();
   if (responsiveDelay(120)) {
     _servoScanner.detach();
-    distanceCm = -1.0f;
     return false;
   }
 
   unsigned long previousSequence = _sensors.distanceSampleSequence();
-  distanceCm = readAndPublishDistance("FRONT");
-  const SensorSnapshot& snapshot = _sensors.snapshot();
-  if (snapshot.distanceSampleSequence <= previousSequence) {
+  sample = readAndPublishDistance("FRONT");
+  if (sample.sequence <= previousSequence || sample.sampleMs == 0 ||
+      millis() - sample.sampleMs > RobotConfig::ULTRASONIC_STALE_MS) {
     return false;
   }
-  if (!snapshot.distanceFacingFront) {
+  if (!sample.facingFront) {
     return false;
   }
-  if (snapshot.ultrasonicState == UltrasonicResultState::DistanceValid) {
-    return true;
-  }
-  if (snapshot.ultrasonicState == UltrasonicResultState::ClearNoEcho ||
-      snapshot.ultrasonicState == UltrasonicResultState::SensorFault) {
-    distanceCm = RobotConfig::ULTRASONIC_MAX_CM;
-    return true;
-  }
-  return false;
+  return (sample.state == UltrasonicResultState::DistanceValid && sample.valid) ||
+         sample.state == UltrasonicResultState::ClearNoEcho;
 }
 
 bool NavigationManager::driveForwardWithFreshGuard() {
@@ -243,15 +235,16 @@ bool NavigationManager::driveForwardWithFreshGuard() {
         now - lastSampleRequestMs >= RobotConfig::ULTRASONIC_GUARD_INTERVAL_MS) {
       lastSampleRequestMs = now;
       unsigned long previousSequence = _sensors.distanceSampleSequence();
-      float front = readAndPublishDistance("FRONT");
-      const SensorSnapshot& snapshot = _sensors.snapshot();
+      UltrasonicSample front = readAndPublishDistance("FRONT");
 
       if (abortIfOperatorRequested() || abortIfCritical()) {
         _motors.stop();
         return true;
       }
-      if (snapshot.distanceSampleSequence <= previousSequence ||
-          !snapshot.distanceFacingFront) {
+      if (front.sequence <= previousSequence || !front.facingFront ||
+          front.sampleMs == 0 || millis() - front.sampleMs > RobotConfig::ULTRASONIC_STALE_MS ||
+          front.state == UltrasonicResultState::SensorFault ||
+          front.state == UltrasonicResultState::Stale) {
         Serial.println("Ultrasonic sensor fault while moving forward. Holding position.");
         setState(NavigationState::InvalidStop, "ULTRASONIC_INVALID_STOP");
         _motors.stop();
@@ -262,8 +255,8 @@ bool NavigationManager::driveForwardWithFreshGuard() {
         runNearObstacleRecovery();
         return true;
       }
-      if (snapshot.ultrasonicState == UltrasonicResultState::DistanceValid &&
-          front <= RobotConfig::AUTO_OBSTACLE_CM) {
+      if (front.state == UltrasonicResultState::DistanceValid && front.valid &&
+          front.distanceCm <= RobotConfig::AUTO_OBSTACLE_CM) {
         Serial.println("AUTO obstacle threshold crossed. Avoiding.");
         _motors.stop();
         runObstacleAvoidance();
@@ -310,13 +303,13 @@ void NavigationManager::runObstacleAvoidance() {
 
   Serial.println("Scanning left, center, and right.");
   _state = NavigationState::ScanLeft;
-  float left = scanAt(RobotConfig::LEFT_SCAN, "LEFT");
+  NavigationScanSample left = scanAt(RobotConfig::LEFT_SCAN, "LEFT");
   if (abortIfOperatorRequested() || abortIfCritical()) return;
   _state = NavigationState::ScanFront;
-  float center = scanAt(RobotConfig::CENTER_SCAN, "FRONT");
+  NavigationScanSample center = scanAt(RobotConfig::CENTER_SCAN, "FRONT");
   if (abortIfOperatorRequested() || abortIfCritical()) return;
   _state = NavigationState::ScanRight;
-  float right = scanAt(RobotConfig::RIGHT_SCAN, "RIGHT");
+  NavigationScanSample right = scanAt(RobotConfig::RIGHT_SCAN, "RIGHT");
 
   if (abortIfOperatorRequested() || abortIfCritical()) {
     return;
@@ -329,7 +322,36 @@ void NavigationManager::runObstacleAvoidance() {
   responsiveDelay(300);
 }
 
-void NavigationManager::choosePathAndTurn(float left, float center, float right, bool nearRecovery) {
+bool NavigationManager::scanSampleTrusted(const NavigationScanSample& sample) const {
+  if (!sample.completed || sample.ultrasonic.sampleMs == 0 ||
+      millis() - sample.ultrasonic.sampleMs > RobotConfig::NAVIGATION_SCAN_SET_MAX_AGE_MS) {
+    return false;
+  }
+  return (sample.ultrasonic.state == UltrasonicResultState::DistanceValid &&
+          sample.ultrasonic.valid) ||
+         sample.ultrasonic.state == UltrasonicResultState::ClearNoEcho;
+}
+
+float NavigationManager::scanPathDistance(const NavigationScanSample& sample) const {
+  return sample.ultrasonic.state == UltrasonicResultState::ClearNoEcho
+    ? RobotConfig::ULTRASONIC_MAX_CM
+    : sample.ultrasonic.distanceCm;
+}
+
+void NavigationManager::choosePathAndTurn(const NavigationScanSample& leftSample,
+                                          const NavigationScanSample& centerSample,
+                                          const NavigationScanSample& rightSample,
+                                          bool nearRecovery) {
+  if (!scanSampleTrusted(leftSample) || !scanSampleTrusted(centerSample) ||
+      !scanSampleTrusted(rightSample)) {
+    Serial.println("Ultrasonic scan fault or stale sample. Holding position.");
+    setState(NavigationState::InvalidStop, "ULTRASONIC_SCAN_FAULT_STOP");
+    _motors.stop();
+    return;
+  }
+  const float left = scanPathDistance(leftSample);
+  const float center = scanPathDistance(centerSample);
+  const float right = scanPathDistance(rightSample);
   const bool leftSafe = left > RobotConfig::AUTO_OBSTACLE_CM;
   const bool centerSafe = center > RobotConfig::AUTO_OBSTACLE_CM;
   const bool rightSafe = right > RobotConfig::AUTO_OBSTACLE_CM;
@@ -420,13 +442,13 @@ bool NavigationManager::runNearObstacleRecovery() {
   }
 
   _state = NavigationState::NearObstacleScan;
-  float left = scanAt(RobotConfig::LEFT_SCAN, "LEFT");
+  NavigationScanSample left = scanAt(RobotConfig::LEFT_SCAN, "LEFT");
   if (abortIfOperatorRequested() || abortIfCritical()) return true;
   _state = NavigationState::NearObstacleScan;
-  float center = scanAt(RobotConfig::CENTER_SCAN, "FRONT");
+  NavigationScanSample center = scanAt(RobotConfig::CENTER_SCAN, "FRONT");
   if (abortIfOperatorRequested() || abortIfCritical()) return true;
   _state = NavigationState::NearObstacleScan;
-  float right = scanAt(RobotConfig::RIGHT_SCAN, "RIGHT");
+  NavigationScanSample right = scanAt(RobotConfig::RIGHT_SCAN, "RIGHT");
   if (abortIfOperatorRequested() || abortIfCritical()) {
     return true;
   }
@@ -435,8 +457,13 @@ bool NavigationManager::runNearObstacleRecovery() {
   if (responsiveDelay(400)) return true;
   _servoScanner.detach();
 
-  const bool leftSafe = left > RobotConfig::AUTO_OBSTACLE_CM;
-  const bool rightSafe = right > RobotConfig::AUTO_OBSTACLE_CM;
+  if (!scanSampleTrusted(left) || !scanSampleTrusted(center) || !scanSampleTrusted(right)) {
+    setState(NavigationState::InvalidStop, "ULTRASONIC_SCAN_FAULT_STOP");
+    _motors.stop();
+    return true;
+  }
+  const bool leftSafe = scanPathDistance(left) > RobotConfig::AUTO_OBSTACLE_CM;
+  const bool rightSafe = scanPathDistance(right) > RobotConfig::AUTO_OBSTACLE_CM;
   if (leftIrTriggered && !rightIrTriggered && rightSafe) {
     setState(NavigationState::NearObstacleTurn, "LEFT_IR_TURN_RIGHT");
     _motors.rightTurn();

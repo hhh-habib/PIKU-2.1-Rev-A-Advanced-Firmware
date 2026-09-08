@@ -37,6 +37,8 @@ private:
   bool _ultrasonicCaution;
   bool _ultrasonicInvalid;
   bool _ultrasonicWarning;
+  bool _ultrasonicFault;
+  bool _ultrasonicStale;
   bool _nearObstacleHazard;
   String _nearObstacleSource;
   bool _lastCritical;
@@ -45,7 +47,6 @@ private:
   String _lastNearObstacleSource;
   String _lastReason;
   bool _changed;
-  int _consecutiveInvalidDistance;
 
   unsigned long _gasCriticalSince;
   unsigned long _gasCriticalClearSince;
@@ -61,7 +62,7 @@ private:
   unsigned long _tempCriticalClearSince;
 
   void updateGas(const SensorSnapshot& snapshot, unsigned long now);
-  void updateFlame(bool detected, unsigned long now);
+  void updateFlame(const SensorSnapshot& snapshot, unsigned long now);
   void updateIr(bool leftDetected, bool rightDetected, unsigned long now);
   void updateIrChannel(bool detected,
                        bool& active,

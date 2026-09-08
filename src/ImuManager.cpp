@@ -18,8 +18,8 @@ bool ImuManager::begin() {
   mpu_.setGyroRange(MPU6050_RANGE_500_DEG);
   mpu_.setFilterBandwidth(MPU6050_BAND_21_HZ);
   snapshot_.initialized = true;
-  snapshot_.healthy = true;
-  snapshot_.motionState = "STILL";
+  snapshot_.healthy = false;
+  snapshot_.healthState = "INITIALIZING";
   Serial.println("[IMU] READY: MPU6050 range=+/-4g gyro=+/-500dps filter=21Hz");
   update();
   return true;
@@ -28,13 +28,39 @@ bool ImuManager::begin() {
 void ImuManager::update() {
   if (!snapshot_.initialized) return;
   const unsigned long now = millis();
-  if (lastSampleMs_ != 0 && now - lastSampleMs_ < RobotConfig::IMU_INTERVAL_MS) return;
-  lastSampleMs_ = now;
+  if (snapshot_.lastSuccessMs != 0 &&
+      now - snapshot_.lastSuccessMs > RobotConfig::IMU_STALE_MS) {
+    snapshot_.healthy = false;
+    snapshot_.healthState = "STALE";
+    snapshot_.motionState = "UNAVAILABLE";
+  }
+  if (lastAttemptMs_ != 0 && now - lastAttemptMs_ < RobotConfig::IMU_INTERVAL_MS) return;
+  lastAttemptMs_ = now;
+  snapshot_.lastAttemptMs = now;
 
-  sensors_event_t acceleration;
-  sensors_event_t gyro;
-  sensors_event_t temperature;
-  mpu_.getEvent(&acceleration, &gyro, &temperature);
+  sensors_event_t acceleration{};
+  sensors_event_t gyro{};
+  sensors_event_t temperature{};
+  const bool readOk = mpu_.getEvent(&acceleration, &gyro, &temperature);
+  const bool finite = readOk &&
+    isfinite(acceleration.acceleration.x) && isfinite(acceleration.acceleration.y) &&
+    isfinite(acceleration.acceleration.z) && isfinite(gyro.gyro.x) &&
+    isfinite(gyro.gyro.y) && isfinite(gyro.gyro.z) &&
+    isfinite(temperature.temperature);
+  if (!finite) {
+    snapshot_.healthy = false;
+    snapshot_.errorCount++;
+    snapshot_.consecutiveFailures++;
+    snapshot_.healthState = snapshot_.lastSuccessMs != 0 &&
+        now - snapshot_.lastSuccessMs > RobotConfig::IMU_STALE_MS
+      ? "STALE"
+      : "FAULT";
+    snapshot_.motionState = "UNAVAILABLE";
+    if (snapshot_.consecutiveFailures == 1) {
+      Serial.println("[IMU] Read failed or returned non-finite data");
+    }
+    return;
+  }
 
   snapshot_.accelX = acceleration.acceleration.x;
   snapshot_.accelY = acceleration.acceleration.y;
@@ -71,7 +97,10 @@ void ImuManager::update() {
     snapshot_.motionState = "STILL";
   }
   snapshot_.healthy = true;
+  snapshot_.healthState = "HEALTHY";
   snapshot_.sampleMs = now;
+  snapshot_.lastSuccessMs = now;
+  snapshot_.consecutiveFailures = 0;
 }
 
 const ImuSnapshot& ImuManager::snapshot() const { return snapshot_; }

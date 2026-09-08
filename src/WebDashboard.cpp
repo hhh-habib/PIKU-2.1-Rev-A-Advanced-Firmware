@@ -850,7 +850,7 @@ void WebDashboard::sendOk() {
 
 void WebDashboard::sendJson() {
   String json;
-  json.reserve(3000);
+  json.reserve(4096);
   json = String("{\"node_id\":\"") + RobotConfig::NODE_ID + "\"" +
          ",\"telemetry_age_ms\":" + String(millis() - _data.uptimeMs) +
          ",\"product\":\"" + _data.product + "\"" +
@@ -863,7 +863,10 @@ void WebDashboard::sendJson() {
          ",\"distance\":" + jsonFloat(_data.frontDistance, 1) +
          ",\"distanceValid\":" + jsonBool(_data.distanceValid) +
          ",\"ultrasonicState\":\"" + _data.ultrasonicState + "\"" +
+         ",\"distanceSampleAgeMs\":" + String(_data.distanceSampleAgeMs) +
          ",\"distanceSampleSequence\":" + String(_data.distanceSampleSequence) +
+         ",\"ultrasonicInvalidCount\":" + String(_data.ultrasonicInvalidCount) +
+         ",\"ultrasonicFaultCount\":" + String(_data.ultrasonicFaultCount) +
          ",\"servoAngle\":" + String(_data.servoAngle) +
          ",\"scanOrientation\":\"" + _data.scanOrientation + "\"" +
          ",\"manualInspectionObstacle\":" + jsonBool(_data.manualInspectionObstacle) +
@@ -873,12 +876,24 @@ void WebDashboard::sendJson() {
          ",\"humidity\":" + jsonFloat(_data.humidity, 1) +
          ",\"humidity_valid\":" + jsonBool(_data.humidityValid) +
          ",\"environment_sample_age_ms\":" + String(_data.environmentSampleAgeMs) +
+         ",\"dht_error_count\":" + String(_data.dhtErrorCount) +
          ",\"gasValue\":" + String(_data.gasValue) +
          ",\"gasFilteredValue\":" + String(_data.gasFilteredValue) +
          ",\"mq2Warmup\":" + jsonBool(_data.mq2Warmup) +
+         ",\"mq2_sample_age_ms\":" + String(_data.mq2SampleAgeMs) +
+         ",\"mq2_warmup_age_ms\":" + String(_data.mq2WarmupAgeMs) +
          ",\"gasStatus\":\"" + _data.gasStatus + "\"" +
          ",\"flameDetected\":" + jsonBool(_data.flameDetected) +
+         ",\"flame_state\":\"" + _data.flameState + "\"" +
          ",\"flame_raw\":" + String(_data.flameRaw) +
+         ",\"flame_filtered\":" + String(_data.flameFiltered) +
+         ",\"flame_baseline\":" + String(_data.flameBaseline) +
+         ",\"flame_delta\":" + String(_data.flameDelta) +
+         ",\"flame_sample_valid\":" + jsonBool(_data.flameSampleValid) +
+         ",\"flame_baseline_valid\":" + jsonBool(_data.flameBaselineValid) +
+         ",\"flame_classification_valid\":" + jsonBool(_data.flameClassificationValid) +
+         ",\"flame_thresholds_configured\":" + jsonBool(_data.flameThresholdsConfigured) +
+         ",\"flame_sample_age_ms\":" + String(_data.flameSampleAgeMs) +
          ",\"left_ir_raw\":" + String(_data.leftIrRaw) +
          ",\"right_ir_raw\":" + String(_data.rightIrRaw) +
          ",\"left_obstacle\":" + jsonBool(_data.leftObstacle) +
@@ -909,6 +924,9 @@ void WebDashboard::sendJson() {
          ",\"imu\":{" +
            "\"initialized\":" + jsonBool(_data.imuInitialized) +
            ",\"healthy\":" + jsonBool(_data.imuHealthy) +
+           ",\"health_state\":\"" + _data.imuHealthState + "\"" +
+           ",\"error_count\":" + String(_data.imuErrorCount) +
+           ",\"consecutive_failures\":" + String(_data.imuConsecutiveFailures) +
            ",\"accel_x\":" + jsonFloat(_data.accelX, 3) +
            ",\"accel_y\":" + jsonFloat(_data.accelY, 3) +
            ",\"accel_z\":" + jsonFloat(_data.accelZ, 3) +

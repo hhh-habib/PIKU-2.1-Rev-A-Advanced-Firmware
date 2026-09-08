@@ -349,6 +349,7 @@ const char DASHBOARD_HTML[] PROGMEM = R"html(
                 <div class="detail-item"><span>Primary alarm</span><strong id="alarmReason">--</strong></div>
                 <div class="detail-item"><span>Ultrasonic warning</span><strong id="ultraWarn">--</strong></div>
                 <div class="detail-item"><span>Ultrasonic state</span><strong id="ultraState">--</strong></div>
+                <div class="detail-item full"><span>Ultrasonic diagnostics</span><strong id="ultraDiag">--</strong></div>
               </div>
             </article>
 
@@ -361,8 +362,11 @@ const char DASHBOARD_HTML[] PROGMEM = R"html(
                 <div class="detail-item"><span>MQ-2 filtered</span><strong id="envGasFiltered">--</strong></div>
                 <div class="detail-item"><span>Gas state</span><strong id="envGasState">--</strong></div>
                 <div class="detail-item"><span>Flame</span><strong id="envFlame">--</strong></div>
+                <div class="detail-item full"><span>DHT22 diagnostics</span><strong id="envDhtDiag">--</strong></div>
+                <div class="detail-item full"><span>MQ-2 timing</span><strong id="envMq2Diag">--</strong></div>
+                <div class="detail-item full"><span>Flame AO diagnostics</span><strong id="envFlameDiag">--</strong></div>
               </div>
-              <p class="system-note">MQ-2 values are raw ADC demo thresholds, not calibrated ppm.</p>
+              <p class="system-note">MQ-2 values are qualitative relative ADC bands, not calibrated ppm. Flame AO requires module-specific voltage verification and threshold calibration.</p>
             </article>
 
             <article class="panel sensor-panel">
@@ -374,6 +378,7 @@ const char DASHBOARD_HTML[] PROGMEM = R"html(
                 <div class="detail-item full"><span>Gyro X / Y / Z</span><strong id="imuGyro">--</strong></div>
                 <div class="detail-item"><span>Motion</span><strong id="imuMotion">--</strong></div>
                 <div class="detail-item"><span>Sample age</span><strong id="imuAge">--</strong></div>
+                <div class="detail-item full"><span>Health diagnostics</span><strong id="imuDiag">--</strong></div>
               </div>
             </article>
 
@@ -1347,7 +1352,7 @@ function addReason(reasons, text) {
 function readableAlarmReason(reason) {
   const names = {
     FLAME:'Flame detected',
-    GAS_HIGH:'Gas high risk',
+    GAS_HIGH_RELATIVE:'MQ-2 high relative reading',
     TEMP_HIGH:'Temperature critical',
     NEAR_OBSTACLE:'Near obstacle',
     IR_OBSTACLE:'IR obstacle',
@@ -1355,7 +1360,9 @@ function readableAlarmReason(reason) {
     RIGHT_IR_OBSTACLE:'Right IR obstacle',
     BOTH_IR_OBSTACLES:'Both IR obstacles',
     ULTRASONIC_WARNING:'Ultrasonic warning',
-    GAS_CAUTION:'Gas caution',
+    ULTRASONIC_SENSOR_FAULT:'Ultrasonic sensor fault',
+    ULTRASONIC_STALE:'Ultrasonic data stale',
+    GAS_ELEVATED_RELATIVE:'MQ-2 elevated relative reading',
     TEMP_WARN:'Temperature warning'
   };
   return names[reason] || (reason && reason !== 'NONE' ? reason.replace(/_/g, ' ') : '');
@@ -1380,14 +1387,14 @@ function updateAlarmBanner(d) {
   const indicator = byId('alarmIndicator');
   const reasons = [];
   const info = [];
-  const gasStatus = d.gasStatus || 'SAFE';
+  const gasStatus = d.gasStatus || 'DISABLED';
   const safetyState = d.safetyState || 'SAFE';
-  const sensorFault = d.ultrasonicState === 'SENSOR_FAULT';
+  const sensorFault = d.ultrasonicState === 'SENSOR_FAULT' || d.ultrasonicState === 'STALE';
   const manualInspectionObstacle = Boolean(d.manualInspectionObstacle);
   const manualInspectionReason = manualInspectionWarningText(d);
 
-  if (gasStatus === 'HIGH RISK') addReason(reasons, 'Gas high risk');
-  if (gasStatus === 'CAUTION') addReason(reasons, 'Gas caution');
+  if (gasStatus === 'HIGH_RELATIVE') addReason(reasons, 'MQ-2 high relative reading');
+  if (gasStatus === 'ELEVATED_RELATIVE') addReason(reasons, 'MQ-2 elevated relative reading');
   if (d.flameDetected) addReason(reasons, 'Flame detected');
   if (manualInspectionObstacle) {
     addReason(reasons, manualInspectionReason);
@@ -1405,7 +1412,8 @@ function updateAlarmBanner(d) {
     (d.alarmReason === 'NEAR_OBSTACLE' && d.nearObstacleHazard) ||
     (d.alarmReason === 'ULTRASONIC_WARNING' && (sensorFault || d.ultrasonicWarning));
   if (!primaryReasonAlreadyRepresented) addReason(reasons, readableAlarmReason(d.alarmReason));
-  if (d.mq2Warmup) info.push('MQ-2 warming up');
+  if (d.mq2Warmup) info.push('MQ-2 warming');
+  if (!d.flame_classification_valid) info.push('Flame classification not calibrated/valid');
   if (d.alarmSoundState === 'MUTED') info.push('Alarm sound muted');
 
   let severity = 'normal';
@@ -1422,7 +1430,7 @@ function updateAlarmBanner(d) {
   } else if (sensorFault || d.ultrasonicWarning) {
     severity = 'fault';
     label = sensorFault ? 'SENSOR FAULT' : 'ULTRASONIC WARNING';
-  } else if (gasStatus === 'HIGH RISK') {
+  } else if (gasStatus === 'HIGH_RELATIVE') {
     severity = 'high';
     label = 'GAS WARNING';
   } else if (d.flameDetected) {
@@ -1431,7 +1439,7 @@ function updateAlarmBanner(d) {
   } else if (d.irObstacleDetected) {
     severity = 'near';
     label = 'IR OBSTACLE';
-  } else if (safetyState === 'CAUTION' || gasStatus === 'CAUTION') {
+  } else if (safetyState === 'CAUTION' || gasStatus === 'ELEVATED_RELATIVE') {
     severity = 'caution';
     label = 'CAUTION';
   }
@@ -1449,7 +1457,7 @@ function updateAlarmBanner(d) {
   }
 
   const normal = safetyState === 'SAFE' &&
-    (gasStatus === 'SAFE' || gasStatus === 'WARMUP' || gasStatus === 'DISABLED') &&
+    (gasStatus === 'LOW_RELATIVE' || gasStatus === 'WARMING' || gasStatus === 'DISABLED') &&
     !d.nearObstacleHazard &&
     !manualInspectionObstacle;
   if (normal) {
@@ -1464,7 +1472,7 @@ function updateAlarmBanner(d) {
     startHighRiskTimers();
   } else if (manualInspectionObstacle) {
     startHighRiskTimers();
-  } else if (safetyState === 'CAUTION' || gasStatus === 'CAUTION') {
+  } else if (safetyState === 'CAUTION' || gasStatus === 'ELEVATED_RELATIVE') {
     stopAlarmTimers();
     if (Date.now() - lastCautionBeep > 5000) {
       lastCautionBeep = Date.now();
@@ -1722,7 +1730,9 @@ function renderTelemetry(d) {
   const temperatureText = d.temperature === null ? '-- C' : d.temperature + ' C';
   const humidityText = d.humidity === null ? '-- %' : d.humidity + ' %';
   const distanceText = d.distanceValid ? d.distance + ' cm' : '-- cm';
-  const flameText = d.flameDetected ? 'DETECTED' : 'CLEAR';
+  const flameText = d.flame_classification_valid
+    ? (d.flame_state || (d.flameDetected ? 'FLAME_DETECTED' : 'CLEAR'))
+    : 'NOT_CALIBRATED';
   const imu = d.imu || {};
   const radio = d.radio || {};
   const display = d.display || {};
@@ -1756,15 +1766,19 @@ function renderTelemetry(d) {
   setText('envHum', d.humidity_valid ? metric(d.humidity, 1, ' %') : 'INVALID');
   setText('envGasRaw', d.gasValue ?? '--');
   setText('envGasFiltered', d.gasFilteredValue ?? '--');
-  setText('envGasState', d.mq2Warmup ? 'WARMUP' : (d.gasStatus || '--'));
+  setText('envGasState', d.mq2Warmup ? 'WARMING' : (d.gasStatus || '--'));
   setText('envFlame', flameText);
-  setText('imuStatus', imu.initialized && imu.healthy ? 'READY' : 'ERROR');
+  setText('envDhtDiag', 'age ' + ageText(d.environment_sample_age_ms) + ' / errors ' + (d.dht_error_count ?? 0));
+  setText('envMq2Diag', 'sample ' + ageText(d.mq2_sample_age_ms) + ' / warm-up ' + ageText(d.mq2_warmup_age_ms));
+  setText('envFlameDiag', 'raw ' + (d.flame_raw ?? '--') + ' / filtered ' + (d.flame_filtered ?? '--') + ' / baseline ' + (d.flame_baseline ?? '--') + ' / delta ' + (d.flame_delta ?? '--') + ' / age ' + ageText(d.flame_sample_age_ms));
+  setText('imuStatus', imu.health_state || (imu.initialized && imu.healthy ? 'HEALTHY' : 'ERROR'));
   setText('imuRoll', metric(imu.roll, 1, ' deg'));
   setText('imuPitch', metric(imu.pitch, 1, ' deg'));
   setText('imuAccel', [imu.accel_x, imu.accel_y, imu.accel_z].map(v => metric(v, 2, '')).join(' / ') + ' m/s2');
   setText('imuGyro', [imu.gyro_x, imu.gyro_y, imu.gyro_z].map(v => metric(v, 2, '')).join(' / ') + ' rad/s');
   setText('imuMotion', imu.motion || 'ERROR');
   setText('imuAge', ageText(imu.sample_age_ms));
+  setText('imuDiag', (imu.health_state || 'UNKNOWN') + ' / errors ' + (imu.error_count ?? 0) + ' / consecutive ' + (imu.consecutive_failures ?? 0));
   setText('radioHardware', radio.hardware || 'ERROR');
   setText('radioPeer', radio.peer || 'UNSEEN');
   setText('radioListening', radio.listening ? 'YES' : 'NO');
@@ -1786,6 +1800,7 @@ function renderTelemetry(d) {
   setText('nearSource', d.nearObstacleSource);
   setText('ultraWarn', d.ultrasonicWarning ? 'WARNING' : 'CLEAR');
   setText('ultraState', d.ultrasonicState || '--');
+  setText('ultraDiag', 'age ' + ageText(d.distanceSampleAgeMs) + ' / seq ' + (d.distanceSampleSequence ?? 0) + ' / invalid ' + (d.ultrasonicInvalidCount ?? 0) + ' / faults ' + (d.ultrasonicFaultCount ?? 0));
   setText('safety', d.safetyState);
   setText('alarmReason', reasonText);
   setText('alarmSound', d.alarmSoundState);

@@ -8,31 +8,63 @@
 enum class UltrasonicResultState {
   DistanceValid,
   ClearNoEcho,
-  SensorFault
+  SensorFault,
+  Stale
+};
+
+enum class FlameState {
+  Clear,
+  Elevated,
+  PossibleFlame,
+  FlameDetected
+};
+
+struct UltrasonicSample {
+  float distanceCm = -1.0f;
+  bool valid = false;
+  bool facingFront = true;
+  UltrasonicResultState state = UltrasonicResultState::Stale;
+  unsigned long sampleMs = 0;
+  unsigned long sequence = 0;
 };
 
 struct SensorSnapshot {
   float distanceCm = -1.0f;
   bool distanceValid = false;
   bool distanceFacingFront = true;
-  UltrasonicResultState ultrasonicState = UltrasonicResultState::ClearNoEcho;
+  UltrasonicResultState ultrasonicState = UltrasonicResultState::Stale;
+  unsigned long distanceSampleMs = 0;
   unsigned long distanceSampleSequence = 0;
+  unsigned long ultrasonicInvalidCount = 0;
+  unsigned long ultrasonicFaultCount = 0;
   float temperature = NAN;
   bool temperatureValid = false;
   float humidity = NAN;
   bool humidityValid = false;
   unsigned long environmentSampleMs = 0;
+  unsigned long environmentLastSuccessMs = 0;
+  unsigned long dhtErrorCount = 0;
   int gasRaw = 0;
   int gasFiltered = 0;
   bool mq2Warmup = false;
   unsigned long mq2SampleMs = 0;
+  unsigned long mq2WarmupAgeMs = 0;
   int leftIrRaw = HIGH;
   int rightIrRaw = HIGH;
   bool leftObstacleDetected = false;
   bool rightObstacleDetected = false;
   bool irObstacleDetected = false;
-  int flameRaw = HIGH;
+  int flameRaw = 0;
+  int flameFiltered = 0;
+  int flameBaseline = 0;
+  int flameDelta = 0;
+  FlameState flameState = FlameState::Clear;
+  bool flameSampleValid = false;
+  bool flameBaselineValid = false;
+  bool flameClassificationValid = false;
+  bool flameThresholdsConfigured = RobotConfig::FLAME_THRESHOLDS_CONFIGURED;
   bool flameDetected = false;
+  unsigned long flameSampleMs = 0;
   unsigned long updatedMs = 0;
 };
 
@@ -46,6 +78,7 @@ public:
   unsigned long requestDistanceSample(bool facingFront);
   bool isDistanceSampleInProgress() const;
   unsigned long distanceSampleSequence() const;
+  UltrasonicSample latestUltrasonicSample() const;
   float forceDistanceSample();
   const SensorSnapshot& snapshot() const;
   float readDistanceCm();
@@ -60,6 +93,7 @@ private:
   unsigned long lastFastSensorMs;
   unsigned long lastDhtMs;
   unsigned long lastMq2Ms;
+  unsigned long lastFlameMs;
   unsigned long startedMs;
   unsigned long lastUltrasonicMs;
   DHT dht;
@@ -67,6 +101,14 @@ private:
   size_t mq2SampleCount;
   size_t mq2SampleIndex;
   long mq2SampleSum;
+  int flameSamples[RobotConfig::FLAME_FILTER_SAMPLES];
+  size_t flameSampleCount;
+  size_t flameSampleIndex;
+  long flameSampleSum;
+  long flameBaselineSum;
+  size_t flameBaselineSampleCount;
+  FlameState flameCandidateState;
+  unsigned long flameCandidateSinceMs;
   bool nextDistanceFacingFront;
   enum class UltrasonicState {
     Idle,
@@ -87,6 +129,8 @@ private:
   static SensorManager* activeInstance;
 
   void updateFastSensors(unsigned long now);
+  void updateFlame(unsigned long now);
+  FlameState classifyFlameDelta(int delta) const;
   void updateEnvironment(unsigned long now);
   void updateDht(unsigned long now);
   void updateMq2(unsigned long now);

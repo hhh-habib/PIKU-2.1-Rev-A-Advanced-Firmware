@@ -7,8 +7,19 @@ namespace {
       case UltrasonicResultState::DistanceValid: return "DISTANCE_VALID";
       case UltrasonicResultState::ClearNoEcho: return "CLEAR_NO_ECHO";
       case UltrasonicResultState::SensorFault: return "SENSOR_FAULT";
+      case UltrasonicResultState::Stale: return "STALE";
     }
-    return "CLEAR_NO_ECHO";
+    return "STALE";
+  }
+
+  const char* flameStateName(FlameState state) {
+    switch (state) {
+      case FlameState::Clear: return "CLEAR";
+      case FlameState::Elevated: return "ELEVATED";
+      case FlameState::PossibleFlame: return "POSSIBLE_FLAME";
+      case FlameState::FlameDetected: return "FLAME_DETECTED";
+    }
+    return "CLEAR";
   }
 }
 
@@ -60,18 +71,30 @@ void DashboardPublisher::publishSensorReadings(const String& servoPos,
   data.temperatureValid = snapshot.temperatureValid;
   data.humidity = snapshot.humidity;
   data.humidityValid = snapshot.humidityValid;
+  data.dhtErrorCount = snapshot.dhtErrorCount;
   data.gasValue = snapshot.gasRaw;
   data.gasFilteredValue = snapshot.gasFiltered;
   data.mq2Warmup = snapshot.mq2Warmup;
+  data.mq2WarmupAgeMs = snapshot.mq2WarmupAgeMs;
   data.gasStatus = gasStatus;
   data.frontDistance = snapshot.distanceCm;
   data.distanceValid = snapshot.distanceValid;
   data.ultrasonicState = ultrasonicStateName(snapshot.ultrasonicState);
   data.distanceSampleSequence = snapshot.distanceSampleSequence;
+  data.ultrasonicInvalidCount = snapshot.ultrasonicInvalidCount;
+  data.ultrasonicFaultCount = snapshot.ultrasonicFaultCount;
   data.servoAngle = servoAngle;
   data.scanOrientation = servoPos;
   data.flameDetected = snapshot.flameDetected;
+  data.flameState = flameStateName(snapshot.flameState);
   data.flameRaw = snapshot.flameRaw;
+  data.flameFiltered = snapshot.flameFiltered;
+  data.flameBaseline = snapshot.flameBaseline;
+  data.flameDelta = snapshot.flameDelta;
+  data.flameSampleValid = snapshot.flameSampleValid;
+  data.flameBaselineValid = snapshot.flameBaselineValid;
+  data.flameClassificationValid = snapshot.flameClassificationValid;
+  data.flameThresholdsConfigured = snapshot.flameThresholdsConfigured;
   data.leftIrRaw = snapshot.leftIrRaw;
   data.rightIrRaw = snapshot.rightIrRaw;
   data.leftObstacle = leftObstacleFiltered;
@@ -116,18 +139,27 @@ bool DashboardPublisher::dashboardDataChanged(const DashboardData& current, cons
          floatChanged(current.humidity, previous.humidity, 0.1f) ||
          current.temperatureValid != previous.temperatureValid ||
          current.humidityValid != previous.humidityValid ||
+         current.dhtErrorCount != previous.dhtErrorCount ||
          floatChanged(current.frontDistance, previous.frontDistance, 0.5f) ||
          abs(current.gasValue - previous.gasValue) >= 5 ||
          abs(current.gasFilteredValue - previous.gasFilteredValue) >= 5 ||
          current.distanceValid != previous.distanceValid ||
          current.ultrasonicState != previous.ultrasonicState ||
          current.distanceSampleSequence != previous.distanceSampleSequence ||
+         current.ultrasonicInvalidCount != previous.ultrasonicInvalidCount ||
+         current.ultrasonicFaultCount != previous.ultrasonicFaultCount ||
          current.servoAngle != previous.servoAngle ||
          current.scanOrientation != previous.scanOrientation ||
          current.manualInspectionObstacle != previous.manualInspectionObstacle ||
          current.manualInspectionOrientation != previous.manualInspectionOrientation ||
          current.mq2Warmup != previous.mq2Warmup ||
          current.flameDetected != previous.flameDetected ||
+         current.flameState != previous.flameState ||
+         abs(current.flameRaw - previous.flameRaw) >= 4 ||
+         abs(current.flameFiltered - previous.flameFiltered) >= 4 ||
+         abs(current.flameBaseline - previous.flameBaseline) >= 4 ||
+         abs(current.flameDelta - previous.flameDelta) >= 4 ||
+         current.flameClassificationValid != previous.flameClassificationValid ||
          current.leftIrRaw != previous.leftIrRaw ||
          current.rightIrRaw != previous.rightIrRaw ||
          current.leftObstacle != previous.leftObstacle ||
@@ -159,6 +191,9 @@ bool DashboardPublisher::dashboardDataChanged(const DashboardData& current, cons
          current.staSignalQuality != previous.staSignalQuality ||
          current.imuInitialized != previous.imuInitialized ||
          current.imuHealthy != previous.imuHealthy ||
+         current.imuHealthState != previous.imuHealthState ||
+         current.imuErrorCount != previous.imuErrorCount ||
+         current.imuConsecutiveFailures != previous.imuConsecutiveFailures ||
          floatChanged(current.accelX, previous.accelX, 0.1f) ||
          floatChanged(current.accelY, previous.accelY, 0.1f) ||
          floatChanged(current.accelZ, previous.accelZ, 0.1f) ||
@@ -213,7 +248,12 @@ void DashboardPublisher::logSensorReadings(const String& servoPos,
   Serial.print(" hum=");
   if (snapshot.humidityValid) Serial.print(snapshot.humidity, 1); else Serial.print("INVALID");
   Serial.print(" gas="); Serial.print(snapshot.gasFiltered);
-  Serial.print(snapshot.mq2Warmup ? " WARMUP" : " READY");
-  Serial.print(" flame="); Serial.println(snapshot.flameDetected ? "DETECTED" : "CLEAR");
+  Serial.print(" state="); Serial.print(data.gasStatus);
+  Serial.print(" flame_raw="); Serial.print(snapshot.flameRaw);
+  Serial.print(" filtered="); Serial.print(snapshot.flameFiltered);
+  Serial.print(" baseline="); Serial.print(snapshot.flameBaseline);
+  Serial.print(" delta="); Serial.print(snapshot.flameDelta);
+  Serial.print(" class="); Serial.print(flameStateName(snapshot.flameState));
+  Serial.print(" valid="); Serial.println(snapshot.flameClassificationValid ? "YES" : "NO");
   Serial.print("Motor   : "); Serial.println(motorStateName);
 }
