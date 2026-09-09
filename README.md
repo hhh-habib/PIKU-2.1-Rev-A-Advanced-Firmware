@@ -49,7 +49,7 @@ PIKU is being developed through multiple robot and CPS stages rather than as one
       → Stage 4 CPS Integration
       → Multi-node CPS Platform
 
-This repository is not the final multi-node CPS. It is the validated standalone PIKU 2.1 Rev A firmware foundation. That foundation is later migrated into PIKU 2.1 Rev A Stage 4 CPS Integration, where Stage 4 participates with CPS Node V1, PIKU 2.0.1, and PIKU 2.1 inside the larger research platform. Stage 4 behavior and the future capabilities listed above are not implemented claims for this repository.
+This repository is not the final multi-node CPS. It is the validated standalone PIKU 2.1 Rev A firmware foundation. That standalone foundation is later migrated into PIKU 2.1 Rev A Stage 4 CPS Integration, where PIKU 2.1 operates as a CPS-connected mobile agent alongside CPS Node V1 and PIKU 2.0.1. Stage 4 behavior and the future capabilities listed above are not implemented claims for this repository.
 
 ## Key capabilities
 
