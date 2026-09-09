@@ -2,6 +2,12 @@
 
 Advanced ESP32-S3 firmware for the PIKU 2.1 Rev A cyber-physical environmental inspection robot, featuring responsive Manual control, autonomous navigation, MPU6050-assisted 35-degree spin-based obstacle avoidance, low-mounted IR and servo-mounted ultrasonic sensing, environmental hazard monitoring, SoftAP/STA Wi-Fi operation, real-time telemetry, and safety-oriented recovery logic.
 
+## New to PIKU?
+
+PIKU is a long-term Intelligent Robotics and Cyber-Physical Systems research platform. This repository contains the validated standalone firmware for the PIKU 2.1 Rev A robot. This stage focuses on making the robot independently reliable before deeper CPS integration. A later Stage 4 repository connects this robot foundation with other CPS nodes.
+
+For a beginner-friendly walkthrough of the firmware, see [Software Explanation](SOFTWARE_EXPLANATION.md).
+
 ## Project overview
 
 PIKU 2.1 Rev A is a standalone four-wheel mobile research prototype built around an ESP32-S3. It combines locomotion, multi-zone obstacle sensing, environmental monitoring, browser-based operation, local safety decisions, and autonomous recovery in one firmware project.
@@ -20,6 +26,30 @@ PIKU is being developed as a cyber-physical environmental inspection robotics re
 - short-term MPU-assisted relative rotation.
 
 Rev A does not provide mapping, SLAM, absolute localization, compass heading, or wheel odometry.
+
+## Position in the PIKU Research Roadmap
+
+PIKU is being developed through multiple robot and CPS stages rather than as one single finished robot.
+
+| Stage | Role |
+| --- | --- |
+| PIKU V1 | Early Arduino-based mobile robotics foundation |
+| PIKU V2.0 | First major ESP32 environmental inspection robot |
+| PIKU V2.0.1 | More mature ESP32 robot with improved sensing, dashboard, and autonomous behavior |
+| PIKU 2.1 Rev A | Current validated standalone ESP32-S3 robot — **this repository** |
+| PIKU 2.1 Rev A Stage 4 CPS Integration | Later stage that migrates PIKU 2.1 into the multi-node CPS architecture |
+| CPS Node V1 | Fixed environmental sensing/coordinator node |
+| PIKU 2.0.1 + PIKU 2.1 + CPS Node V1 | Multi-node integrated CPS research platform |
+| Future PIKU / CPS stages | Planned research into localization, mapping, ROS 2, edge intelligence, and more advanced coordination |
+
+    PIKU V1
+      → PIKU V2.0
+      → PIKU V2.0.1
+      → PIKU 2.1 Rev A
+      → Stage 4 CPS Integration
+      → Multi-node CPS Platform
+
+This repository is not the final multi-node CPS. It is the validated standalone PIKU 2.1 Rev A firmware foundation. That foundation is later migrated into PIKU 2.1 Rev A Stage 4 CPS Integration, where Stage 4 participates with CPS Node V1, PIKU 2.0.1, and PIKU 2.1 inside the larger research platform. Stage 4 behavior and the future capabilities listed above are not implemented claims for this repository.
 
 ## Key capabilities
 
@@ -317,6 +347,7 @@ The private repository intentionally tracks the deployment configuration header 
     |   |-- COMMUNICATION_LATENCY_AUDIT.md
     |   +-- stage and historical testing records
     |-- platformio.ini
+    |-- SOFTWARE_EXPLANATION.md
     |-- README.md
     +-- .gitignore
 
