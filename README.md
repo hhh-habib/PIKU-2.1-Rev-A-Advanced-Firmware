@@ -1,225 +1,366 @@
-# PIKU V2.0.1 Advanced Firmware
+# PIKU 2.1 Rev A — Advanced Firmware
 
-## 1. Project overview
+Advanced ESP32-S3 firmware for the PIKU 2.1 Rev A cyber-physical environmental inspection robot, featuring responsive Manual control, autonomous navigation, MPU6050-assisted 35-degree spin-based obstacle avoidance, low-mounted IR and servo-mounted ultrasonic sensing, environmental hazard monitoring, SoftAP/STA Wi-Fi operation, real-time telemetry, and safety-oriented recovery logic.
 
-PIKU is a developing cyber-physical environmental inspection robotic platform. This repository contains the ESP32 firmware that coordinates locomotion, autonomous obstacle handling, directed ultrasonic inspection, environmental sensing, local visualization, alarms, and browser-based operation.
+## Project overview
 
-The firmware targets controlled research, education, and prototype demonstrations. It is not a certified industrial, fire, gas, or life-safety system.
+PIKU 2.1 Rev A is a standalone four-wheel mobile research prototype built around an ESP32-S3. It combines locomotion, multi-zone obstacle sensing, environmental monitoring, browser-based operation, local safety decisions, and autonomous recovery in one firmware project.
 
-## 2. Current version and status
+The frozen firmware supports supervised research, education, and prototype demonstrations. It is not production or industrial safety equipment.
 
-- Version: PIKU V2.0.1 Advanced
-- PlatformIO environment: `esp32doit-devkit-v1`
-- Framework: Arduino for ESP32
-- Status: prior Manual/Auto physical test record preserved; corrective firmware clean-build verified
-- Release branch: `main`
+## Research context
 
-The finalized project builds successfully without compiler warnings. The corrective changes were not flashed or physically retested during repository finalization; see [docs/TESTING.md](docs/TESTING.md) for the exact distinction.
+PIKU is being developed as a cyber-physical environmental inspection robotics research platform. Rev A investigates how a compact mobile robot can combine:
 
-Release provenance is intentionally non-destructive: annotated tag `v2.0.1` preserves the historical release, annotated tag `v2.0.1-advanced` identifies the audited Advanced baseline (`4432affa`), and current `main` contains the subsequent corrective finalization.
+- environmental sensing and local hazard response;
+- responsive browser-based Manual control;
+- autonomous obstacle recovery;
+- low-body IR and higher servo-mounted ultrasonic sensing;
+- Wi-Fi telemetry and control; and
+- short-term MPU-assisted relative rotation.
 
-## 3. Major firmware capabilities
+Rev A does not provide mapping, SLAM, absolute localization, compass heading, or wheel odometry.
 
-- Manual and autonomous drive modes
-- L298N four-input motor direction control
-- Pivot and spin turning modes
-- Servo-mounted HC-SR04 ultrasonic scanning
-- Manual LEFT, FRONT, and RIGHT inspection
-- Interactive browser radar and live telemetry
-- DHT22 temperature and humidity monitoring
-- MQ-2 filtered gas monitoring with warm-up state
-- Flame and close-range IR obstacle inputs
-- Physical buzzer, TFT alerts, and browser warnings
-- SoftAP dashboard plus Home Wi-Fi station operation
-- Central safety classification and motion blocking
-- Autonomous obstacle scanning, route selection, and recovery
+## Key capabilities
 
-## 4. Manual and autonomous operating modes
+- Manual forward, reverse, left, right, STOP, Pivot, and Spin control
+- Configurable drive speed with pointer-release and deadman protections
+- Unified non-blocking AUTO obstacle recovery
+- 170/90/10-degree servo scan with multiple HC-SR04 samples per direction
+- Independent low front-left and front-right reflective IR obstacle zones
+- MPU6050 gyro-Z-assisted 35-degree relative SPIN control
+- Autonomous stopped retry when no safe escape path is available
+- DHT22, MQ-2, and digital flame monitoring
+- Two-second continuously-clear environmental-hazard recovery
+- Responsive dashboard, telemetry, AUTO diagnostics, and safety state
+- Standalone SoftAP and provisioned STA/Home Wi-Fi operation
+- Secondary nRF24 heartbeat/experimental machine-to-machine path
+- SPI SH1106 OLED status display
 
-In `MANUAL`, dashboard commands are routed through `DriveCommandHandler` to `MotorController`. While a direction is held, the dashboard refreshes it every 250 ms. A firmware deadman stops motion if no refresh arrives for 750 ms, so a lost browser/network path cannot leave the last Manual command energized. Releasing a direction or pressing STOP still sends an explicit STOP. Critical hazards block motion, and front obstacle checks reject unsafe forward movement.
+## Hardware platform
 
-When a drive command is requested while the ultrasonic head is facing sideways, the motors stay stopped, the head returns to FRONT, the existing 700 ms settling interval completes, and a fresh front sample is evaluated before the pending command is accepted or rejected.
+| Area | Frozen Rev A hardware |
+| --- | --- |
+| Controller | ESP32-S3 DevKitC-1 N16R8 |
+| Chassis | 4WD mobile chassis |
+| Motor driver | L298N with shared ENA/ENB PWM |
+| Scan actuator | SG90 servo |
+| Primary ranging | Servo-mounted HC-SR04 with echo voltage divider |
+| Low obstacle zones | Separate left and right reflective IR modules |
+| Inertial sensor | MPU6050 over I2C |
+| Environment | DHT22, MQ-2 analog module, digital flame module |
+| Display | SH1106 SPI OLED |
+| Communication | ESP32-S3 Wi-Fi and nRF24 |
+| Power used in final test | Rechargeable 18650 battery system |
 
-In `AUTO`, `NavigationManager` acquires front distance samples, advances when the route is clear, scans LEFT/FRONT/RIGHT when obstructed, selects a valid clearer route, and performs the established near-obstacle recovery sequence. Dashboard STOP is available in every mode and promptly interrupts Auto forward, scan, reverse, turn, and settling operations. An Auto STOP remains latched until the operator deliberately issues another mode command. A Manual/Auto mode change also interrupts the active Auto sequence before any later step can re-energize the motors.
+The flame module is powered from 3.3 V. Its DO output is connected to GPIO6, AO is disconnected, active polarity is HIGH, and a small black optical shroud is installed in the final tested hardware.
 
-## 5. Manual LEFT / FRONT / RIGHT ultrasonic inspection
-
-The Manual sensor-head controls use logical directions from PIKU's own forward-facing perspective:
-
-- LOOK LEFT inspects PIKU's physical left side.
-- LOOK FRONT centers the head.
-- LOOK RIGHT inspects PIKU's physical right side.
-
-Each operation stops the drive motors, moves the existing servo, waits for settling, requests a fresh ultrasonic sample, and publishes a confirmed inspection orientation. The mechanically mirrored Manual installation keeps physical servo actuation separate from the logical direction used by the dashboard, radar, and warning text.
-
-A valid sample at or below 7 cm produces a directional inspection warning and activates the physical hazard buzzer. Side inspection warnings remain separate from Auto navigation and are not classified as front obstacles.
-
-## 6. Interactive ultrasonic radar
-
-The web dashboard renders the active scan orientation, logical servo angle, fresh distance samples, and short-lived radar points. In both Manual and Auto modes, LEFT, FRONT, and RIGHT presentation follows PIKU's physical perspective. The mechanically mirrored installation therefore maps physical servo commands separately from the logical radar angles; Auto route selection still uses the established physical scan mechanics.
-
-The radar consumes the existing `/data` telemetry stream; it does not control the servo directly.
-
-## 7. Environmental and safety monitoring
-
-`SensorManager` schedules and caches:
-
-- HC-SR04 ultrasonic distance
-- DHT22 temperature and humidity
-- MQ-2 raw and filtered ADC values
-- Flame sensor state
-- IR obstacle state
-
-`SafetyManager` classifies caution, warning, near-obstacle, and critical states. Critical flame, high-risk gas, or critical-temperature hazards stop and block motion. Near front obstacles and ultrasonic warnings block unsafe forward movement according to the existing safety rules.
-
-The established HC-SR04 policy is deliberate: a clean timeout/no-echo result is treated as clear/out-of-range and permits motion, while malformed or otherwise abnormal acquisition states remain sensor faults. DHT22 read failures retain the last known temperature/humidity values; telemetry freshness is not presently validated, so retained environmental readings must not be mistaken for a fresh sample.
-
-Alarm truth is independent from sound control. Muting silences the physical/browser alarm output but does not clear hazard state, dashboard warnings, TFT warnings, or motor blocking.
-
-## 8. SoftAP and Home Wi-Fi dashboard access
-
-The ESP32 starts its local SoftAP and serves the dashboard directly. Connect to the configured PIKU access point, then open:
-
-```text
-http://192.168.4.1/
-```
-
-Home Wi-Fi can be scanned, configured, saved, reconnected, and cleared through the dashboard. Station credentials are stored at runtime using ESP32 Preferences. The compile-time Home Wi-Fi fallback values in `include/WiFiConfig.h` are intentionally empty.
-
-Do not hard-code personal Home Wi-Fi credentials. Configure them through the supported dashboard provisioning flow. Because this repository is private and is the owner's competition/recovery source, `include/Secrets.h` is intentionally tracked with the operational SoftAP configuration used by the physically tested firmware. An authorized fresh clone already contains this file; `include/Secrets.example.h` remains only a safe reference/template. Never make the repository public without first reviewing, removing, or rotating private credentials. Earlier commits and preserved historical snapshots can retain the former bootstrap credential because history was intentionally not rewritten; treat historical access as sensitive. The dashboard uses unauthenticated HTTP, so operate it only on a trusted, supervised network and do not expose it to an untrusted LAN or the public Internet.
-
-## 9. Software architecture and major classes
-
-- `main.cpp`: top-level setup, service loop, Manual coordination, telemetry, and mode transitions
-- `NavigationManager`: Auto navigation, scanning, obstacle recovery, and route selection
-- `MotorController`: L298N motor direction and motor-state ownership
-- `DriveCommandHandler`: Manual command validation and dispatch
-- `ServoScanner`: the single servo abstraction for center/left/right/arbitrary positioning
-- `SensorManager`: scheduled sensing and coherent sensor snapshots
-- `SafetyManager`: hazard classification and motion-blocking decisions
-- `BuzzerManager`: non-blocking physical alarm patterns and mute/test behavior
-- `DisplayManager`: ST7789 telemetry and warning presentation
-- `DashboardPublisher`: telemetry synchronization for dashboard, TFT, and serial output
-- `WebDashboard`: SoftAP/station networking, HTTP routes, JSON telemetry, provisioning, and command intake
-- `WebDashboardAssets`: compiled dashboard HTML, CSS, JavaScript, and radar interface
-
-## 10. Hardware platform
-
-- ESP32 DOIT DevKit V1
-- L298N motor driver and mobile chassis
-- Servo-mounted HC-SR04 ultrasonic sensor
-- DHT22 temperature/humidity sensor
-- MQ-2 gas sensor through a voltage divider
-- Digital flame sensor
-- Digital IR obstacle sensor
-- GPIO-driven active buzzer
-- ST7789 TFT display
-
-## 11. GPIO overview
+## Pin mapping
 
 | Function | GPIO |
 | --- | ---: |
-| TFT CS | 5 |
-| TFT DC | 22 |
-| TFT RST | 4 |
-| TFT SCK | 18 |
-| TFT MOSI | 23 |
-| Right motor IN1 / IN2 | 26 / 27 |
-| Left motor IN1 / IN2 | 16 / 17 |
-| Servo signal | 13 |
-| HC-SR04 trigger / echo | 32 / 34 |
-| DHT22 data | 21 |
-| MQ-2 analog input | 35 |
-| Buzzer output | 33 |
-| Flame input | 36 |
-| IR obstacle input | 39 |
-| Reserved future motor PWM | 25 / 14 |
+| Right motor IN1 / IN2 | 39 / 40 |
+| Left motor IN3 / IN4 | 41 / 42 |
+| L298N ENA + ENB shared PWM | 18 |
+| SG90 servo | 21 |
+| HC-SR04 TRIG / divided ECHO | 9 / 10 |
+| Left IR / Right IR | 7 / 8 |
+| MPU6050 SDA / SCL | 1 / 2 |
+| MQ-2 analog | 4 |
+| DHT22 data | 5 |
+| Flame digital DO | 6 |
+| SPI MOSI / SCK / MISO | 11 / 12 / 13 |
+| nRF24 CE / CSN | 14 / 15 |
+| OLED CS / DC / RST | 17 / 47 / 48 |
+| Reserved/free | 16 |
 
-GPIO34, GPIO35, GPIO36, and GPIO39 are input-only on the ESP32. GPIO25 and GPIO14 remain reserved and are not used by the present firmware.
+The SH1106 OLED and nRF24 share the MOSI/SCK SPI bus. The frozen pin map contains 24 unique nonnegative assignments; GPIO16 remains intentionally unallocated.
 
-## 12. PlatformIO build instructions
+## Firmware architecture
 
-Install PlatformIO Core or use the PlatformIO IDE extension, then run from the repository root:
+| Component | Responsibility |
+| --- | --- |
+| main.cpp | Setup, priority service loop, mode transitions, Manual coordination |
+| NavigationManager | Non-blocking AUTO navigation, scan, spin, retry, and recovery states |
+| MotorController | L298N direction and PWM ownership |
+| DriveCommandHandler | Manual command validation and Pivot/Spin dispatch |
+| SensorManager | Scheduled sensor acquisition and coherent snapshots |
+| SafetyManager | Hazard classification and motion authority |
+| ServoScanner | Physical LEFT/FRONT/RIGHT head positioning |
+| ImuManager | MPU6050 sampling, health, and motion state |
+| WebDashboard | SoftAP/STA networking, HTTP endpoints, commands, and telemetry JSON |
+| DashboardPublisher | Change-aware telemetry publication |
+| PriorityWebServer | Control-priority HTTP request handling |
+| RadioManager | Bounded nRF24 heartbeat and receive handling |
+| DisplayManager | Local OLED telemetry and warnings |
 
-```sh
-pio run
-```
+Control and safety work remain ahead of slower display, environmental, and radio tasks. Navigation is timestamp/state driven so HTTP, STOP, mode changes, sensing, telemetry, and Manual deadman handling continue between maneuver steps.
 
-For a clean verification:
+## Manual mode
 
-```sh
-pio run --target clean
-pio run
-```
+Manual mode provides Forward, Backward, Left, Right, and STOP commands with selectable Pivot or Spin turning and configurable speed.
 
-The Espressif32 platform, Arduino-ESP32 framework package, and all declared libraries are version-pinned in `platformio.ini` for reproducible resolution. An authorized fresh clone of this private repository already includes the tracked operational `include/Secrets.h`; it does not need to be recreated. `include/Secrets.example.h` is retained only as a safe reference/template.
+- Pivot energizes only the outside side for a directional turn.
+- Spin drives the left and right sides in opposite directions.
+- Holding a movement control refreshes the command every 250 ms.
+- The firmware stops Manual movement after 750 ms without a valid refresh.
+- Pointer/touch release, cancellation, visibility loss, page exit, STOP, mode changes, and safety events preserve explicit stop behavior.
+- Forward commands remain subject to fresh front-ultrasonic safety checks.
 
-## 13. Firmware upload instructions
+The browser controls were physically observed as practically responsive. No instrumented latency distribution was collected.
 
-Connect the correct ESP32 board, verify the serial port and wiring, keep the chassis safely elevated, and run:
+## Autonomous navigation
 
-```sh
-pio run --target upload
-```
+The physically validated ordinary-obstacle flow is:
 
-Uploading is intentionally separate from building. No firmware was uploaded as part of this repository publication.
+    obstacle detected
+      -> STOP
+      -> short controlled reverse
+      -> settle
+      -> fresh LEFT / FRONT / RIGHT scan
+      -> select a safe side
+      -> approximately 35-degree SPIN
+      -> STOP and fresh obstacle re-evaluation
+      -> continue AUTO or retry safely
 
-## 14. Dashboard access instructions
+Ordinary obstacle confusion no longer permanently abandons AUTO. After bounded active attempts, the robot remains stopped in a non-blocking retry state and periodically rescans. User STOP, leaving AUTO, an active environmental hazard, and serious sensor fault/stale evidence retain higher safety authority.
 
-1. Power the PIKU controller safely.
-2. Connect a phone or computer to the configured PIKU SoftAP.
-3. Open `http://192.168.4.1/`.
-4. Use Manual mode for directed driving and sensor-head inspection.
-5. Use the Wi-Fi panel to provision Home Wi-Fi when needed.
-6. Switch to Auto only in a controlled test area with an accessible power cutoff.
+## Multi-zone obstacle avoidance
 
-The browser must remain connected to the robot's network path to receive telemetry and issue commands.
+The obstacle sensors cover different physical zones:
 
-## 15. Safety and wiring notes
+- LEFT IR on GPIO7 covers the low front-left body zone and gives a RIGHT escape preference.
+- RIGHT IR on GPIO8 covers the low front-right body zone and gives a LEFT escape preference.
+- BOTH IR triggers reverse, fresh scanning, and selection of the safest valid side.
+- The servo-mounted HC-SR04 covers the higher front/scanning zone and uses the same unified recovery sequence for a front obstacle.
 
-- Verify the GPIO map against the installed hardware before power-up.
-- Use the required voltage divider on the MQ-2 analog path.
-- The physical-system diagram documents an HC-SR04 5 V-to-3.3 V echo divider, but the available physical record does not electrically verify its installation or ratio. Confirm the actual divider and GPIO34 voltage before power-up.
-- The installed buzzer is documented as active hardware; firmware drives it with simple ON/OFF alarm windows rather than a generated tone.
-- Tune the IR module physically for the installed chassis.
-- Keep grounds common and use a power arrangement suitable for motors, servo, sensors, and ESP32.
-- Keep a manual power cutoff available during motion tests.
-- Do not rely on this prototype as certified safety equipment.
+Fresh evidence can override a directional preference when the preferred side is unsafe. A clear HC-SR04 result cannot cancel valid IR evidence, and clear IR inputs cannot cancel a valid HC-SR04 obstacle.
 
-## 16. Testing status
+## Scan and servo behavior
 
-The Advanced baseline was reported physically tested in both Manual and Auto modes, including motor control, autonomous navigation, servo scanning, three-direction Manual inspection, radar direction agreement, continuous 7 cm inspection alarms, recenter-before-driving safety, environmental warning paths, TFT presentation, buzzer operation, and SoftAP/Home Wi-Fi dashboard access.
+| Physical view | Servo command | Approximate logical view |
+| --- | ---: | ---: |
+| LEFT | 170 degrees | -80 degrees |
+| FRONT | 90 degrees | 0 degrees |
+| RIGHT | 10 degrees | +80 degrees |
 
-Testing was functional prototype testing, not formal certification or calibrated performance validation. No reset was observed during the reported final test session. The later deadman, Auto interruption, radar presentation, active-buzzer, credential, and dependency corrections passed a clean compile but were not uploaded or claimed as newly physically tested.
+The scan is non-blocking and collects three ultrasonic readings per direction after configurable servo settling. Coherent finite readings are aggregated conservatively. CLEAR_NO_ECHO is a valid clear/out-of-range condition and remains distinct from SENSOR_FAULT or stale evidence. The geometry is not a calibrated angular field-of-view measurement.
 
-## 17. Repository structure
+## MPU6050 relative-turn logic
 
-```text
-.
-|-- include/              Firmware headers and configuration
-|-- src/                  Firmware and compiled dashboard sources
-|-- docs/TESTING.md       Final physical-test record
-|-- platformio.ini        Board, framework, and dependencies
-|-- CHANGELOG.md          Development history
-|-- .gitignore            Publication exclusions
-`-- README.md             Project and operating documentation
-```
+AUTO uses the same MotorController spinLeft and spinRight primitives used by Manual SPIN. At each AUTO spin:
 
-Generated builds, Git metadata, editor state, ignored local archives, and firmware binaries are excluded. The operational `include/Secrets.h` is intentionally tracked only because this is the owner's private competition/recovery repository; review, remove, or rotate private credentials before any public release. Historical snapshots and recovered release documents are retained locally under ignored `archive/` paths with provenance records.
+1. the relative-angle accumulator is reset;
+2. a fresh stopped gyro-Z sample supplies short-term bias;
+3. fresh angular-rate samples are integrated with a deadband;
+4. the spin stops around the configured 35-degree relative target; and
+5. timed fallback and a hard maximum timeout remain available if IMU data becomes unusable.
 
-## 18. Future development direction
+Repeated final physical tests produced approximately 30-35-degree AUTO spins. This is short-term relative rotation only—not compass heading, absolute yaw, localization, odometry, or SLAM.
 
-- Calibrate MQ-2 response with the installed divider and target environment.
-- Electrically verify the installed HC-SR04 echo divider and update the physical record with measured values.
-- Evaluate optional ENA/ENB PWM using the reserved pins.
-- Add host-side tests for deterministic safety and navigation logic.
-- Add authenticated transport/control if the dashboard must ever operate beyond a trusted supervised network.
-- Expand documented environmental inspection experiments without overstating sensor accuracy.
+## Environmental monitoring
 
-## 19. Author and research role
+- **DHT22:** temperature and humidity telemetry with warning/critical classification.
+- **MQ-2:** filtered analog gas/smoke/combustible-gas indication with warm-up state and relative alarm thresholds.
+- **Flame module:** digital comparator output on GPIO6, powered at 3.3 V, AO disconnected, active HIGH, with detection/clear persistence.
 
-**Md Habibur Rahman Habib**  
-Research Assistant  
-First Author and Chief Robotics Engineer
+Physical tests showed increasing MQ-2 raw values near released lighter gas, but the system is uncalibrated and makes no ppm claim.
+
+The black optical shroud remained installed for the final flame test. No false alarms were observed during that approximately 30-minute session, but earlier unshielded tests showed sunlight and object-related optical false triggering. The module is not a calibrated or certified fire detector.
+
+## Hazard response and AUTO recovery
+
+Environmental hazard behavior is:
+
+    hazard active
+      -> immediate STOP and dashboard alarm
+      -> remain stopped while hazard persists
+
+    hazard clears
+      -> require approximately 2 seconds continuously clear
+      -> reset the timer if the hazard returns
+      -> fresh LEFT / FRONT / RIGHT scan
+      -> choose a safe path
+      -> resume AUTO
+
+This automatic clear-wait/scan/resume behavior was physically observed working. Temperature-critical and other nonrecoverable safety conditions retain stop/re-arm authority.
+
+## Web dashboard
+
+The ESP32-S3 serves a responsive embedded dashboard without an external application server. It provides:
+
+- Manual mode, turn-mode selection, speed, and STOP controls;
+- AUTO mode selection and current navigation decisions;
+- live obstacle, environment, IMU, network, radio, and system telemetry;
+- preferred/selected path, relative spin, scan, blocked-retry, stuck, and hazard diagnostics;
+- SoftAP and STA provisioning/status; and
+- compact OLED-aligned safety information.
+
+Telemetry publication is change-aware and rate bounded. The interface prioritizes movement/STOP handling over background presentation work.
+
+## Communication architecture
+
+Interactive control uses local HTTP over ESP32-S3 Wi-Fi. A priority request path handles control traffic ahead of normal telemetry and auxiliary work. The dashboard refresh/deadman design limits how long a lost browser or network path can leave a Manual command active.
+
+The firmware does not provide transport authentication or encryption beyond the surrounding Wi-Fi network. Operate it only on trusted, supervised networks.
+
+## SoftAP and STA Wi-Fi
+
+Two operational paths are supported:
+
+1. **Standalone SoftAP:** direct local connection to PIKU without an external router; also serves as the recovery/fallback access path.
+2. **STA/Home Wi-Fi:** PIKU connects to a provisioned 2.4 GHz network and serves the dashboard through that network while retaining SoftAP availability.
+
+Both paths were physically tested successfully. The final STA session showed stable practical operation within approximately 30 ft/about 9 m in the tested environment, with good qualitative responsiveness and telemetry. This is not guaranteed RF coverage or formal range characterization.
+
+## nRF24 role
+
+The nRF24 is a secondary, bounded communication path for heartbeat/status exchange and future experimental machine-to-machine integration. It is not the primary interactive control channel, and peer reachability is not required for dashboard operation. Its protocol and hardware state are exposed through telemetry.
+
+## Physical validation summary
+
+| Area | Final evidence |
+| --- | --- |
+| Continuous final test | Approximately 30 minutes from fully charged 18650 batteries |
+| Useful battery period | Control, telemetry, sensing, and AUTO remained functional; low power later caused robot/network disconnect |
+| Final network | STA/Home Wi-Fi |
+| Practical tested STA radius | Approximately 30 ft/about 9 m in the tested environment |
+| SoftAP | Earlier standalone SoftAP operation physically validated |
+| AUTO navigation | Unified obstacle recovery aggressively stress-tested; previous ordinary-obstacle permanent latch not reproduced |
+| Relative spin | 35-degree configured target; approximately 30-35 degrees physically observed |
+| Reflective IR | Representative obstacles detected around approximately 7 cm in the tested setup |
+| Black IR targets | Not reliably detected |
+| Environment | Flame, MQ-2, and temperature paths worked |
+| Flame false alarms | None observed in the final shrouded 30-minute session |
+| Hazard recovery | Approximately two-second continuously-clear recovery worked |
+| Responsiveness | Control and telemetry remained qualitatively responsive |
+
+All distances, durations, angular results, range, and responsiveness statements above are prototype observations unless explicitly identified as configuration. They are not calibrated performance specifications.
+
+## Configured HC-SR04 thresholds
+
+These are software configuration values, not physically calibrated range limits:
+
+| Constant | Value | Purpose |
+| --- | ---: | --- |
+| AUTO_OBSTACLE_CM | 20.0 cm | Trustworthy front AUTO readings at or below this value initiate avoidance |
+| OBSTACLE_CM | 25 cm | General obstacle/caution threshold |
+| NEAR_OBSTACLE_CM | 7 cm | Separate near-obstacle safety threshold |
+| MANUAL_FORWARD_STOP_CM | 25 cm | Manual forward stop threshold |
+| MANUAL_FORWARD_CLEAR_CM | 30 cm | Manual forward clear hysteresis threshold |
+
+The final physical test did not instrument HC-SR04 detection exactly at 20 cm.
+
+## Known limitations
+
+- Approximately 30 minutes of useful runtime was observed in the final battery test; no voltage/current endurance curve was instrumented.
+- Reflective IR sensors can miss dark or black targets and remain surface/geometry/light dependent.
+- The low-cost flame module remains optically and environmentally sensitive despite improvement from the shroud.
+- MQ-2 output is qualitative/relative and uncalibrated; it is not ppm.
+- RF coverage and interference behavior have not been formally characterized.
+- Control responsiveness was observed qualitatively; no instrumented latency distribution was collected.
+- There are no wheel encoders, wheel odometry, absolute localization, mapping, or SLAM.
+- The dashboard uses unauthenticated HTTP and is intended only for trusted supervised networks.
+- The prototype has no production, industrial-safety, calibrated fire-detection, or calibrated gas-detection certification.
+
+## Build environment and requirements
+
+- PlatformIO Core or PlatformIO IDE
+- Environment: **esp32-s3-n16r8**
+- Board definition: **esp32-s3-devkitc-1**
+- Arduino framework for ESP32
+- 16 MB flash configuration with OPI PSRAM support
+- USB data cable and the correct ESP32-S3 serial port
+- Pinned libraries declared in platformio.ini
+
+Final clean verification:
+
+| Result | Usage |
+| --- | ---: |
+| Build | PASS, zero unexpected compiler warnings |
+| RAM | 53,524 / 327,680 bytes (16.3%) |
+| Flash | 1,009,317 / 6,553,600 bytes (15.4%) |
+
+## Build and upload instructions
+
+From the repository root:
+
+    pio run -e esp32-s3-n16r8
+
+Clean verification:
+
+    pio run -e esp32-s3-n16r8 -t clean
+    pio run -e esp32-s3-n16r8
+
+Upload only with the correct ESP32-S3 board and serial port selected, the chassis secured, wheels safely clear, and an accessible power cutoff:
+
+    pio run -e esp32-s3-n16r8 -t upload
+
+Serial monitor:
+
+    pio device monitor -b 115200
+
+The private repository intentionally tracks the deployment configuration header required by this unit, so an authorized private clone preserves the intended runnable configuration. Never print its values in logs or public documentation.
+
+## Repository structure
+
+    .
+    |-- include/
+    |   |-- PinConfig.h
+    |   |-- RobotConfig.h
+    |   |-- Secrets.h
+    |   +-- subsystem interfaces
+    |-- src/
+    |   +-- firmware and embedded dashboard implementation
+    |-- docs/
+    |   |-- PIKU_2.1_REV_A_TESTING.md
+    |   |-- COMMUNICATION_LATENCY_AUDIT.md
+    |   +-- stage and historical testing records
+    |-- platformio.ini
+    |-- README.md
+    +-- .gitignore
+
+Generated PlatformIO build output is not source-controlled.
+
+## Testing documentation
+
+The primary evidence record is [PIKU 2.1 Rev A Physical Testing Record](docs/PIKU_2.1_REV_A_TESTING.md). It preserves historical observations, build-verification boundaries, the 2026-09-10 final physical validation, and the remaining prototype limitations.
+
+Additional records:
+
+- [Communication Latency Audit](docs/COMMUNICATION_LATENCY_AUDIT.md)
+- [Stage 1 record](docs/PIKU_2_1_REV_A_STAGE1.md)
+- [Stage 2 record](docs/PIKU_2_1_REV_A_STAGE2.md)
+- [Historical testing notes](docs/TESTING.md)
+
+## Final frozen version
+
+- Commit: **8f6f2dc9a9aa507493003fda701efd953d3b13cd**
+- Annotated tag: **v2.1-revA-final**
+- Firmware version: **2.1.0-revA-stage2**
+- Status: **Physically validated functional research prototype**
+- Development state: **Standalone Rev A frozen**
+
+Further standalone Rev A feature expansion is intentionally stopped. Future improvements should occur in later revisions or CPS integration stages rather than modifying this frozen baseline.
+
+## Private repository notice
+
+**This repository is intended to remain PRIVATE.**
+
+It contains deployment-specific configuration and credentials required for complete firmware reproduction. Do not expose the repository or those credentials publicly, copy secret values into documentation, or publish generated logs containing them. Review access controls before adding collaborators, automation, mirrors, archives, or public release artifacts.
+
+Recommended private GitHub repository name:
+
+**PIKU-2.1-Rev-A-Advanced-Firmware**
+
+Recommended GitHub description:
+
+Advanced ESP32-S3 firmware for the PIKU 2.1 Rev A cyber-physical environmental inspection robot, featuring responsive Manual and autonomous navigation, MPU6050-assisted spin-based obstacle avoidance, multi-zone IR and ultrasonic sensing, environmental hazard monitoring, SoftAP/STA Wi-Fi control, telemetry, and safety-oriented recovery logic.
+
+## Author and research role
+
+**Md Habibur Rahman Habib**<br>
+Research Assistant<br>
+First Author and Chief Robotics Engineer<br>
 
 PIKU is being developed as a cyber-physical environmental inspection robotics research platform.
