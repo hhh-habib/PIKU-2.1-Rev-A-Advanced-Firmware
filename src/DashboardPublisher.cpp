@@ -175,6 +175,29 @@ bool DashboardPublisher::dashboardDataChanged(const DashboardData& current, cons
          current.speedPercent != previous.speedPercent ||
          current.obstacleDecision != previous.obstacleDecision ||
          current.navigationDecision != previous.navigationDecision ||
+         current.autoNavigationState != previous.autoNavigationState ||
+         current.autoIrZoneState != previous.autoIrZoneState ||
+         current.autoAvoidanceSource != previous.autoAvoidanceSource ||
+         current.autoPreferredPath != previous.autoPreferredPath ||
+         current.autoObstacleRecoveryAttempts != previous.autoObstacleRecoveryAttempts ||
+         current.autoBlockedRetryCount != previous.autoBlockedRetryCount ||
+         floatChanged(current.autoRelativeTurnDeg, previous.autoRelativeTurnDeg, 0.5f) ||
+         current.autoSelectedPath != previous.autoSelectedPath ||
+         current.autoTurnCompletionReason != previous.autoTurnCompletionReason ||
+         current.autoScanLeftState != previous.autoScanLeftState ||
+         current.autoScanFrontState != previous.autoScanFrontState ||
+         current.autoScanRightState != previous.autoScanRightState ||
+         floatChanged(current.autoScanLeftDistanceCm, previous.autoScanLeftDistanceCm, 0.5f) ||
+         floatChanged(current.autoScanFrontDistanceCm, previous.autoScanFrontDistanceCm, 0.5f) ||
+         floatChanged(current.autoScanRightDistanceCm, previous.autoScanRightDistanceCm, 0.5f) ||
+         current.autoScanLeftTrusted != previous.autoScanLeftTrusted ||
+         current.autoScanFrontTrusted != previous.autoScanFrontTrusted ||
+         current.autoScanRightTrusted != previous.autoScanRightTrusted ||
+         current.autoHazardRecoveryState != previous.autoHazardRecoveryState ||
+         current.autoHazardClearRemainingMs != previous.autoHazardClearRemainingMs ||
+         current.autoStuckState != previous.autoStuckState ||
+         current.autoStuckRecoveryAttempts != previous.autoStuckRecoveryAttempts ||
+         current.autoStuckLastReason != previous.autoStuckLastReason ||
          current.controlMode != previous.controlMode ||
          current.turnMode != previous.turnMode ||
          current.softApIp != previous.softApIp ||

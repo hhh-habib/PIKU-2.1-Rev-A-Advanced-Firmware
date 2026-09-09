@@ -226,6 +226,18 @@ const char DASHBOARD_HTML[] PROGMEM = R"html(
                   <div><span>Command age</span><strong id="controlCommandAge">--</strong></div>
                 </div>
 
+                <div class="control-readouts" aria-label="AUTO navigation diagnostics">
+                  <div><span>AUTO state</span><strong id="autoNavState">--</strong></div>
+                  <div><span>IR zone / source</span><strong id="autoIrSource">--</strong></div>
+                  <div><span>Relative spin</span><strong id="autoTurnAngle">--</strong></div>
+                  <div><span>Preferred / selected</span><strong id="autoSelectedPath">--</strong></div>
+                  <div><span>Spin result</span><strong id="autoTurnResult">--</strong></div>
+                  <div><span>Recovery / blocked</span><strong id="autoBlockedRetry">--</strong></div>
+                  <div><span>Scan L / F / R</span><strong id="autoScanSummary">--</strong></div>
+                  <div><span>Hazard recovery</span><strong id="autoHazardRecovery">--</strong></div>
+                  <div><span>Stuck recovery</span><strong id="autoStuckRecovery">--</strong></div>
+                </div>
+
                 <p class="control-note" id="controlAvailability">Manual controls are unavailable while AUTO mode is active.</p>
                 <div class="dpad auto" id="dpad" aria-label="Manual directional controls">
                   <button class="forward hold" type="button" data-move="FORWARD" aria-label="Move forward">
@@ -1887,6 +1899,8 @@ function renderTelemetry(d) {
   const imu = d.imu || {};
   const radio = d.radio || {};
   const display = d.display || {};
+  const autoNav = d.autoNavigation || {};
+  const autoScan = autoNav.scan || {};
   const metric = (value, digits, suffix) => value === null || value === undefined || !Number.isFinite(Number(value))
     ? '--' : Number(value).toFixed(digits) + (suffix || '');
   const ageText = value => value === null || value === undefined ? '--' : String(value) + ' ms';
@@ -1971,6 +1985,26 @@ function renderTelemetry(d) {
   setText('turnMode', d.turnMode);
   setText('controlCommandAge', ageText(d.commandAgeMs));
   setText('controlRtt', lastControlRttMs === null ? '--' : lastControlRttMs + ' ms');
+  const scanText = key => {
+    const sample = autoScan[key] || {};
+    if (sample.state === 'CLEAR_NO_ECHO') return 'CLEAR_NO_ECHO';
+    if (sample.trusted && Number.isFinite(Number(sample.distance_cm))) return Number(sample.distance_cm).toFixed(1) + ' cm';
+    return sample.state || 'NOT_SAMPLED';
+  };
+  setText('autoNavState', autoNav.state || '--');
+  setText('autoIrSource', (autoNav.ir_zone || 'CLEAR') + ' / ' +
+    (autoNav.avoidance_source || 'NONE'));
+  setText('autoTurnAngle', metric(autoNav.relative_turn_deg, 1, ' deg') + ' / ' + metric(autoNav.turn_target_deg, 1, ' deg'));
+  setText('autoSelectedPath', (autoNav.preferred_path || 'NONE') + ' / ' +
+    (autoNav.selected_path || 'NONE'));
+  setText('autoTurnResult', autoNav.turn_completion || 'NONE');
+  setText('autoBlockedRetry', 'attempt ' + (autoNav.recovery_attempts ?? 0) +
+    ' / blocked ' + (autoNav.blocked_retry_count ?? 0));
+  setText('autoScanSummary', scanText('left') + ' / ' + scanText('front') + ' / ' + scanText('right'));
+  const hazard = autoNav.hazard || {};
+  setText('autoHazardRecovery', (hazard.state || 'IDLE') + (hazard.clear_remaining_ms ? ' / ' + hazard.clear_remaining_ms + ' ms remaining' : ''));
+  const stuck = autoNav.stuck || {};
+  setText('autoStuckRecovery', (stuck.state || 'MONITORING') + ' / attempt ' + (stuck.attempts ?? 0));
 
   setText('systemFirmware', d.firmware || '--');
   setText('systemUptime', uptimeText);

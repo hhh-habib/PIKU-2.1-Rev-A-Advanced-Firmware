@@ -1060,6 +1060,23 @@ void WebDashboard::sendJson() {
          ",\"speed_percent\":" + String(_data.speedPercent) +
          ",\"obstacleDecision\":\"" + _data.obstacleDecision + "\"" +
          ",\"navigationDecision\":\"" + _data.navigationDecision + "\"" +
+         ",\"autoNavigation\":{" +
+           "\"state\":\"" + _data.autoNavigationState + "\"" +
+           ",\"ir_zone\":\"" + _data.autoIrZoneState + "\"" +
+           ",\"avoidance_source\":\"" + _data.autoAvoidanceSource + "\"" +
+           ",\"preferred_path\":\"" + _data.autoPreferredPath + "\"" +
+           ",\"recovery_attempts\":" + String(_data.autoObstacleRecoveryAttempts) +
+           ",\"blocked_retry_count\":" + String(_data.autoBlockedRetryCount) +
+           ",\"turn_target_deg\":" + jsonFloat(_data.autoTurnTargetDeg, 1) +
+           ",\"relative_turn_deg\":" + jsonFloat(_data.autoRelativeTurnDeg, 1) +
+           ",\"selected_path\":\"" + _data.autoSelectedPath + "\"" +
+           ",\"turn_completion\":\"" + _data.autoTurnCompletionReason + "\"" +
+           ",\"scan\":{" +
+             "\"left\":{\"state\":\"" + _data.autoScanLeftState + "\",\"distance_cm\":" + jsonFloat(_data.autoScanLeftDistanceCm, 1) + ",\"trusted\":" + jsonBool(_data.autoScanLeftTrusted) + "}" +
+             ",\"front\":{\"state\":\"" + _data.autoScanFrontState + "\",\"distance_cm\":" + jsonFloat(_data.autoScanFrontDistanceCm, 1) + ",\"trusted\":" + jsonBool(_data.autoScanFrontTrusted) + "}" +
+             ",\"right\":{\"state\":\"" + _data.autoScanRightState + "\",\"distance_cm\":" + jsonFloat(_data.autoScanRightDistanceCm, 1) + ",\"trusted\":" + jsonBool(_data.autoScanRightTrusted) + "}}" +
+           ",\"hazard\":{\"state\":\"" + _data.autoHazardRecoveryState + "\",\"clear_elapsed_ms\":" + String(_data.autoHazardClearElapsedMs) + ",\"clear_remaining_ms\":" + String(_data.autoHazardClearRemainingMs) + "}" +
+           ",\"stuck\":{\"state\":\"" + _data.autoStuckState + "\",\"attempts\":" + String(_data.autoStuckRecoveryAttempts) + ",\"last_reason\":\"" + _data.autoStuckLastReason + "\"}}" +
          ",\"commandSequence\":" + String(_lastCommandSequence) +
          ",\"softApIp\":\"" + _data.softApIp + "\"" +
          ",\"localHostname\":\"" + _data.localHostname + "\"" +

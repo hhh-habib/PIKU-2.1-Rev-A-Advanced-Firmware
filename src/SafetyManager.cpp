@@ -69,6 +69,14 @@ bool SafetyManager::isCritical() const {
   return _gasCritical || _flameCritical || _tempCritical;
 }
 
+bool SafetyManager::isAutoRecoverableEnvironmentalHazard() const {
+  return _gasCritical || _flameCritical;
+}
+
+bool SafetyManager::hasNonRecoverableCriticalHazard() const {
+  return _tempCritical;
+}
+
 bool SafetyManager::isCaution() const {
   return _gasCaution || _tempWarning || _ultrasonicWarning || _nearObstacleHazard;
 }

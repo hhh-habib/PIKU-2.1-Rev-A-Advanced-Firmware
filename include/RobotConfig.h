@@ -44,8 +44,8 @@ namespace RobotConfig {
   static constexpr unsigned long FLAME_CLEAR_PERSIST_MS = 200;
 
   static constexpr int CENTER_SCAN = 90;
-  static constexpr int LEFT_SCAN = 160;
-  static constexpr int RIGHT_SCAN = 20;
+  static constexpr int LEFT_SCAN = 170;
+  static constexpr int RIGHT_SCAN = 10;
 
   static constexpr int DEFAULT_MOTOR_SPEED_PERCENT = 60;
   static constexpr int MOTOR_DRIVE_MIN_PWM_PERCENT = 65;
@@ -86,15 +86,31 @@ namespace RobotConfig {
   // WiFiClient::setTimeout uses seconds in this Arduino-ESP32 release.
   static constexpr unsigned long HTTP_CLIENT_TIMEOUT_SECONDS = 1;
   static constexpr unsigned long HTTP_REQUEST_PARSE_TIMEOUT_MS = 250;
-  static constexpr unsigned long IR_RECOVERY_SETTLE_MS = 1000;
-  static constexpr unsigned long IR_RECOVERY_REVERSE_MS = 220;
-  static constexpr unsigned long AUTO_OBSTACLE_REVERSE_MS = 300;
-  static constexpr float AUTO_AVOIDANCE_TURN_TARGET_DEG = 20.0f;
+  static constexpr unsigned long AUTO_OBSTACLE_REVERSE_MS = 220;
+  static constexpr unsigned long AUTO_REVERSE_PREPARE_MS = 50;
+  static constexpr unsigned long AUTO_REVERSE_SETTLE_MS = 150;
+  static constexpr unsigned long AUTO_FRONT_CENTER_SETTLE_MS = 120;
+  static constexpr unsigned long AUTO_SCAN_SERVO_SETTLE_MS = 300;
+  static constexpr unsigned long AUTO_SCAN_SAMPLE_GAP_MS = 45;
+  static constexpr uint8_t AUTO_SCAN_SAMPLES_PER_DIRECTION = 3;
+  static constexpr unsigned long AUTO_SCAN_RECENTER_SETTLE_MS = 300;
+  static constexpr unsigned long AUTO_POST_TURN_SETTLE_MS = 300;
+  static constexpr unsigned long AUTO_INVALID_RETRY_MS = 250;
+  static constexpr float AUTO_PATH_TIE_TOLERANCE_CM = 1.0f;
+  static constexpr float AUTO_AVOIDANCE_TURN_TARGET_DEG = 35.0f;
   static constexpr float AUTO_AVOIDANCE_TURN_TOLERANCE_DEG = 1.0f;
   static constexpr float AUTO_AVOIDANCE_GYRO_DEADBAND_DPS = 2.0f;
   static constexpr unsigned long AUTO_AVOIDANCE_TURN_TIMEOUT_MS = 2500;
-  static constexpr unsigned long AUTO_AVOIDANCE_TIMED_FALLBACK_MS = 900;
-  static constexpr unsigned long IR_RECOVERY_COOLDOWN_MS = 1500;
+  static constexpr unsigned long AUTO_AVOIDANCE_TIMED_FALLBACK_MS = 1500;
+  static constexpr unsigned long AUTO_ENVIRONMENT_CLEAR_MS = 2000;
+  static constexpr unsigned long AUTO_STUCK_FORWARD_MIN_MS = 3000;
+  static constexpr unsigned long AUTO_STUCK_IMU_STILL_MS = 1500;
+  static constexpr uint8_t AUTO_STUCK_DISTANCE_SAMPLE_COUNT = 6;
+  static constexpr float AUTO_STUCK_DISTANCE_VARIATION_CM = 1.5f;
+  static constexpr unsigned long AUTO_STUCK_RETRY_RESET_FORWARD_MS = 5000;
+  static constexpr uint8_t AUTO_OBSTACLE_ATTEMPTS_BEFORE_RETRY_WAIT = 3;
+  static constexpr unsigned long AUTO_OBSTACLE_RETRY_RESET_FORWARD_MS = 5000;
+  static constexpr unsigned long AUTO_BLOCKED_RETRY_WAIT_MS = 1200;
   static constexpr unsigned long OBSTACLE_WARNING_MS = 1800;
   static constexpr int ULTRASONIC_WARNING_INVALID_COUNT = 3;
   static constexpr int ULTRASONIC_SENSOR_FAULT_COUNT = 3;

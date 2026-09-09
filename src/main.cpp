@@ -91,6 +91,7 @@ unsigned long lastManualGuardRequestMs = 0;
 unsigned long lastManualGuardSequence = 0;
 float lastManualFrontDistance = -1;
 bool criticalStopLatched = false;
+bool criticalStopRequiresManualRearm = false;
 bool manualForwardBlockedByUltrasonic = false;
 bool manualMovementActive = false;
 bool allowSlowOutputsThisPass = true;
@@ -127,6 +128,9 @@ void onDashboardCommandAccepted(const String& command,
     dashboardData.motorState = "STOP";
     dashboardData.navigationDecision = "OPERATOR_STOP";
     dashboard.markCommandApplied("STOP", sequence, "OPERATOR_STOP");
+    if (dashboard.getControlMode() == "AUTO") {
+      navigation.notifyOperatorStop();
+    }
     return;
   }
 
@@ -145,6 +149,7 @@ void onDashboardCommandAccepted(const String& command,
 
 void onDashboardModeAccepted(const String& mode) {
   stopMotors();
+  navigation.cancelForModeChange();
   manualMotorDisplayState = mode == "MANUAL" ? "STOP" : "";
   dashboardData.motorState = "STOP";
   dashboardData.navigationDecision = "MODE_CHANGE_STOP";
@@ -521,6 +526,9 @@ bool serviceLoop() {
       criticalStopLatched = true;
       criticalStopModeCommandCounter = dashboard.modeCommandCounter();
     }
+    if (safety.hasNonRecoverableCriticalHazard()) {
+      criticalStopRequiresManualRearm = true;
+    }
     if (motors.getState() != MotorState::Stopped) stopMotors();
     manualMotorDisplayState = "STOP";
     dashboard.setPendingCommand("");
@@ -833,6 +841,11 @@ void loop() {
   }
 
   if (safety.isCritical()) {
+    if (controlMode == "AUTO" &&
+        safety.isAutoRecoverableEnvironmentalHazard() &&
+        !criticalStopRequiresManualRearm) {
+      navigation.updateAuto();
+    }
     publishCurrentTelemetry(true);
     delay(1);
     return;
@@ -841,10 +854,25 @@ void loop() {
   if (criticalStopLatched) {
     if (dashboard.modeCommandCounter() != criticalStopModeCommandCounter) {
       criticalStopLatched = false;
+      criticalStopRequiresManualRearm = false;
       stopMotors();
       dashboardData.navigationDecision = controlMode == "AUTO" ? "AUTO_REARMED" : "MANUAL_CONTROL";
       dashboard.setNavigationDecision(dashboardData.navigationDecision);
     } else if (controlMode == "AUTO") {
+      if (!criticalStopRequiresManualRearm && navigation.environmentalRecoveryInProgress()) {
+        navigation.updateAuto();
+        if (navigation.consumeEnvironmentalRecoveryCompleted()) {
+          criticalStopLatched = false;
+          dashboardData.navigationDecision = "ENVIRONMENTAL_RECOVERY_COMPLETE";
+          dashboard.setNavigationDecision(dashboardData.navigationDecision);
+        } else {
+          publishCurrentTelemetry(true);
+          delay(1);
+          return;
+        }
+      }
+    }
+    if (criticalStopLatched && controlMode == "AUTO") {
       stopMotors();
       dashboardData.navigationDecision = "SAFETY_CLEARED_STOP";
       dashboard.setNavigationDecision(dashboardData.navigationDecision);

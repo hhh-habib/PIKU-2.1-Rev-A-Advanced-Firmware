@@ -11,6 +11,8 @@ public:
   void begin();
   void update(const SensorSnapshot& snapshot);
   bool isCritical() const;
+  bool isAutoRecoverableEnvironmentalHazard() const;
+  bool hasNonRecoverableCriticalHazard() const;
   bool isCaution() const;
   bool isIrObstacleActive() const;
   bool isLeftIrObstacleActive() const;
