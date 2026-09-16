@@ -541,10 +541,11 @@ Recommended GitHub description:
 
 Advanced ESP32-S3 firmware for the PIKU 2.1 Rev A cyber-physical environmental inspection robot, featuring responsive Manual and autonomous navigation, MPU6050-assisted spin-based obstacle avoidance, multi-zone IR and ultrasonic sensing, environmental hazard monitoring, SoftAP/STA Wi-Fi control, telemetry, and safety-oriented recovery logic.
 
-## Author and research role
+## Researcher / Development Lead
 
-**Md Habibur Rahman Habib**<br>
-Research Assistant<br>
-First Author and Chief Robotics Engineer<br>
+**Md. Habibur Rahman Habib**
 
-PIKU is being developed as a cyber-physical environmental inspection robotics research platform.
+**First Author & Lead Developer / System Architect — Hardware and Embedded Software, PIKU 2.1 Rev A**
+
+Department of Electrical and Electronic Engineering\
+Independent University, Bangladesh
