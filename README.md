@@ -1,20 +1,20 @@
 # PIKU 2.1 Rev A — Advanced Firmware
 
-Advanced ESP32-S3 firmware for the PIKU 2.1 Rev A cyber-physical environmental inspection robot, featuring responsive Manual control, autonomous navigation, MPU6050-assisted 35-degree spin-based obstacle avoidance, low-mounted IR and servo-mounted ultrasonic sensing, environmental hazard monitoring, SoftAP/STA Wi-Fi operation, real-time telemetry, and safety-oriented recovery logic.
+ESP32-S3 firmware for the PIKU 2.1 Rev A cyber-physical environmental inspection robot. The frozen standalone implementation combines responsive Manual control, reactive AUTO navigation, MPU6050-assisted 35-degree spin-based obstacle avoidance, low-mounted IR and servo-mounted ultrasonic sensing, environmental hazard monitoring, SoftAP/STA Wi-Fi operation, real-time telemetry, and safety-oriented recovery logic.
 
-## New to PIKU?
+## Project Orientation
 
-PIKU is a long-term Intelligent Robotics and Cyber-Physical Systems research platform. This repository contains the validated standalone firmware for the PIKU 2.1 Rev A robot. This stage focuses on making the robot independently reliable before deeper CPS integration. A later Stage 4 repository connects this robot foundation with other CPS nodes.
+PIKU is a long-term Intelligent Robotics and Cyber-Physical Systems research platform. This repository contains the validated standalone firmware for the PIKU 2.1 Rev A robot. Rev A establishes an independently reliable robot foundation before deeper CPS integration; the later Stage 4 repository connects that foundation with other CPS nodes.
 
 For a beginner-friendly walkthrough of the firmware, see [Software Explanation](SOFTWARE_EXPLANATION.md).
 
-## Project overview
+## Project Overview
 
 PIKU 2.1 Rev A is a standalone four-wheel mobile research prototype built around an ESP32-S3. It combines locomotion, multi-zone obstacle sensing, environmental monitoring, browser-based operation, local safety decisions, and autonomous recovery in one firmware project.
 
 The frozen firmware supports supervised research, education, and prototype demonstrations. It is not production or industrial safety equipment.
 
-## Research context
+## Research Context
 
 PIKU is being developed as a cyber-physical environmental inspection robotics research platform. Rev A investigates how a compact mobile robot can combine:
 
@@ -41,7 +41,7 @@ The black technical blueprint provides a compact engineering overview of the Rev
 
 ## Position in the PIKU Research Roadmap
 
-PIKU is being developed through multiple robot and CPS stages rather than as one single finished robot.
+PIKU progresses through distinct robot and CPS stages rather than a single monolithic development stage.
 
 | Stage | Role |
 | --- | --- |
@@ -61,9 +61,9 @@ PIKU is being developed through multiple robot and CPS stages rather than as one
       → Stage 4 CPS Integration
       → Multi-node CPS Platform
 
-This repository is not the final multi-node CPS. It is the validated standalone PIKU 2.1 Rev A firmware foundation. That standalone foundation is later migrated into PIKU 2.1 Rev A Stage 4 CPS Integration, where PIKU 2.1 operates as a CPS-connected mobile agent alongside CPS Node V1 and PIKU 2.0.1. Stage 4 behavior and the future capabilities listed above are not implemented claims for this repository.
+This repository provides the validated standalone PIKU 2.1 Rev A firmware foundation; it is not the final multi-node CPS. Stage 4 migrates that foundation into the multi-node architecture, where PIKU 2.1 operates as a CPS-connected mobile agent alongside CPS Node V1 and PIKU 2.0.1. Stage 4 behavior and the future capabilities listed above are not implemented claims for this repository.
 
-## Key capabilities
+## Key Capabilities
 
 - Manual forward, reverse, left, right, STOP, Pivot, and Spin control
 - Configurable drive speed with pointer-release and deadman protections
@@ -79,7 +79,7 @@ This repository is not the final multi-node CPS. It is the validated standalone 
 - Secondary nRF24 heartbeat/experimental machine-to-machine path
 - SPI SH1106 OLED status display
 
-## Hardware platform
+## Hardware Platform
 
 | Area | Frozen Rev A hardware |
 | --- | --- |
@@ -97,7 +97,7 @@ This repository is not the final multi-node CPS. It is the validated standalone 
 
 The flame module is powered from 3.3 V. Its DO output is connected to GPIO6, AO is disconnected, active polarity is HIGH, and a small black optical shroud is installed in the final tested hardware.
 
-## Pin mapping
+## Pin Mapping
 
 | Function | GPIO |
 | --- | ---: |
@@ -118,7 +118,7 @@ The flame module is powered from 3.3 V. Its DO output is connected to GPIO6, AO 
 
 The SH1106 OLED and nRF24 share the MOSI/SCK SPI bus. The frozen pin map contains 24 unique nonnegative assignments; GPIO16 remains intentionally unallocated.
 
-## Firmware architecture
+## Firmware Architecture
 
 | Component | Responsibility |
 | --- | --- |
@@ -212,7 +212,7 @@ flowchart TD
     authority["Cooperative priority-aware control / motion authority<br/>not hard real-time scheduling or functional-safety certification"] -.-> cycle
 ```
 
-## Manual mode
+## Manual Mode
 
 Manual mode provides Forward, Backward, Left, Right, and STOP commands with selectable Pivot or Spin turning and configurable speed.
 
@@ -223,9 +223,9 @@ Manual mode provides Forward, Backward, Left, Right, and STOP commands with sele
 - Pointer/touch release, cancellation, visibility loss, page exit, STOP, mode changes, and safety events preserve explicit stop behavior.
 - Forward commands remain subject to fresh front-ultrasonic safety checks.
 
-The browser controls were physically observed as practically responsive. No instrumented latency distribution was collected.
+In physical testing, the browser controls were observed to be practically responsive. No instrumented latency distribution was collected.
 
-## Autonomous navigation
+## Reactive AUTO Navigation
 
 The physically validated ordinary-obstacle flow is:
 
@@ -281,7 +281,7 @@ stateDiagram-v2
     CriticalAbort --> [*]
 ```
 
-## Multi-zone obstacle avoidance
+## Multi-Zone Obstacle Avoidance
 
 The obstacle sensors cover different physical zones:
 
@@ -292,7 +292,7 @@ The obstacle sensors cover different physical zones:
 
 Fresh evidence can override a directional preference when the preferred side is unsafe. A clear HC-SR04 result cannot cancel valid IR evidence, and clear IR inputs cannot cancel a valid HC-SR04 obstacle.
 
-## Scan and servo behavior
+## Scan and Servo Behavior
 
 | Physical view | Servo command | Approximate logical view |
 | --- | ---: | ---: |
@@ -302,7 +302,7 @@ Fresh evidence can override a directional preference when the preferred side is 
 
 The scan is non-blocking and collects three ultrasonic readings per direction after configurable servo settling. Coherent finite readings are aggregated conservatively. CLEAR_NO_ECHO is a valid clear/out-of-range condition and remains distinct from SENSOR_FAULT or stale evidence. The geometry is not a calibrated angular field-of-view measurement.
 
-## MPU6050 relative-turn logic
+## MPU6050 Relative-Turn Logic
 
 AUTO uses the same MotorController spinLeft and spinRight primitives used by Manual SPIN. At each AUTO spin:
 
@@ -314,7 +314,7 @@ AUTO uses the same MotorController spinLeft and spinRight primitives used by Man
 
 Repeated final physical tests produced approximately 30-35-degree AUTO spins. This is short-term relative rotation only—not compass heading, absolute yaw, localization, odometry, or SLAM.
 
-## Environmental monitoring
+## Environmental Monitoring
 
 - **DHT22:** temperature and humidity telemetry with warning/critical classification.
 - **MQ-2:** filtered analog gas/smoke/combustible-gas indication with warm-up state and relative alarm thresholds.
@@ -324,7 +324,7 @@ Physical tests showed increasing MQ-2 raw values near released lighter gas, but 
 
 The black optical shroud remained installed for the final flame test. No false alarms were observed during that approximately 30-minute session, but earlier unshielded tests showed sunlight and object-related optical false triggering. The module is not a calibrated or certified fire detector.
 
-## Hazard response and AUTO recovery
+## Hazard Response and AUTO Recovery
 
 Environmental hazard behavior is:
 
@@ -341,7 +341,7 @@ Environmental hazard behavior is:
 
 This automatic clear-wait/scan/resume behavior was physically observed working. Temperature-critical and other nonrecoverable safety conditions retain stop/re-arm authority.
 
-## Web dashboard
+## Browser Supervision and Dashboard
 
 The ESP32-S3 serves a responsive embedded dashboard without an external application server. It provides:
 
@@ -354,7 +354,7 @@ The ESP32-S3 serves a responsive embedded dashboard without an external applicat
 
 Telemetry publication is change-aware and rate bounded. The interface prioritizes movement/STOP handling over background presentation work.
 
-## Communication architecture
+## Communication Architecture
 
 Interactive control uses local HTTP over ESP32-S3 Wi-Fi. A priority request path handles control traffic ahead of normal telemetry and auxiliary work. The dashboard refresh/deadman design limits how long a lost browser or network path can leave a Manual command active.
 
@@ -391,11 +391,11 @@ Two operational paths are supported:
 
 Both paths were physically tested successfully. The final STA session showed stable practical operation within approximately 30 ft/about 9 m in the tested environment, with good qualitative responsiveness and telemetry. This is not guaranteed RF coverage or formal range characterization.
 
-## nRF24 role
+## nRF24 Role
 
 The nRF24 is a secondary, bounded communication path for heartbeat/status exchange and future experimental machine-to-machine integration. It is not the primary interactive control channel, and peer reachability is not required for dashboard operation. Its protocol and hardware state are exposed through telemetry.
 
-## Physical validation summary
+## Physical Validation Summary
 
 | Area | Final evidence |
 | --- | --- |
@@ -404,7 +404,7 @@ The nRF24 is a secondary, bounded communication path for heartbeat/status exchan
 | Final network | STA/Home Wi-Fi |
 | Practical tested STA radius | Approximately 30 ft/about 9 m in the tested environment |
 | SoftAP | Earlier standalone SoftAP operation physically validated |
-| AUTO navigation | Unified obstacle recovery aggressively stress-tested; previous ordinary-obstacle permanent latch not reproduced |
+| AUTO navigation | Unified obstacle recovery stress-tested; previous ordinary-obstacle permanent latch not reproduced |
 | Relative spin | 35-degree configured target; approximately 30-35 degrees physically observed |
 | Reflective IR | Representative obstacles detected around approximately 7 cm in the tested setup |
 | Black IR targets | Not reliably detected |
@@ -415,7 +415,7 @@ The nRF24 is a secondary, bounded communication path for heartbeat/status exchan
 
 All distances, durations, angular results, range, and responsiveness statements above are prototype observations unless explicitly identified as configuration. They are not calibrated performance specifications.
 
-## Configured HC-SR04 thresholds
+## Configured HC-SR04 Thresholds
 
 These are software configuration values, not physically calibrated range limits:
 
@@ -429,7 +429,7 @@ These are software configuration values, not physically calibrated range limits:
 
 The final physical test did not instrument HC-SR04 detection exactly at 20 cm.
 
-## Known limitations
+## Known Limitations
 
 - Approximately 30 minutes of useful runtime was observed in the final battery test; no voltage/current endurance curve was instrumented.
 - Reflective IR sensors can miss dark or black targets and remain surface/geometry/light dependent.
@@ -441,7 +441,7 @@ The final physical test did not instrument HC-SR04 detection exactly at 20 cm.
 - The dashboard uses unauthenticated HTTP and is intended only for trusted supervised networks.
 - The prototype has no production, industrial-safety, calibrated fire-detection, or calibrated gas-detection certification.
 
-## Build environment and requirements
+## Build Environment and Requirements
 
 - PlatformIO Core or PlatformIO IDE
 - Environment: **esp32-s3-n16r8**
@@ -451,7 +451,7 @@ The final physical test did not instrument HC-SR04 detection exactly at 20 cm.
 - USB data cable and the correct ESP32-S3 serial port
 - Pinned libraries declared in platformio.ini
 
-Final clean verification:
+Frozen build verification:
 
 | Result | Usage |
 | --- | ---: |
@@ -459,7 +459,7 @@ Final clean verification:
 | RAM | 53,524 / 327,680 bytes (16.3%) |
 | Flash | 1,009,317 / 6,553,600 bytes (15.4%) |
 
-## Build and upload instructions
+## Build and Upload Instructions
 
 From the repository root:
 
@@ -480,7 +480,7 @@ Serial monitor:
 
 The private repository intentionally tracks the deployment configuration header required by this unit, so an authorized private clone preserves the intended runnable configuration. Never print its values in logs or public documentation.
 
-## Repository structure
+## Repository Structure
 
     .
     |-- include/
@@ -506,7 +506,7 @@ The private repository intentionally tracks the deployment configuration header 
 
 Generated PlatformIO build output is not source-controlled.
 
-## Testing documentation
+## Testing Documentation
 
 The primary evidence record is [PIKU 2.1 Rev A Physical Testing Record](docs/PIKU_2.1_REV_A_TESTING.md). It preserves historical observations, build-verification boundaries, the 2026-09-10 final physical validation, and the remaining prototype limitations.
 
@@ -517,7 +517,7 @@ Additional records:
 - [Stage 2 record](docs/PIKU_2_1_REV_A_STAGE2.md)
 - [Historical testing notes](docs/TESTING.md)
 
-## Final frozen version
+## Final Frozen Version
 
 - Commit: **8f6f2dc9a9aa507493003fda701efd953d3b13cd**
 - Annotated tag: **v2.1-revA-final**
@@ -527,19 +527,11 @@ Additional records:
 
 Further standalone Rev A feature expansion is intentionally stopped. Future improvements should occur in later revisions or CPS integration stages rather than modifying this frozen baseline.
 
-## Private repository notice
+## Private Repository Notice
 
-**This repository is intended to remain PRIVATE.**
+This repository is intended to remain private because complete firmware reproduction may depend on deployment-specific configuration and credentials.
 
-It contains deployment-specific configuration and credentials required for complete firmware reproduction. Do not expose the repository or those credentials publicly, copy secret values into documentation, or publish generated logs containing them. Review access controls before adding collaborators, automation, mirrors, archives, or public release artifacts.
-
-Recommended private GitHub repository name:
-
-**PIKU-2.1-Rev-A-Advanced-Firmware**
-
-Recommended GitHub description:
-
-Advanced ESP32-S3 firmware for the PIKU 2.1 Rev A cyber-physical environmental inspection robot, featuring responsive Manual and autonomous navigation, MPU6050-assisted spin-based obstacle avoidance, multi-zone IR and ultrasonic sensing, environmental hazard monitoring, SoftAP/STA Wi-Fi control, telemetry, and safety-oriented recovery logic.
+Do not publish secret values, credentials, private network information, or generated logs containing them. Review repository access controls before adding collaborators, mirrors, archives, automation, or public-release artifacts.
 
 ## Researcher / Development Lead
 
