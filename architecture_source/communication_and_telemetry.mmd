@@ -1,0 +1,19 @@
+flowchart LR
+    browser["Human browser"] <-->|"local HTTP"| wifi["SoftAP or STA/Home Wi-Fi"]
+    wifi <--> priority["PriorityWebServer"]
+    priority <--> dashboard["WebDashboard"]
+    dashboard <-->|"commands / mode / control state"| main["main.cpp command / control path"]
+
+    sensorState["SensorManager state"] --> publisher["DashboardPublisher<br/>change-aware telemetry"]
+    navigationState["NavigationManager state"] --> publisher
+    safetyState["SafetyManager state"] --> publisher
+    systemState["System / motor / IMU / network state"] --> publisher
+    publisher --> dashboard
+    dashboard -->|"telemetry JSON"| priority
+
+    publisher --> display["DisplayManager"]
+    display --> oled["SH1106 OLED"]
+    main <--> radio["RadioManager"]
+    radio <-->|"bounded secondary / experimental M2M path"| nrf["nRF24"]
+
+    trust["Trusted supervised network<br/>no firmware-provided HTTP authentication"] -.-> wifi

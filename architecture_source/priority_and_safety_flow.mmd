@@ -1,0 +1,30 @@
+flowchart TD
+    cycle["main.cpp cooperative control pass"] --> stopCheck{"STOP or operator fail-safe active?"}
+    stopCheck -->|"yes"| stopped["Stop MotorController output<br/>hold motion"]
+    stopCheck -->|"no"| criticalCheck{"Active critical hazard?"}
+    criticalCheck -->|"yes"| safetyStop["SafetyManager blocks motion<br/>stop and require applicable recovery / re-arm"]
+    criticalCheck -->|"no"| modeCheck{"Control mode"}
+
+    modeCheck -->|"Manual"| validity{"Manual command valid<br/>and deadman current?"}
+    validity -->|"no"| deadmanStop["Fail-safe STOP"]
+    validity -->|"yes"| evidence{"Fresh control-sensor evidence permits motion?"}
+    evidence -->|"no"| evidenceStop["Safety / obstacle STOP"]
+    evidence -->|"yes"| manual["DriveCommandHandler<br/>Manual dispatch"]
+
+    modeCheck -->|"AUTO"| autoEvidence{"Fresh control-sensor evidence permits AUTO?"}
+    autoEvidence -->|"no"| autoStop["STOP, recovery wait, or fresh rescan"]
+    autoEvidence -->|"yes"| auto["NavigationManager<br/>state-machine AUTO behavior"]
+
+    manual --> motor["MotorController motion output"]
+    auto --> motor
+    stopped --> lower["Lower-priority presentation work when allowed"]
+    safetyStop --> lower
+    deadmanStop --> lower
+    evidenceStop --> lower
+    autoStop --> lower
+    motor --> lower
+    lower --> telemetry["DashboardPublisher / telemetry"]
+    lower --> display["DisplayManager / OLED"]
+    lower --> radio["RadioManager / bounded nRF24 work"]
+
+    authority["Cooperative priority-aware control / motion authority<br/>not hard real-time scheduling or functional-safety certification"] -.-> cycle

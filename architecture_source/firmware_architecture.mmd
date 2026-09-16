@@ -1,0 +1,36 @@
+flowchart TB
+    note["Cooperative/state-machine-driven firmware; arrows show control/data relationships, not separate real-time tasks."]
+
+    human["Human supervisor"] <-->|"local HTTP supervision / control"| web["WebDashboard"]
+    web <--> priority["PriorityWebServer"]
+    web <-->|"commands, mode, status"| main["main.cpp<br/>cooperative service / control loop"]
+
+    sensors["Physical sensors / environment"] --> sensorManager["SensorManager<br/>sensor evidence"]
+    sensorManager --> safety["SafetyManager<br/>hazard and safety authority"]
+    sensorManager --> navigation["NavigationManager<br/>AUTO progression"]
+    sensorManager --> main
+    safety --> main
+    safety --> navigation
+
+    main --> drive["DriveCommandHandler<br/>Manual command dispatch"]
+    drive --> motor["MotorController<br/>motor output ownership"]
+    main --> navigation
+    navigation --> motor
+    navigation <--> scanner["ServoScanner<br/>scanning-head movement"]
+    navigation <--> imu["ImuManager<br/>short-term motion / relative-turn information"]
+
+    motor --> robot["Physical drivetrain / robot"]
+    scanner --> robot
+    robot --> sensors
+
+    main --> publisher["DashboardPublisher<br/>change-aware telemetry / status"]
+    sensorManager --> publisher
+    safety --> publisher
+    navigation --> publisher
+    publisher --> web
+    publisher --> display["DisplayManager"]
+    display --> oled["SH1106 OLED"]
+
+    main <--> radio["RadioManager"]
+    radio <-->|"bounded secondary nRF24 path"| peer["nRF24 peer"]
+    note -.-> main

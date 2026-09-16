@@ -1,0 +1,37 @@
+stateDiagram-v2
+    [*] --> AutoForward
+    AutoForward --> ObstacleStop: obstacle evidence
+    ObstacleStop --> ReversePreparation: motors stopped
+    ReversePreparation --> Reverse: preparation complete
+    Reverse --> ReverseSettle: bounded reverse complete
+    ReverseSettle --> FreshScan: settled
+    FreshScan --> Recenter: fresh LEFT / FRONT / RIGHT evidence
+    Recenter --> ChooseSaferDirection: head centered
+    ChooseSaferDirection --> RelativeTurn: safe side available
+    ChooseSaferDirection --> AutoForward: environmental recovery; front is safest
+    ChooseSaferDirection --> BlockedRetry: no safe side
+    BlockedRetry --> FreshScan: stopped rescan / retry
+    RelativeTurn --> PostTurnStop: gyro-assisted relative turn complete
+    PostTurnStop --> FreshReevaluation: settled
+    FreshReevaluation --> AutoForward: safe to continue AUTO
+    FreshReevaluation --> ObstacleStop: obstacle remains
+
+    AutoForward --> EnvironmentalHazard: recoverable environmental hazard active
+    ObstacleStop --> EnvironmentalHazard: recoverable environmental hazard active
+    RelativeTurn --> EnvironmentalHazard: recoverable environmental hazard active
+    EnvironmentalHazard --> HazardClearWait: hazard clears
+    HazardClearWait --> EnvironmentalHazard: hazard returns
+    HazardClearWait --> FreshScan: continuously clear; fresh recovery scan
+
+    AutoForward --> OperatorAbort: operator STOP / mode change
+    ObstacleStop --> OperatorAbort: operator STOP / mode change
+    BlockedRetry --> OperatorAbort: operator STOP / mode change
+    HazardClearWait --> OperatorAbort: operator STOP / mode change
+
+    AutoForward --> CriticalAbort: nonrecoverable critical hazard
+    ObstacleStop --> CriticalAbort: nonrecoverable critical hazard
+    RelativeTurn --> CriticalAbort: nonrecoverable critical hazard
+    EnvironmentalHazard --> CriticalAbort: nonrecoverable critical hazard
+
+    OperatorAbort --> [*]
+    CriticalAbort --> [*]

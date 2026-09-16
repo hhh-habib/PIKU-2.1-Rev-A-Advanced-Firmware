@@ -27,6 +27,18 @@ PIKU is being developed as a cyber-physical environmental inspection robotics re
 
 Rev A does not provide mapping, SLAM, absolute localization, compass heading, or wheel odometry.
 
+## Architecture at a Glance
+
+![PIKU 2.1 Rev A software architecture](figures/architecture/PIKU_2.1_Rev_A_Software_Architecture.png)
+
+This figure is a high-level visual summary of the frozen standalone Rev A software architecture. It complements, rather than replaces, the implementation-grounded documentation below.
+
+### Technical Blueprint
+
+![PIKU 2.1 Rev A technical blueprint](figures/architecture/PIKU_2.1_Rev_A_Technical_Blueprint_Black.png)
+
+The black technical blueprint provides a compact engineering overview of the Rev A prototype and its supporting architecture.
+
 ## Position in the PIKU Research Roadmap
 
 PIKU is being developed through multiple robot and CPS stages rather than as one single finished robot.
@@ -124,7 +136,81 @@ The SH1106 OLED and nRF24 share the MOSI/SCK SPI bus. The frozen pin map contain
 | RadioManager | Bounded nRF24 heartbeat and receive handling |
 | DisplayManager | Local OLED telemetry and warnings |
 
+```mermaid
+flowchart TB
+    note["Cooperative/state-machine-driven firmware; arrows show control/data relationships, not separate real-time tasks."]
+
+    human["Human supervisor"] <-->|"local HTTP supervision / control"| web["WebDashboard"]
+    web <--> priority["PriorityWebServer"]
+    web <-->|"commands, mode, status"| main["main.cpp<br/>cooperative service / control loop"]
+
+    sensors["Physical sensors / environment"] --> sensorManager["SensorManager<br/>sensor evidence"]
+    sensorManager --> safety["SafetyManager<br/>hazard and safety authority"]
+    sensorManager --> navigation["NavigationManager<br/>AUTO progression"]
+    sensorManager --> main
+    safety --> main
+    safety --> navigation
+
+    main --> drive["DriveCommandHandler<br/>Manual command dispatch"]
+    drive --> motor["MotorController<br/>motor output ownership"]
+    main --> navigation
+    navigation --> motor
+    navigation <--> scanner["ServoScanner<br/>scanning-head movement"]
+    navigation <--> imu["ImuManager<br/>short-term motion / relative-turn information"]
+
+    motor --> robot["Physical drivetrain / robot"]
+    scanner --> robot
+    robot --> sensors
+
+    main --> publisher["DashboardPublisher<br/>change-aware telemetry / status"]
+    sensorManager --> publisher
+    safety --> publisher
+    navigation --> publisher
+    publisher --> web
+    publisher --> display["DisplayManager"]
+    display --> oled["SH1106 OLED"]
+
+    main <--> radio["RadioManager"]
+    radio <-->|"bounded secondary nRF24 path"| peer["nRF24 peer"]
+    note -.-> main
+```
+
+The auditable Mermaid sources for this architecture and the control, recovery, and communication views are in [`architecture_source/`](architecture_source/).
+
 Control and safety work remain ahead of slower display, environmental, and radio tasks. Navigation is timestamp/state driven so HTTP, STOP, mode changes, sensing, telemetry, and Manual deadman handling continue between maneuver steps.
+
+```mermaid
+flowchart TD
+    cycle["main.cpp cooperative control pass"] --> stopCheck{"STOP or operator fail-safe active?"}
+    stopCheck -->|"yes"| stopped["Stop MotorController output<br/>hold motion"]
+    stopCheck -->|"no"| criticalCheck{"Active critical hazard?"}
+    criticalCheck -->|"yes"| safetyStop["SafetyManager blocks motion<br/>stop and require applicable recovery / re-arm"]
+    criticalCheck -->|"no"| modeCheck{"Control mode"}
+
+    modeCheck -->|"Manual"| validity{"Manual command valid<br/>and deadman current?"}
+    validity -->|"no"| deadmanStop["Fail-safe STOP"]
+    validity -->|"yes"| evidence{"Fresh control-sensor evidence permits motion?"}
+    evidence -->|"no"| evidenceStop["Safety / obstacle STOP"]
+    evidence -->|"yes"| manual["DriveCommandHandler<br/>Manual dispatch"]
+
+    modeCheck -->|"AUTO"| autoEvidence{"Fresh control-sensor evidence permits AUTO?"}
+    autoEvidence -->|"no"| autoStop["STOP, recovery wait, or fresh rescan"]
+    autoEvidence -->|"yes"| auto["NavigationManager<br/>state-machine AUTO behavior"]
+
+    manual --> motor["MotorController motion output"]
+    auto --> motor
+    stopped --> lower["Lower-priority presentation work when allowed"]
+    safetyStop --> lower
+    deadmanStop --> lower
+    evidenceStop --> lower
+    autoStop --> lower
+    motor --> lower
+    lower --> telemetry["DashboardPublisher / telemetry"]
+    lower --> display["DisplayManager / OLED"]
+    lower --> radio["RadioManager / bounded nRF24 work"]
+
+    authority["Cooperative priority-aware control / motion authority<br/>not hard real-time scheduling or functional-safety certification"] -.-> cycle
+```
 
 ## Manual mode
 
@@ -154,6 +240,46 @@ The physically validated ordinary-obstacle flow is:
       -> continue AUTO or retry safely
 
 Ordinary obstacle confusion no longer permanently abandons AUTO. After bounded active attempts, the robot remains stopped in a non-blocking retry state and periodically rescans. User STOP, leaving AUTO, an active environmental hazard, and serious sensor fault/stale evidence retain higher safety authority.
+
+```mermaid
+stateDiagram-v2
+    [*] --> AutoForward
+    AutoForward --> ObstacleStop: obstacle evidence
+    ObstacleStop --> ReversePreparation: motors stopped
+    ReversePreparation --> Reverse: preparation complete
+    Reverse --> ReverseSettle: bounded reverse complete
+    ReverseSettle --> FreshScan: settled
+    FreshScan --> Recenter: fresh LEFT / FRONT / RIGHT evidence
+    Recenter --> ChooseSaferDirection: head centered
+    ChooseSaferDirection --> RelativeTurn: safe side available
+    ChooseSaferDirection --> AutoForward: environmental recovery; front is safest
+    ChooseSaferDirection --> BlockedRetry: no safe side
+    BlockedRetry --> FreshScan: stopped rescan / retry
+    RelativeTurn --> PostTurnStop: gyro-assisted relative turn complete
+    PostTurnStop --> FreshReevaluation: settled
+    FreshReevaluation --> AutoForward: safe to continue AUTO
+    FreshReevaluation --> ObstacleStop: obstacle remains
+
+    AutoForward --> EnvironmentalHazard: recoverable environmental hazard active
+    ObstacleStop --> EnvironmentalHazard: recoverable environmental hazard active
+    RelativeTurn --> EnvironmentalHazard: recoverable environmental hazard active
+    EnvironmentalHazard --> HazardClearWait: hazard clears
+    HazardClearWait --> EnvironmentalHazard: hazard returns
+    HazardClearWait --> FreshScan: continuously clear; fresh recovery scan
+
+    AutoForward --> OperatorAbort: operator STOP / mode change
+    ObstacleStop --> OperatorAbort: operator STOP / mode change
+    BlockedRetry --> OperatorAbort: operator STOP / mode change
+    HazardClearWait --> OperatorAbort: operator STOP / mode change
+
+    AutoForward --> CriticalAbort: nonrecoverable critical hazard
+    ObstacleStop --> CriticalAbort: nonrecoverable critical hazard
+    RelativeTurn --> CriticalAbort: nonrecoverable critical hazard
+    EnvironmentalHazard --> CriticalAbort: nonrecoverable critical hazard
+
+    OperatorAbort --> [*]
+    CriticalAbort --> [*]
+```
 
 ## Multi-zone obstacle avoidance
 
@@ -233,6 +359,28 @@ Telemetry publication is change-aware and rate bounded. The interface prioritize
 Interactive control uses local HTTP over ESP32-S3 Wi-Fi. A priority request path handles control traffic ahead of normal telemetry and auxiliary work. The dashboard refresh/deadman design limits how long a lost browser or network path can leave a Manual command active.
 
 The firmware does not provide transport authentication or encryption beyond the surrounding Wi-Fi network. Operate it only on trusted, supervised networks.
+
+```mermaid
+flowchart LR
+    browser["Human browser"] <-->|"local HTTP"| wifi["SoftAP or STA/Home Wi-Fi"]
+    wifi <--> priority["PriorityWebServer"]
+    priority <--> dashboard["WebDashboard"]
+    dashboard <-->|"commands / mode / control state"| main["main.cpp command / control path"]
+
+    sensorState["SensorManager state"] --> publisher["DashboardPublisher<br/>change-aware telemetry"]
+    navigationState["NavigationManager state"] --> publisher
+    safetyState["SafetyManager state"] --> publisher
+    systemState["System / motor / IMU / network state"] --> publisher
+    publisher --> dashboard
+    dashboard -->|"telemetry JSON"| priority
+
+    publisher --> display["DisplayManager"]
+    display --> oled["SH1106 OLED"]
+    main <--> radio["RadioManager"]
+    radio <-->|"bounded secondary / experimental M2M path"| nrf["nRF24"]
+
+    trust["Trusted supervised network<br/>no firmware-provided HTTP authentication"] -.-> wifi
+```
 
 ## SoftAP and STA Wi-Fi
 
@@ -346,6 +494,11 @@ The private repository intentionally tracks the deployment configuration header 
     |   |-- PIKU_2.1_REV_A_TESTING.md
     |   |-- COMMUNICATION_LATENCY_AUDIT.md
     |   +-- stage and historical testing records
+    |-- architecture_source/
+    |   +-- auditable Mermaid diagram sources
+    |-- figures/
+    |   +-- architecture/
+    |       +-- finalized architecture PNGs
     |-- platformio.ini
     |-- SOFTWARE_EXPLANATION.md
     |-- README.md
