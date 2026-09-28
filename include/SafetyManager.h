@@ -19,9 +19,9 @@ public:
   bool isRightIrObstacleActive() const;
   bool isNearObstacleHazardActive() const;
   bool isUltrasonicWarningActive() const;
-  bool blocksMotion() const;
+  bool blocksMotion(bool allowFlameGas = false) const;
   bool blocksForwardMotion() const;
-  bool blocksManualForwardMotion() const;
+  bool blocksManualForwardMotion(bool allowFlameGas = false) const;
   bool stateChanged();
   String stateName() const;
   String alarmReason() const;

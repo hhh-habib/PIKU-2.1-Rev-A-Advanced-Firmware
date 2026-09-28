@@ -112,6 +112,9 @@ void WebDashboard::begin(const char* ssid, const char* password, const char* sta
   _server.on("/turn-mode", [this]() { handleTurnMode(); });
   _server.on("/speed", [this]() { handleSpeed(); });
   _server.on("/cmd", [this]() { handleCommand(); });
+  _server.on("/control-session", HTTP_POST, [this]() { handleSession(); });
+  _server.on("/control-heartbeat", HTTP_POST, [this]() { handleSessionHeartbeat(); });
+  _server.on("/manual-override", HTTP_POST, [this]() { handleOverride(); });
   _server.on("/sensor-head", [this]() { handleSensorHead(); });
   _server.on("/alarm/enable", [this]() { handleAlarmEnable(); });
   _server.on("/alarm/mute", [this]() { handleAlarmMute(); });
@@ -185,6 +188,30 @@ void WebDashboard::setControlCallbacks(CommandAcceptedCallback commandCallback,
   _modeAcceptedCallback = modeCallback;
 }
 
+void WebDashboard::setOverrideCallback(OverrideActionCallback callback) {
+  _overrideActionCallback = callback;
+}
+
+void WebDashboard::setManualOverrideState(bool enabled) {
+  _data.manualFlameGasOverride = enabled;
+}
+
+void WebDashboard::invalidateControlSession() {
+  _sessionToken = "";
+  _lastSessionHeartbeatMs = 0;
+  _requireFreshSessionAfterOverride = true;
+}
+
+bool WebDashboard::sessionAlive() const {
+  return _sessionToken.length() > 0 && _lastSessionHeartbeatMs != 0 &&
+         millis() - _lastSessionHeartbeatMs < RobotConfig::MANUAL_SESSION_TIMEOUT_MS;
+}
+
+bool WebDashboard::validSessionToken() {
+  return sessionAlive() && _server.hasArg("token") &&
+         _server.arg("token") == _sessionToken;
+}
+
 bool WebDashboard::consumeControlActivity() {
   const bool active = _controlActivity;
   _controlActivity = false;
@@ -210,6 +237,10 @@ void WebDashboard::markStopApplied(const String& stopReason) {
 
 void WebDashboard::setData(const DashboardData& data) {
   _data = data;
+  _data.wifiStaDisconnectCount = staDisconnectEvents;
+  _data.wifiApTransitionCount = apTransitionEvents;
+  _data.wifiLastDisconnectReason = lastStaDisconnectReason;
+  _data.wifiLastEvent = lastWifiEvent;
   refreshWiFiTelemetry();
 }
 
@@ -298,6 +329,10 @@ void WebDashboard::handleJs() {
 }
 
 void WebDashboard::handleData() {
+  // The existing telemetry poll proves browser session liveness independently
+  // of held movement refreshes, without an additional HTTP polling stream.
+  if (_server.hasArg("token") && validSessionToken())
+    _lastSessionHeartbeatMs = millis();
   addCoordinatorCors();
   _server.sendHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
   _server.sendHeader("Pragma", "no-cache");
@@ -385,6 +420,56 @@ void WebDashboard::handleSpeed() {
   _controlActivity = true;
   sendOk();
 }
+void WebDashboard::handleSession() {
+  if (!controlOriginAllowed()) return;
+  if (_data.controlMode != "MANUAL") {
+    sendError(409, "application/json", "{\"ok\":false,\"error\":\"manual_required\"}");
+    return;
+  }
+  if (_overrideActionCallback) _overrideActionCallback(false);
+  _sessionToken = String(esp_random(), HEX) + String(esp_random(), HEX);
+  _lastSessionHeartbeatMs = millis();
+  _requireFreshSessionAfterOverride = false;
+  _server.send(200, "application/json",
+               String("{\"ok\":true,\"token\":\"") + _sessionToken +
+               "\",\"timeout_ms\":" + RobotConfig::MANUAL_SESSION_TIMEOUT_MS + "}");
+}
+
+void WebDashboard::handleSessionHeartbeat() {
+  if (!controlOriginAllowed()) return;
+  if (!validSessionToken() || _data.controlMode != "MANUAL") {
+    sendError(409, "application/json", "{\"ok\":false,\"error\":\"session_expired\"}");
+    return;
+  }
+  _lastSessionHeartbeatMs = millis();
+  sendOk();
+}
+
+void WebDashboard::handleOverride() {
+  if (!controlOriginAllowed()) return;
+  if (!validSessionToken() || _data.controlMode != "MANUAL" ||
+      _overrideActionCallback == nullptr) {
+    sendError(409, "application/json", "{\"ok\":false,\"error\":\"session_or_mode_rejected\"}");
+    return;
+  }
+  const String action = _server.arg("set");
+  if (action != "on" && action != "off") {
+    sendError(400, "application/json", "{\"ok\":false,\"error\":\"invalid_action\"}");
+    return;
+  }
+  if (action == "on" && _server.arg("confirm") != "1") {
+    sendError(409, "application/json", "{\"ok\":false,\"error\":\"confirmation_required\"}");
+    return;
+  }
+  if (!_overrideActionCallback(action == "on")) {
+    sendError(409, "application/json", "{\"ok\":false,\"error\":\"safety_rejected\"}");
+    return;
+  }
+  _server.send(200, "application/json",
+               action == "on" ? "{\"ok\":true,\"enabled\":true}" :
+                                "{\"ok\":true,\"enabled\":false}");
+}
+
 void WebDashboard::handleCommand() {
   if (!controlOriginAllowed()) return;
   prepareControlResponse();
@@ -396,7 +481,7 @@ void WebDashboard::handleCommand() {
   String command = _server.arg("move");
   command.toUpperCase();
   if (command != "FORWARD" && command != "BACKWARD" && command != "LEFT" &&
-      command != "RIGHT" && command != "STOP") {
+      command != "RIGHT" && command != "STOP" && command != "RELEASE") {
     sendError(400, "text/plain", "ERR");
     return;
   }
@@ -422,6 +507,12 @@ void WebDashboard::handleCommand() {
     }
   }
 
+  if ((_data.manualFlameGasOverride || _requireFreshSessionAfterOverride) &&
+      command != "STOP" &&
+      command != "RELEASE" && !validSessionToken()) {
+    sendError(409, "text/plain", "SESSION_REJECTED");
+    return;
+  }
   if (applyCommand(command, sequence, sequenced)) {
     sendOk();
   } else {
@@ -610,6 +701,9 @@ bool WebDashboard::applyCommand(const String& command, unsigned long sequence, b
   // STOP is an all-mode operator intervention. Directional commands remain
   // Manual-only and continue through the existing command handler.
   if (command == "STOP" || _data.controlMode == "MANUAL") {
+    if ((_data.manualFlameGasOverride || _requireFreshSessionAfterOverride) &&
+        command != "STOP" &&
+        command != "RELEASE" && !validSessionToken()) return false;
     if (sequenced) {
       // The browser assigns increasing sequence numbers. A STOP that reaches
       // the ESP32 first therefore makes every older in-flight direction stale.
@@ -1176,6 +1270,9 @@ void WebDashboard::sendJson() {
   appendKey("lastAcceptedCommand"); json += char(34); json += jsonEscape(_lastAcceptedCommand); json += char(34);
   appendKey("lastAppliedCommand"); json += char(34); json += jsonEscape(_lastAppliedCommand); json += char(34);
   appendKey("lastStopReason"); json += char(34); json += jsonEscape(_lastStopReason); json += char(34);
+  appendKey("manualFlameGasOverride"); json += jsonBool(_data.manualFlameGasOverride);
+  appendKey("manualMotionInhibitReason"); json += char(34); json += jsonEscape(_data.manualMotionInhibitReason); json += char(34);
+  appendKey("controlSessionAlive"); json += jsonBool(sessionAlive());
   appendKey("commandAcceptedMs"); json += String(_lastCommandAcceptedMs);
   appendKey("commandAppliedMs"); json += String(_lastCommandAppliedMs);
   appendKey("commandAgeMs"); json += _lastCommandAcceptedMs == 0 ? "null" : String(millis() - _lastCommandAcceptedMs);

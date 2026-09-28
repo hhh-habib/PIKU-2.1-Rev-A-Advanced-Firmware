@@ -81,6 +81,8 @@ namespace RobotConfig {
   // Manual drive commands are refreshed by the dashboard every 250 ms.
   // Stop motion if three refresh periods are missed.
   static constexpr unsigned long MANUAL_COMMAND_TIMEOUT_MS = 750;
+  // Independent browser control-session heartbeat. Never infer this from release.
+  static constexpr unsigned long MANUAL_SESSION_TIMEOUT_MS = 2500;
   static constexpr unsigned long WIFI_STATUS_INTERVAL_MS = 1000;
   static constexpr unsigned long WIFI_STA_RETRY_MS = 15000;
   // WiFiClient::setTimeout uses seconds in this Arduino-ESP32 release.

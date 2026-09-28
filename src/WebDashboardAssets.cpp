@@ -239,6 +239,12 @@ const char DASHBOARD_HTML[] PROGMEM = R"html(
                 </div>
 
                 <p class="control-note" id="controlAvailability">Manual controls are unavailable while AUTO mode is active.</p>
+                <div class="control-readouts">
+                  <button id="overrideBtn" type="button" disabled>Enable manual flame/gas override</button>
+                  <strong id="overrideStatus">Override OFF</strong>
+                </div>
+                <p id="overrideAlert" class="control-note" role="alert" hidden>HAZARD ACTIVE ? MANUAL OVERRIDE. Flame/gas alarm remains active.</p>
+                <p class="control-note">Manual Reverse is operator-supervised; rear clearance is NOT sensor-verified.</p>
                 <div class="dpad auto" id="dpad" aria-label="Manual directional controls">
                   <button class="forward hold" type="button" data-move="FORWARD" aria-label="Move forward">
                     <span class="arrow arrow-up" aria-hidden="true"></span>
@@ -1074,6 +1080,8 @@ h1 { margin-bottom:1px; font-size:20px; letter-spacing:.025em; }
 
 const char DASHBOARD_JS[] PROGMEM = R"js(
 let mode = 'AUTO';
+let controlSessionToken = null;
+let sessionRequestInFlight = false;
 let turnMode = 'PIVOT';
 let audioCtx = null;
 let alarmOutput = null;
@@ -1163,6 +1171,7 @@ function setMode(nextMode) {
   fetch('/mode?set=' + encodeURIComponent(nextMode), { cache:'no-store' })
     .then(response => {
       if (!response.ok) throw new Error('Mode request rejected');
+      controlSessionToken = null;
       return loadData();
     })
     .catch(() => loadData());
@@ -1178,7 +1187,7 @@ function toggleTurnMode() {
 }
 
 function sendCmd(move) {
-  if (move === 'STOP') {
+  if (move === 'STOP' || move === 'RELEASE') {
     // STOP bypasses a slow direction request. The higher sequence makes any
     // older direction harmless if it reaches the ESP32 afterward.
     pendingMove = null;
@@ -1204,14 +1213,15 @@ function issueCmd(move) {
   commandSequence += 1;
   const issuedSequence = commandSequence;
   const query = '/cmd?move=' + encodeURIComponent(move) +
-    '&seq=' + encodeURIComponent(issuedSequence);
+    '&seq=' + encodeURIComponent(issuedSequence) +
+    (controlSessionToken ? '&token=' + encodeURIComponent(controlSessionToken) : '');
   const controller = new AbortController();
-  if (move !== 'STOP') moveAbortController = controller;
+  if (move !== 'STOP' && move !== 'RELEASE') moveAbortController = controller;
   const started = performance.now();
   return fetch(query, {
     signal:controller.signal,
     cache:'no-store',
-    keepalive:move === 'STOP'
+    keepalive:move === 'STOP' || move === 'RELEASE'
   }).then(response => {
     if (!response.ok) throw new Error('Control request rejected');
     if (issuedSequence === commandSequence) {
@@ -1220,7 +1230,7 @@ function issueCmd(move) {
     }
     return response;
   }).finally(() => {
-    if (move !== 'STOP' && moveAbortController === controller) {
+    if (move !== 'STOP' && move !== 'RELEASE' && moveAbortController === controller) {
       moveAbortController = null;
     }
   });
@@ -1285,7 +1295,7 @@ function stopMove() {
   activePress = false;
   activePointerId = null;
   clearMoveRefresh();
-  sendCmd('STOP');
+  sendCmd('RELEASE');
 }
 
 function explicitStop() {
@@ -1319,7 +1329,7 @@ function updateModeButtons() {
   }
   if (turnButton) turnButton.disabled = !manualActive;
   setText('controlAvailability', manualActive
-    ? 'Manual controls active. Releasing a direction sends STOP; lost refreshes stop the robot.'
+    ? 'Manual controls active. Release stops motors; an independent control session maintains override permission.'
     : 'Directional controls are unavailable in AUTO mode. STOP remains available.');
 }
 
@@ -1505,6 +1515,43 @@ function startHighRiskTimers() {
   highRiskVibeTimer = setInterval(() => vibrateHighRisk(), 1200);
 }
 
+function controlPost(path, values) {
+  return fetch(path, {
+    method:'POST', cache:'no-store',
+    headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body:new URLSearchParams(values)
+  }).then(async response => {
+    if (response.ok) return response;
+    throw new Error(await response.text());
+  });
+}
+
+function ensureControlSession() {
+  if (mode !== 'MANUAL' || document.hidden || controlSessionToken || sessionRequestInFlight) return;
+  sessionRequestInFlight = true;
+  controlPost('/control-session', {}).then(response => response.json())
+    .then(result => {
+      controlSessionToken = result.token;
+      setText('overrideStatus', 'Override OFF; control session active');
+    }).catch(() => setText('overrideStatus', 'Control session unavailable'))
+    .finally(() => { sessionRequestInFlight = false; });
+}
+
+function toggleManualOverride() {
+  if (mode !== 'MANUAL' || !controlSessionToken) return;
+  const enable = !(latestData && latestData.manualFlameGasOverride);
+  if (enable && !window.confirm(
+      'Flame/gas hazard is active. Manual movement can expose people and equipment. ' +
+      'Keep direct supervision and an accessible STOP. Rear clearance is not sensor-verified. Enable override?')) return;
+  controlPost('/manual-override', {
+    set:enable ? 'on' : 'off', token:controlSessionToken,
+    confirm:enable ? '1' : '0'
+  }).then(() => {
+    setText('overrideStatus', enable ? 'Override enabled' : 'Override OFF');
+    loadData();
+  }).catch(error => setText('overrideStatus', 'Override rejected: ' + error.message));
+}
+
 function updateAlarmBanner(d) {
   const indicator = byId('alarmIndicator');
   const reasons = [];
@@ -1540,7 +1587,10 @@ function updateAlarmBanner(d) {
 
   let severity = 'normal';
   let label = 'SYSTEM NORMAL';
-  if (safetyState === 'CRITICAL') {
+  if (d.manualFlameGasOverride) {
+    severity = 'critical';
+    label = 'HAZARD ACTIVE ? MANUAL OVERRIDE';
+  } else if (safetyState === 'CRITICAL') {
     severity = 'critical';
     label = 'CRITICAL';
   } else if (d.nearObstacleHazard) {
@@ -2075,6 +2125,24 @@ function renderTelemetry(d) {
 
   mode = d.mode;
   turnMode = d.turnMode;
+  if (mode === 'MANUAL' && !d.controlSessionAlive) {
+    controlSessionToken = null;
+    if (activePress) {
+      activePress = false;
+      clearMoveRefresh();
+      sendCmd('STOP');
+    }
+  }
+  if (mode === 'MANUAL') ensureControlSession();
+  const overrideButton = byId('overrideBtn');
+  if (overrideButton) {
+    overrideButton.disabled = mode !== 'MANUAL' || !controlSessionToken;
+    overrideButton.textContent = d.manualFlameGasOverride ? 'Disable manual override' : 'Enable manual flame/gas override';
+  }
+  const overrideAlert = byId('overrideAlert');
+  if (overrideAlert) overrideAlert.hidden = !d.manualFlameGasOverride;
+  if (d.manualFlameGasOverride) setText('overrideStatus', 'Override ON ? ' + (d.manualMotionInhibitReason || 'NONE'));
+
   updateModeButtons();
   updateSensorHeadControls(d);
   updateTurnModeButton();
@@ -2109,7 +2177,9 @@ function loadData() {
     timedOut = true;
     controller.abort();
   }, TELEMETRY_TIMEOUT_MS);
-  dataRequestPromise = fetch('/data', { signal:controller.signal, cache:'no-store' })
+  const dataUrl = controlSessionToken
+    ? '/data?token=' + encodeURIComponent(controlSessionToken) : '/data';
+  dataRequestPromise = fetch(dataUrl, { signal:controller.signal, cache:'no-store' })
     .then(response => {
       if (!response.ok) throw new Error('Telemetry request failed');
       return response.json();
@@ -2222,6 +2292,8 @@ function initializeDashboard() {
   dashboardInitialized = true;
   initializeNavigation();
   initializeControls();
+  const overrideButton = byId('overrideBtn');
+  if (overrideButton) overrideButton.addEventListener('click', toggleManualOverride);
   if (!radarFrameStarted) {
     radarFrameStarted = true;
     requestAnimationFrame(radarLoop);

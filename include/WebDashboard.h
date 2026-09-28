@@ -52,6 +52,8 @@ struct DashboardData {
   int speedPercent = 60;
   String obstacleDecision = "CLEAR";
   String navigationDecision = "IDLE";
+  bool manualFlameGasOverride = false;
+  String manualMotionInhibitReason = "NONE";
   String autoNavigationState = "IDLE";
   String autoIrZoneState = "CLEAR";
   String autoAvoidanceSource = "NONE";
@@ -155,12 +157,17 @@ class WebDashboard {
 public:
   using CommandAcceptedCallback = void (*)(const String&, unsigned long, unsigned long);
   using ModeAcceptedCallback = void (*)(const String&);
+  using OverrideActionCallback = bool (*)(bool);
 
   WebDashboard();
   void begin(const char* ssid, const char* password, const char* staSsid = "", const char* staPassword = "");
   void loop();
   void updateBackground();
   void setControlCallbacks(CommandAcceptedCallback commandCallback, ModeAcceptedCallback modeCallback);
+  void setOverrideCallback(OverrideActionCallback callback);
+  void setManualOverrideState(bool enabled);
+  bool sessionAlive() const;
+  void invalidateControlSession();
   bool consumeControlActivity();
   void markCommandApplied(const String& command, unsigned long sequence, const String& stopReason);
   void markStopApplied(const String& stopReason);
@@ -223,6 +230,10 @@ private:
   bool _controlActivity;
   CommandAcceptedCallback _commandAcceptedCallback;
   ModeAcceptedCallback _modeAcceptedCallback;
+  OverrideActionCallback _overrideActionCallback = nullptr;
+  String _sessionToken;
+  unsigned long _lastSessionHeartbeatMs = 0;
+  bool _requireFreshSessionAfterOverride = false;
   unsigned long _lastWiFiUpdateMs;
   unsigned long _lastWiFiTelemetryMs;
   unsigned long _lastDiagnosticsLogMs = 0;
@@ -254,6 +265,10 @@ private:
   void handleTurnMode();
   void handleSpeed();
   void handleCommand();
+  void handleSession();
+  void handleSessionHeartbeat();
+  void handleOverride();
+  bool validSessionToken();
   void handleSensorHead();
   void handleAlarmEnable();
   void handleAlarmMute();

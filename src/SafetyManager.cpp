@@ -101,18 +101,18 @@ bool SafetyManager::isUltrasonicWarningActive() const {
   return _ultrasonicWarning;
 }
 
-bool SafetyManager::blocksMotion() const {
-  return isCritical();
+bool SafetyManager::blocksMotion(bool allowFlameGas) const {
+  return _tempCritical || (!allowFlameGas && (_gasCritical || _flameCritical));
 }
 
 bool SafetyManager::blocksForwardMotion() const {
   return isCritical() || _nearObstacleHazard || _ultrasonicCaution || _ultrasonicWarning;
 }
 
-bool SafetyManager::blocksManualForwardMotion() const {
-  // A single confirmed side IR informs avoidance but does not disable Manual forward.
-  return isCritical() || _ultrasonicCaution || _ultrasonicWarning ||
-         (_leftIrObstacle && _rightIrObstacle);
+bool SafetyManager::blocksManualForwardMotion(bool allowFlameGas) const {
+  // Either low front IR zone can indicate a body-width obstacle.
+  return blocksMotion(allowFlameGas) || _ultrasonicCaution ||
+         _ultrasonicWarning || _leftIrObstacle || _rightIrObstacle;
 }
 
 bool SafetyManager::stateChanged() {
