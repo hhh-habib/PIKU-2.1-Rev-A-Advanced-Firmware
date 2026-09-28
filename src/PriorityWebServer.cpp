@@ -1,6 +1,8 @@
 #include "PriorityWebServer.h"
 
 #include "RobotConfig.h"
+#include <errno.h>
+#include <sys/socket.h>
 
 void PriorityWebServer::handleClient() {
   if (_currentStatus == HC_NONE) {
@@ -37,7 +39,7 @@ void PriorityWebServer::handleClient() {
             ++timeoutCount_;
           }
         } else {
-          if (millis() - _statusChange <= HTTP_MAX_DATA_WAIT) {
+          if (millis() - _statusChange <= RobotConfig::HTTP_REQUEST_PARSE_TIMEOUT_MS) {
             keepCurrentClient = true;
           } else {
             ++timeoutCount_;
@@ -61,4 +63,39 @@ void PriorityWebServer::handleClient() {
     _currentRaw.reset();
   }
   if (callYield) yield();
+}
+
+void PriorityWebServer::beginTelemetryResponse() {
+  telemetryResponse_ = true;
+  telemetryStartedMs_ = 0;
+}
+
+void PriorityWebServer::endTelemetryResponse() {
+  telemetryResponse_ = false;
+}
+
+size_t PriorityWebServer::_currentClientWrite(const char* data, size_t length) {
+  if (!telemetryResponse_) return WebServer::_currentClientWrite(data, length);
+  // The synchronous server cannot accept STOP while writing /data. Never
+  // wait for a stalled telemetry socket's multi-second WiFiClient retry loop.
+  if (telemetryStartedMs_ == 0) telemetryStartedMs_ = millis();
+  const int socketFd = _currentClient.fd();
+  if (socketFd < 0) return 0;
+  size_t sent = 0;
+  while (sent < length &&
+         millis() - telemetryStartedMs_ < RobotConfig::HTTP_TELEMETRY_SEND_BUDGET_MS) {
+    const int result = ::send(socketFd, data + sent, length - sent, MSG_DONTWAIT);
+    if (result > 0) {
+      sent += static_cast<size_t>(result);
+    } else if (result < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
+      break;
+    } else {
+      yield();
+    }
+  }
+  if (sent != length) {
+    ++timeoutCount_;
+    _currentClient.stop();
+  }
+  return sent;
 }

@@ -221,6 +221,7 @@ private:
   String _staPassword;
   bool _staCredentialsPendingPersistence;
   unsigned long _lastStaAttemptMs;
+  unsigned long _staRetryIntervalMs;
   bool _alarmEnabled;
   bool _alarmMuted;
   bool _alarmTestRequested;

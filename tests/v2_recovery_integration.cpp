@@ -34,7 +34,7 @@ struct RecoveryRig {
     x.afterTrial=afterTrial; x.alternatePending=alternatePending;
     x.alternateTried=policy.alternateTried();
     x.sideTurns=policy.sideTurns(); x.totalTurns=policy.totalTurns();
-    x.sideMinimumCm=RobotConfig::AUTO_V2_PROVISIONAL_SIDE_CM;
+    x.hardCollisionCm=RobotConfig::NEAR_OBSTACLE_CM;
     x.frontMinimumCm=RobotConfig::AUTO_V2_PROVISIONAL_FRONT_CM;
     x.maxSideTurns=RobotConfig::AUTO_V2_MAX_TURNS_PER_SIDE;
     x.maxTotalTurns=RobotConfig::AUTO_V2_MAX_TOTAL_TURNS;
@@ -73,6 +73,37 @@ int main() {
   equal.leftCm=25; equal.frontCm=30; equal.rightCm=35;
   equal.leftValid=equal.frontValid=equal.rightValid=true; equal.imuReady=true;
   assert(decideV2Scan(equal)==V2ScanAction::TurnRight); // geometry alone is not stuck evidence
+
+  RecoveryRig boxedLeft;
+  boxedLeft.suspect(false);
+  boxedLeft.left=14; boxedLeft.front=9; boxedLeft.right=11;
+  assert(boxedLeft.scan()==V2ScanAction::TurnLeft);
+  boxedLeft.turnDone(); boxedLeft.left=13; boxedLeft.front=12; boxedLeft.right=14;
+  assert(boxedLeft.scan()==V2ScanAction::TurnLeft); // committed side survives new geometry
+  boxedLeft.turnDone(); boxedLeft.front=55; boxedLeft.left=12; boxedLeft.right=10;
+  assert(boxedLeft.scan()==V2ScanAction::ForwardTrial);
+  boxedLeft.trialDone();
+  assert(boxedLeft.scan()==V2ScanAction::Recovered);
+
+  RecoveryRig boxedRight;
+  boxedRight.suspect(false);
+  boxedRight.left=8; boxedRight.front=7; boxedRight.right=13;
+  assert(boxedRight.scan()==V2ScanAction::TurnRight);
+
+  RecoveryRig hardVeto;
+  hardVeto.suspect(false);
+  hardVeto.left=7; hardVeto.front=9; hardVeto.right=11;
+  assert(hardVeto.scan()==V2ScanAction::TurnRight);
+  RecoveryRig bothVeto;
+  bothVeto.suspect(false);
+  bothVeto.left=7; bothVeto.front=9; bothVeto.right=7;
+  assert(bothVeto.scan()==V2ScanAction::Hold);
+  assert(bothVeto.policy.state()==StuckV2State::TrappedHold && !bothVeto.motor);
+  bothVeto.policy.hold(1000);
+  assert(bothVeto.policy.retryReady(3500,RobotConfig::AUTO_V2_RETRY_COOLDOWN_MS,true));
+  assert(bothVeto.policy.beginRetryRound(3500));
+  bothVeto.left=14; bothVeto.right=11;
+  assert(bothVeto.scan()==V2ScanAction::TurnLeft);
 
   RecoveryRig left;
   left.suspect(false);
@@ -155,7 +186,7 @@ int main() {
   RecoveryRig symmetricTrap;
   symmetricTrap.suspect(false);
   symmetricTrap.left=symmetricTrap.front=symmetricTrap.right=30;
-  assert(symmetricTrap.scan()==V2ScanAction::Hold); // no usable side at threshold
+  assert(symmetricTrap.scan()==V2ScanAction::TurnRight); // tie uses failed-turn history
   RecoveryRig unstable;
   unstable.suspect(false); assert(unstable.scan()==V2ScanAction::TurnLeft);
   unstable.turnDone(); unstable.front=60; unstable.frontStable=false;

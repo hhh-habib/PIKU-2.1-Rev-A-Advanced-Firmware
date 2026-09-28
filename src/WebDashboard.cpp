@@ -2,6 +2,7 @@
 #include "ControlOriginPolicy.h"
 #include <ESPmDNS.h>
 #include "RobotConfig.h"
+#include "StaReconnectPolicy.h"
 #include "WebDashboardAssets.h"
 #include "WiFiConfig.h"
 
@@ -66,6 +67,7 @@ WebDashboard::WebDashboard()
     _staPassword(""),
     _staCredentialsPendingPersistence(false),
     _lastStaAttemptMs(0),
+    _staRetryIntervalMs(RobotConfig::WIFI_STA_INITIAL_RETRY_MS),
     _alarmEnabled(true),
     _alarmMuted(false),
     _alarmTestRequested(false),
@@ -93,6 +95,7 @@ void WebDashboard::begin(const char* ssid, const char* password, const char* sta
   // Motors dominate the robot power budget; disabling modem sleep favors
   // predictable dashboard command latency over small ESP32 energy savings.
   WiFi.setSleep(false);
+  WiFi.setAutoReconnect(true);
   WiFi.softAP(ssid, password);
   delay(100);
   refreshWiFiTelemetry(true);
@@ -102,6 +105,7 @@ void WebDashboard::begin(const char* ssid, const char* password, const char* sta
     beginStaAssociation();
     _staConnectStarted = true;
     _lastStaAttemptMs = millis();
+    _staRetryIntervalMs = RobotConfig::WIFI_STA_INITIAL_RETRY_MS;
   }
 
   _server.on("/", [this]() { handleRoot(); });
@@ -337,8 +341,8 @@ void WebDashboard::handleJs() {
 
 void WebDashboard::handleData() {
   if (_data.controlMode == "AUTO") _lastAutoDashboardPollMs = millis();
-  // The existing telemetry poll proves browser session liveness independently
-  // of held movement refreshes, without an additional HTTP polling stream.
+  // Full telemetry and lightweight ping both prove browser session liveness
+  // independently of held movement refreshes.
   if (_server.hasArg("token") && validSessionToken())
     _lastSessionHeartbeatMs = millis();
   addCoordinatorCors();
@@ -346,10 +350,15 @@ void WebDashboard::handleData() {
   _server.sendHeader("Pragma", "no-cache");
   _server.sendHeader("Expires", "0");
   refreshWiFiTelemetry();
+  _server.beginTelemetryResponse();
   sendJson();
+  _server.endTelemetryResponse();
 }
 
 void WebDashboard::handlePing() {
+  if (_data.controlMode == "AUTO") _lastAutoDashboardPollMs = millis();
+  if (_server.hasArg("token") && validSessionToken())
+    _lastSessionHeartbeatMs = millis();
   addCoordinatorCors();
   _server.sendHeader("Cache-Control", "no-store");
   const String telemetryAge = _data.uptimeMs == 0
@@ -642,6 +651,7 @@ void WebDashboard::handleWifiReconnect() {
   beginStaAssociation();
   _staConnectStarted = true;
   _lastStaAttemptMs = millis();
+  _staRetryIntervalMs = RobotConfig::WIFI_STA_INITIAL_RETRY_MS;
   ++_wifiReconnectCount;
   _server.send(202, "application/json", R"json({"ok":true,"state":"CONNECTING"})json");
 }
@@ -775,6 +785,7 @@ void WebDashboard::configureSta(const String& ssid, const String& password, bool
     beginStaAssociation();
     _staConnectStarted = true;
     _lastStaAttemptMs = millis();
+    _staRetryIntervalMs = RobotConfig::WIFI_STA_INITIAL_RETRY_MS;
   } else {
     _staState = StaState::NotConfigured;
     _staConnectStarted = false;
@@ -819,6 +830,7 @@ void WebDashboard::clearStaCredentials() {
   _staConnectStarted = false;
   _staState = StaState::NotConfigured;
   _lastStaAttemptMs = 0;
+  _staRetryIntervalMs = RobotConfig::WIFI_STA_INITIAL_RETRY_MS;
   updateMdns(false);
   WiFi.disconnect(false, true);
   WiFi.mode(WIFI_AP);
@@ -842,6 +854,7 @@ void WebDashboard::updateWiFi() {
   setStaStateFromWiFiStatus();
   if (WiFi.status() == WL_CONNECTED) {
     _staConnectStarted = false;
+    _staRetryIntervalMs = RobotConfig::WIFI_STA_INITIAL_RETRY_MS;
     if (_staCredentialsPendingPersistence) {
       _preferences.begin("piku-wifi", false);
       _preferences.putString("ssid", _staSsid);
@@ -854,24 +867,16 @@ void WebDashboard::updateWiFi() {
     return;
   }
 
-  // Keep wrong-password failure visible without automatic radio churn. A new
-  // Connect or explicit Reconnect action starts another non-blocking attempt.
-  if (_staState == StaState::AuthFailed) {
-    updateMdns(false);
-    refreshWiFiTelemetry(true);
-    return;
-  }
-
   updateMdns(false);
 
-  if (_lastStaAttemptMs == 0 || now - _lastStaAttemptMs >= RobotConfig::WIFI_STA_RETRY_MS) {
-    if (WiFi.getMode() != WIFI_AP_STA) {
-      WiFi.mode(WIFI_AP_STA);
-    }
+  if (staRetryDue(now, _lastStaAttemptMs, _staRetryIntervalMs)) {
+    if (WiFi.getMode() != WIFI_AP_STA) WiFi.mode(WIFI_AP_STA);
     _staState = StaState::Connecting;
-    beginStaAssociation();
+    if (!WiFi.reconnect()) beginStaAssociation();
     _staConnectStarted = true;
     _lastStaAttemptMs = now;
+    _staRetryIntervalMs = staNextRetryInterval(
+        _staRetryIntervalMs, RobotConfig::WIFI_STA_MAX_RETRY_MS);
     ++_wifiReconnectCount;
   }
   refreshWiFiTelemetry(true);

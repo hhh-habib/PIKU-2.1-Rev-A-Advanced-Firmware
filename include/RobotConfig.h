@@ -84,10 +84,12 @@ namespace RobotConfig {
   // Independent browser control-session heartbeat. Never infer this from release.
   static constexpr unsigned long MANUAL_SESSION_TIMEOUT_MS = 2500;
   static constexpr unsigned long WIFI_STATUS_INTERVAL_MS = 1000;
-  static constexpr unsigned long WIFI_STA_RETRY_MS = 15000;
+  static constexpr unsigned long WIFI_STA_INITIAL_RETRY_MS = 1500;
+  static constexpr unsigned long WIFI_STA_MAX_RETRY_MS = 8000;
   // WiFiClient::setTimeout uses seconds in this Arduino-ESP32 release.
   static constexpr unsigned long HTTP_CLIENT_TIMEOUT_SECONDS = 1;
   static constexpr unsigned long HTTP_REQUEST_PARSE_TIMEOUT_MS = 250;
+  static constexpr unsigned long HTTP_TELEMETRY_SEND_BUDGET_MS = 125;
   static constexpr unsigned long AUTO_OBSTACLE_REVERSE_MS = 220;
   static constexpr unsigned long AUTO_REVERSE_PREPARE_MS = 50;
   static constexpr unsigned long AUTO_REVERSE_SETTLE_MS = 150;
@@ -105,7 +107,6 @@ namespace RobotConfig {
   static constexpr bool ENABLE_STUCK_RECOVERY_V2 = true;
   static constexpr float AUTO_V2_PROVISIONAL_TURN_TARGET_DEG = 25.0f;
   static constexpr float AUTO_V2_PROVISIONAL_FRONT_CM = 50.0f;
-  static constexpr float AUTO_V2_PROVISIONAL_SIDE_CM = 30.0f;
   static constexpr float AUTO_V2_FRONT_STABILITY_SPREAD_CM = 5.0f;
   static constexpr uint8_t AUTO_V2_MAX_TURNS_PER_SIDE = 3;
   static constexpr uint8_t AUTO_V2_MAX_TOTAL_TURNS = 6;

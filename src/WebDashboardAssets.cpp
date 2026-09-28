@@ -23,9 +23,9 @@ const char DASHBOARD_HTML[] PROGMEM = R"html(
           </div>
           <div class="header-status">
             <span class="status-badge mode-badge">Mode: <strong data-bind="mode">--</strong></span>
-            <span class="status-badge connection-badge is-updating" id="connectionState">
+            <span class="status-badge connection-badge is-offline" id="connectionState">
               <span class="connection-dot" aria-hidden="true"></span>
-              <strong>Updating</strong>
+              <strong>Offline</strong>
             </span>
           </div>
         </div>
@@ -1075,8 +1075,12 @@ let activePress = false;
 let activeMove = null;
 let moveRefreshTimer = null;
 const MOVE_REFRESH_MS = 250;
-const TELEMETRY_INTERVAL_MS = 450;
-const TELEMETRY_TIMEOUT_MS = 1200;
+const TELEMETRY_INTERVAL_MS = 850;
+const TELEMETRY_TIMEOUT_MS = 1800;
+const PING_INTERVAL_MS = 650;
+const PING_TIMEOUT_MS = 1000;
+const HEARTBEAT_OFFLINE_MS = 3000;
+const TELEMETRY_STALE_MS = 3000;
 let commandSequence = 0;
 let moveRequestInFlight = false;
 let stopRequestsInFlight = 0;
@@ -1084,6 +1088,7 @@ let pendingMove = null;
 let activePointerId = null;
 let moveAbortController = null;
 let dataAbortController = null;
+let pingAbortController = null;
 let lastControlRttMs = null;
 let telemetryTimeoutCount = 0;
 const scanSamples = [];
@@ -1096,6 +1101,10 @@ let dataRequestPromise = null;
 let radarFrameStarted = false;
 let dataRequestInFlight = false;
 let lastTelemetrySuccess = 0;
+let lastTelemetryNodeAgeMs = 0;
+let lastHeartbeatSuccess = 0;
+let pingRequestInFlight = false;
+let pingTimer = null;
 let wifiScanTimer = null;
 let wifiScanInFlight = false;
 let sensorHeadRequestedOrientation = null;
@@ -1175,6 +1184,7 @@ function sendCmd(move) {
     if (moveAbortController) moveAbortController.abort();
     moveAbortController = null;
     if (dataAbortController) dataAbortController.abort();
+    if (pingAbortController) pingAbortController.abort();
     stopRequestsInFlight += 1;
     return issueCmd(move)
       .catch(() => {})
@@ -2155,8 +2165,48 @@ function updateConnectionState(state) {
   const label = indicator.querySelector('strong');
   if (label) {
     label.textContent = state === 'live' ? 'Live' :
-      (state === 'stale' ? 'Stale' : (state === 'offline' ? 'Offline' : 'Updating'));
+      (state === 'stale' ? 'Stale' : 'Offline');
   }
+}
+
+function refreshConnectionBadge() {
+  const now = Date.now();
+  if (!lastHeartbeatSuccess ||
+      now - lastHeartbeatSuccess > HEARTBEAT_OFFLINE_MS) {
+    updateConnectionState('offline');
+    return;
+  }
+  const telemetryAge = lastTelemetrySuccess
+    ? now - lastTelemetrySuccess + lastTelemetryNodeAgeMs
+    : Number.POSITIVE_INFINITY;
+  updateConnectionState(telemetryAge > TELEMETRY_STALE_MS ? 'stale' : 'live');
+}
+
+function pollPing() {
+  if (document.hidden || pingRequestInFlight) return;
+  pingRequestInFlight = true;
+  const controller = new AbortController();
+  pingAbortController = controller;
+  const timeout = setTimeout(() => controller.abort(), PING_TIMEOUT_MS);
+  const pingUrl = controlSessionToken
+    ? '/ping?token=' + encodeURIComponent(controlSessionToken) : '/ping';
+  fetch(pingUrl, { signal:controller.signal, cache:'no-store' })
+    .then(response => {
+      if (!response.ok) throw new Error('Heartbeat request failed');
+      return response.json();
+    })
+    .then(result => {
+      if (!result.ok) throw new Error('Heartbeat rejected');
+      lastHeartbeatSuccess = Date.now();
+    })
+    .catch(() => {})
+    .finally(() => {
+      clearTimeout(timeout);
+      if (pingAbortController === controller) pingAbortController = null;
+      pingRequestInFlight = false;
+      refreshConnectionBadge();
+      if (!document.hidden) pingTimer = setTimeout(pollPing, PING_INTERVAL_MS);
+    });
 }
 
 function loadData() {
@@ -2167,7 +2217,6 @@ function loadData() {
     telemetryTimer = null;
   }
   dataRequestInFlight = true;
-  if (!lastTelemetrySuccess) updateConnectionState('updating');
   const controller = new AbortController();
   dataAbortController = controller;
   let timedOut = false;
@@ -2184,7 +2233,8 @@ function loadData() {
     })
     .then(data => {
       lastTelemetrySuccess = Date.now();
-      updateConnectionState(Number(data.telemetry_age_ms) > 1200 ? 'stale' : 'live');
+      lastTelemetryNodeAgeMs = Math.max(0, Number(data.telemetry_age_ms) || 0);
+      refreshConnectionBadge();
       renderTelemetry(data);
     })
     .catch(() => {
@@ -2192,8 +2242,7 @@ function loadData() {
         telemetryTimeoutCount += 1;
         setText('systemTelemetryTimeouts', telemetryTimeoutCount);
       }
-      const age = lastTelemetrySuccess ? Date.now() - lastTelemetrySuccess : Number.POSITIVE_INFINITY;
-      updateConnectionState(age > 5000 ? 'offline' : 'stale');
+      refreshConnectionBadge();
     })
     .then(() => {
       clearTimeout(timeout);
@@ -2278,8 +2327,12 @@ function initializeControls() {
       if (telemetryTimer) clearTimeout(telemetryTimer);
       telemetryTimer = null;
       if (dataAbortController) dataAbortController.abort();
+      if (pingTimer) clearTimeout(pingTimer);
+      pingTimer = null;
+      if (pingAbortController) pingAbortController.abort();
       explicitStop();
     } else {
+      pollPing();
       loadData();
     }
   });
@@ -2296,6 +2349,8 @@ function initializeDashboard() {
     radarFrameStarted = true;
     requestAnimationFrame(radarLoop);
   }
+  refreshConnectionBadge();
+  pollPing();
   loadData();
 }
 

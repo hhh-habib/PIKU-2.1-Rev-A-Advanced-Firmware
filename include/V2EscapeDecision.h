@@ -12,7 +12,7 @@ struct V2ScanDecisionInput {
   bool committed=false, committedLeft=false, previousFailedLeft=false;
   bool afterTurn=false, afterTrial=false, alternatePending=false, alternateTried=false;
   uint8_t sideTurns=0, totalTurns=0;
-  float sideMinimumCm=30, frontMinimumCm=50, tieToleranceCm=1;
+  float hardCollisionCm=7, frontMinimumCm=50, tieToleranceCm=1;
   uint8_t maxSideTurns=3, maxTotalTurns=6;
 };
 inline bool v2ControlLinkLost(bool requireTransport, bool transportAvailable,
@@ -23,10 +23,10 @@ inline bool v2ControlLinkLost(bool requireTransport, bool transportAvailable,
 inline V2ScanAction decideV2Scan(const V2ScanDecisionInput& in) {
   if (!in.leftValid || !in.frontValid || !in.rightValid || !in.imuReady)
     return V2ScanAction::Hold;
-  const bool leftSafe=!in.irLeft && in.leftCm > in.sideMinimumCm;
-  const bool rightSafe=!in.irRight && in.rightCm > in.sideMinimumCm;
+  const bool leftSafe=!in.irLeft && in.leftCm > in.hardCollisionCm;
+  const bool rightSafe=!in.irRight && in.rightCm > in.hardCollisionCm;
   const bool trialClear=in.frontStable && !in.irLeft && !in.irRight &&
-      in.frontCm >= in.frontMinimumCm && leftSafe && rightSafe;
+      in.frontCm >= in.frontMinimumCm;
   if (in.afterTrial && trialClear) return V2ScanAction::Recovered;
   if (in.afterTurn && !in.afterTrial && trialClear) return V2ScanAction::ForwardTrial;
   if (in.totalTurns >= in.maxTotalTurns) return V2ScanAction::Hold;

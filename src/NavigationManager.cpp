@@ -828,7 +828,7 @@ void NavigationManager::selectPathAfterScan(unsigned long now) {
     input.alternateTried=_v2.alternateTried();
     input.sideTurns=_v2.sideTurns();
     input.totalTurns=_v2.totalTurns();
-    input.sideMinimumCm=RobotConfig::AUTO_V2_PROVISIONAL_SIDE_CM;
+    input.hardCollisionCm=RobotConfig::NEAR_OBSTACLE_CM;
     input.frontMinimumCm=RobotConfig::AUTO_V2_PROVISIONAL_FRONT_CM;
     input.tieToleranceCm=RobotConfig::AUTO_PATH_TIE_TOLERANCE_CM;
     input.maxSideTurns=RobotConfig::AUTO_V2_MAX_TURNS_PER_SIDE;
