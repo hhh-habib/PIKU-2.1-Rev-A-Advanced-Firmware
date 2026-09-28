@@ -16,7 +16,9 @@ int main() {
   assert(p.state()==StuckV2State::EscapeScan);
   assert(!p.escapeTimedOut(40999));
   assert(p.escapeTimedOut(41000));
-  p.hold(); assert(p.state()==StuckV2State::TrappedHold);
+  p.hold(26000); assert(p.state()==StuckV2State::TrappedHold);
+  assert(!p.retryReady(28499,2500,true));
+  assert(p.retryReady(28500,2500,true));
   p.noteAvoidance(30000,100,true); // hold is persistent
   assert(p.state()==StuckV2State::TrappedHold);
   p.rearm(); assert(p.state()==StuckV2State::Normal);

@@ -187,7 +187,6 @@ const char DASHBOARD_HTML[] PROGMEM = R"html(
               <p class="eyebrow">Operations</p>
               <h2>Control &amp; Radar</h2>
             </div>
-            <span class="section-status" data-bind="navigationDecision">--</span>
           </div>
 
           <div class="control-layout">
@@ -220,31 +219,12 @@ const char DASHBOARD_HTML[] PROGMEM = R"html(
                 </div>
                 <div class="control-readouts">
                   <div><span>Movement</span><strong id="motor">--</strong></div>
-                  <div><span>Navigation</span><strong id="nav">--</strong></div>
                   <div><span>Turn mode</span><strong id="turnMode">--</strong></div>
-                  <div><span>Control RTT</span><strong id="controlRtt">--</strong></div>
-                  <div><span>Command age</span><strong id="controlCommandAge">--</strong></div>
                 </div>
-
-                <div class="control-readouts" aria-label="AUTO navigation diagnostics">
-                  <div><span>AUTO state</span><strong id="autoNavState">--</strong></div>
-                  <div><span>IR zone / source</span><strong id="autoIrSource">--</strong></div>
-                  <div><span>Relative spin</span><strong id="autoTurnAngle">--</strong></div>
-                  <div><span>Preferred / selected</span><strong id="autoSelectedPath">--</strong></div>
-                  <div><span>Spin result</span><strong id="autoTurnResult">--</strong></div>
-                  <div><span>Recovery / blocked</span><strong id="autoBlockedRetry">--</strong></div>
-                  <div><span>Scan L / F / R</span><strong id="autoScanSummary">--</strong></div>
-                  <div><span>Hazard recovery</span><strong id="autoHazardRecovery">--</strong></div>
-                  <div><span>Stuck recovery</span><strong id="autoStuckRecovery">--</strong></div>
-                </div>
-
-                <p class="control-note" id="controlAvailability">Manual controls are unavailable while AUTO mode is active.</p>
-                <div class="control-readouts">
-                  <button id="overrideBtn" type="button" disabled>Enable manual flame/gas override</button>
-                  <strong id="overrideStatus">Override OFF</strong>
-                </div>
-                <p id="overrideAlert" class="control-note" role="alert" hidden>HAZARD ACTIVE - MANUAL OVERRIDE. Flame/gas alarm remains active.</p>
-                <p class="control-note">Manual Reverse and Left/Right are operator-supervised; rear and turn-sweep clearance are NOT fully sensor-verified.</p>
+                <p id="autoNavigationSummary" class="control-note" hidden>Auto Navigation: Normal</p>
+                <p class="control-note" id="controlAvailability">AUTO mode active.</p>
+                <p id="overrideAlert" class="control-note" role="alert" hidden>Flame/Gas Hazard Detected</p>
+                <button class="mode-btn" id="overrideBtn" type="button" hidden disabled>Override Hazard &amp; Control</button>
                 <div class="dpad auto" id="dpad" aria-label="Manual directional controls">
                   <button class="forward hold" type="button" data-move="FORWARD" aria-label="Move forward">
                     <span class="arrow arrow-up" aria-hidden="true"></span>
@@ -741,7 +721,8 @@ h1 { margin-bottom:1px; font-size:20px; letter-spacing:.025em; }
   color:var(--cyan-soft);
   box-shadow:inset 0 0 0 1px rgba(54,216,255,.08);
 }
-.dashboard-section[hidden] { display:none !important; }
+.dashboard-section[hidden], #overrideBtn[hidden], #overrideAlert[hidden],
+#autoNavigationSummary[hidden] { display:none !important; }
 .dashboard-section.active { display:block; }
 .section-heading {
   display:flex;
@@ -1318,9 +1299,12 @@ function updateModeButtons() {
   if (autoButton) autoButton.classList.toggle('active', mode === 'AUTO');
   if (manualButton) manualButton.classList.toggle('active', manualActive);
   if (dpad) dpad.classList.toggle('auto', !manualActive);
+  const hazardBlocked = manualActive && latestData &&
+    (latestData.flameCritical || latestData.gasCritical) &&
+    !latestData.manualFlameGasOverride;
   document.querySelectorAll('.hold').forEach(button => {
-    button.disabled = !manualActive;
-    button.setAttribute('aria-disabled', manualActive ? 'false' : 'true');
+    button.disabled = !manualActive || hazardBlocked;
+    button.setAttribute('aria-disabled', button.disabled ? 'true' : 'false');
   });
   const stopButton = byId('stopBtn');
   if (stopButton) {
@@ -1329,8 +1313,8 @@ function updateModeButtons() {
   }
   if (turnButton) turnButton.disabled = !manualActive;
   setText('controlAvailability', manualActive
-    ? 'Manual controls active. Release stops motors; an independent control session maintains override permission.'
-    : 'Directional controls are unavailable in AUTO mode. STOP remains available.');
+    ? (hazardBlocked ? 'Manual controls paused.' : 'Manual controls ready.')
+    : 'AUTO mode active. STOP is available.');
 }
 
 function updateSensorHeadControls(d) {
@@ -1532,24 +1516,20 @@ function ensureControlSession() {
   controlPost('/control-session', {}).then(response => response.json())
     .then(result => {
       controlSessionToken = result.token;
-      setText('overrideStatus', 'Override OFF; control session active');
-    }).catch(() => setText('overrideStatus', 'Control session unavailable'))
+      const button = byId('overrideBtn');
+      if (button && !button.hidden) button.disabled = false;
+    }).catch(() => {})
     .finally(() => { sessionRequestInFlight = false; });
 }
 
 function toggleManualOverride() {
-  if (mode !== 'MANUAL' || !controlSessionToken) return;
+  if (mode !== 'MANUAL') return;
+  if (!controlSessionToken) { ensureControlSession(); return; }
   const enable = !(latestData && latestData.manualFlameGasOverride);
-  if (enable && !window.confirm(
-      'Flame/gas hazard is active. Manual movement can expose people and equipment. ' +
-      'Keep direct supervision and an accessible STOP. Rear clearance is not sensor-verified. Enable override?')) return;
   controlPost('/manual-override', {
     set:enable ? 'on' : 'off', token:controlSessionToken,
     confirm:enable ? '1' : '0'
-  }).then(() => {
-    setText('overrideStatus', enable ? 'Override enabled' : 'Override OFF');
-    loadData();
-  }).catch(error => setText('overrideStatus', 'Override rejected: ' + error.message));
+  }).then(() => loadData()).catch(() => loadData());
 }
 
 function updateAlarmBanner(d) {
@@ -1589,7 +1569,7 @@ function updateAlarmBanner(d) {
   let label = 'SYSTEM NORMAL';
   if (d.manualFlameGasOverride) {
     severity = 'critical';
-    label = 'HAZARD ACTIVE - MANUAL OVERRIDE';
+    label = 'HAZARD ACTIVE - OVERRIDE ON';
   } else if (safetyState === 'CRITICAL') {
     severity = 'critical';
     label = 'CRITICAL';
@@ -2057,6 +2037,16 @@ function renderTelemetry(d) {
   const v2 = autoNav.v2 || {};
   setText('autoStuckRecovery', (stuck.state || 'MONITORING') + ' / attempt ' + (stuck.attempts ?? 0) +
     ' / V2 ' + (v2.state || 'OFF') + (v2.assistance_required ? ' / ASSISTANCE REQUIRED' : ''));
+  const autoSummary = byId('autoNavigationSummary');
+  if (autoSummary) {
+    autoSummary.hidden = d.mode !== 'AUTO';
+    autoSummary.textContent = v2.assistance_required
+      ? 'Auto Navigation: Assistance Required - Retrying'
+      : ((v2.state && v2.state !== 'NORMAL' && v2.state !== 'OFF') ||
+         (hazard.state && hazard.state !== 'IDLE') ||
+         (autoNav.avoidance_source && autoNav.avoidance_source !== 'NONE')
+         ? 'Auto Navigation: Recovering' : 'Auto Navigation: Normal');
+  }
 
   setText('systemFirmware', d.firmware || '--');
   setText('systemUptime', uptimeText);
@@ -2136,14 +2126,20 @@ function renderTelemetry(d) {
     }
   }
   if (mode === 'MANUAL') ensureControlSession();
+  const hazardActive = Boolean(d.flameCritical || d.gasCritical || d.manualFlameGasOverride);
   const overrideButton = byId('overrideBtn');
   if (overrideButton) {
-    overrideButton.disabled = mode !== 'MANUAL' || !controlSessionToken;
-    overrideButton.textContent = d.manualFlameGasOverride ? 'Disable manual override' : 'Enable manual flame/gas override';
+    overrideButton.hidden = mode !== 'MANUAL' || !hazardActive;
+    overrideButton.disabled = !controlSessionToken;
+    overrideButton.textContent = d.manualFlameGasOverride
+      ? 'Turn Override Off' : 'Override Hazard & Control';
   }
   const overrideAlert = byId('overrideAlert');
-  if (overrideAlert) overrideAlert.hidden = !d.manualFlameGasOverride;
-  if (d.manualFlameGasOverride) setText('overrideStatus', 'Override ON - ' + (d.manualMotionInhibitReason || 'NONE'));
+  if (overrideAlert) {
+    overrideAlert.hidden = mode !== 'MANUAL' || !hazardActive;
+    overrideAlert.textContent = d.manualFlameGasOverride
+      ? 'HAZARD ACTIVE - OVERRIDE ON' : 'Flame/Gas Hazard Detected';
+  }
 
   updateModeButtons();
   updateSensorHeadControls(d);

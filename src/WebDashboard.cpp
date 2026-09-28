@@ -1,4 +1,5 @@
 #include "WebDashboard.h"
+#include "ControlOriginPolicy.h"
 #include <ESPmDNS.h>
 #include "RobotConfig.h"
 #include "WebDashboardAssets.h"
@@ -1111,10 +1112,11 @@ bool WebDashboard::controlOriginAllowed() {
     addCoordinatorCors();
     return true;
   }
-  if (origin == "http://192.168.4.1" || origin == "http://192.168.10.22" ||
-      origin == "http://piku.local") {
-    return true;
-  }
+  const String softApIp=WiFi.softAPIP().toString();
+  const bool staConnected=WiFi.status() == WL_CONNECTED;
+  const String staIp=staConnected ? WiFi.localIP().toString() : "";
+  if (robotControlOriginAllowed(origin.c_str(), softApIp.c_str(),
+                                staIp.c_str(), staConnected)) return true;
 
   ++_httpErrorCount;
   _server.send(403, "application/json", "{\"ok\":false,\"error\":\"origin_not_allowed\"}");

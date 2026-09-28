@@ -5,7 +5,7 @@
 #include "StuckRecoveryV2Policy.h"
 #include "V2EscapeDecision.h"
 
-static_assert(!RobotConfig::ENABLE_STUCK_RECOVERY_V2, "V2 release default must be OFF");
+static_assert(RobotConfig::ENABLE_STUCK_RECOVERY_V2, "physical-test build must enable V2");
 static_assert(RobotConfig::AUTO_AVOIDANCE_TURN_TARGET_DEG == 35.0f, "normal turn changed");
 static_assert(RobotConfig::AUTO_V2_PROVISIONAL_TURN_TARGET_DEG == 25.0f, "V2 increment changed");
 
@@ -117,6 +117,18 @@ int main() {
   assert(exhausted.policy.state()==StuckV2State::TrappedHold && !exhausted.motor);
   exhausted.policy.noteAvoidance(50000,100,true);
   assert(exhausted.policy.state()==StuckV2State::TrappedHold);
+  exhausted.policy.hold(10000);
+  assert(!exhausted.policy.retryReady(12499,RobotConfig::AUTO_V2_RETRY_COOLDOWN_MS,true));
+  assert(!exhausted.policy.retryReady(12500,RobotConfig::AUTO_V2_RETRY_COOLDOWN_MS,false));
+  assert(exhausted.policy.retryReady(12500,RobotConfig::AUTO_V2_RETRY_COOLDOWN_MS,true));
+  assert(exhausted.policy.beginRetryRound(12500));
+  assert(exhausted.policy.state()==StuckV2State::EscapeScan);
+  assert(exhausted.policy.totalTurns()==0 && !exhausted.policy.hasCommittedSide());
+  exhausted.front=35; exhausted.left=38; exhausted.right=70;
+  assert(exhausted.scan()==V2ScanAction::TurnRight); // changed environment
+  exhausted.turnDone(); exhausted.front=55;
+  assert(exhausted.scan()==V2ScanAction::ForwardTrial);
+  exhausted.trialDone(); assert(exhausted.scan()==V2ScanAction::Recovered);
 
   RecoveryRig unsafe;
   unsafe.suspect(false); unsafe.irLeft=true;
@@ -127,6 +139,12 @@ int main() {
   RecoveryRig badImu;
   badImu.suspect(false); badImu.imu=false;
   assert(badImu.scan()==V2ScanAction::Hold);
+  badImu.policy.hold(2000);
+  assert(!badImu.policy.retryReady(5000,RobotConfig::AUTO_V2_RETRY_COOLDOWN_MS,false));
+  badImu.imu=true;
+  assert(badImu.policy.retryReady(5000,RobotConfig::AUTO_V2_RETRY_COOLDOWN_MS,true));
+  assert(badImu.policy.beginRetryRound(5000));
+  assert(badImu.scan()==V2ScanAction::TurnLeft);
   RecoveryRig noEcho;
   noEcho.suspect(false); noEcho.frontValid=false;
   assert(noEcho.scan()==V2ScanAction::Hold);
@@ -160,6 +178,10 @@ int main() {
   assert(!v2ControlLinkLost(true,true,true,true));
   assert(v2ControlLinkLost(true,false,false,false)); // prior transport vanished
   assert(v2ControlLinkLost(false,false,true,false)); // prior poll timed out
+  StuckRecoveryV2Policy stopDuringCooldown;
+  stopDuringCooldown.hold(1000);
+  stopDuringCooldown.abort();
+  assert(!stopDuringCooldown.retryReady(4000,RobotConfig::AUTO_V2_RETRY_COOLDOWN_MS,true));
   RecoveryRig timeout;
   timeout.suspect(false);
   assert(timeout.policy.escapeTimedOut(3000+RobotConfig::AUTO_V2_TOTAL_TIMEOUT_MS,

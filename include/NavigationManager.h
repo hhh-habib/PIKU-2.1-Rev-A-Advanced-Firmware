@@ -236,6 +236,7 @@ private:
   bool stuckEvidenceSatisfied() const;
   void beginStuckRecovery(unsigned long now);
   void beginV2Escape(unsigned long now);
+  void updateV2RetryCooldown(unsigned long now);
   void beginV2Turn(bool turnLeft, unsigned long now);
   void beginV2TrialFrontCheck(unsigned long now);
   void updateV2Trial(unsigned long now);

@@ -100,9 +100,9 @@ namespace RobotConfig {
   static constexpr unsigned long AUTO_INVALID_RETRY_MS = 250;
   static constexpr float AUTO_PATH_TIE_TOLERANCE_CM = 1.0f;
   static constexpr float AUTO_AVOIDANCE_TURN_TARGET_DEG = 35.0f;
-  // OFF preserves the normal AUTO algorithm until supervised validation.
+  // Physical-test build: normal AUTO still uses the same obstacle path.
   // V2 uses provisional research-prototype clearance, not a certified sweep.
-  static constexpr bool ENABLE_STUCK_RECOVERY_V2 = false;
+  static constexpr bool ENABLE_STUCK_RECOVERY_V2 = true;
   static constexpr float AUTO_V2_PROVISIONAL_TURN_TARGET_DEG = 25.0f;
   static constexpr float AUTO_V2_PROVISIONAL_FRONT_CM = 50.0f;
   static constexpr float AUTO_V2_PROVISIONAL_SIDE_CM = 30.0f;
@@ -110,6 +110,7 @@ namespace RobotConfig {
   static constexpr uint8_t AUTO_V2_MAX_TURNS_PER_SIDE = 3;
   static constexpr uint8_t AUTO_V2_MAX_TOTAL_TURNS = 6;
   static constexpr unsigned long AUTO_V2_TOTAL_TIMEOUT_MS = 30000;
+  static constexpr unsigned long AUTO_V2_RETRY_COOLDOWN_MS = 2500;
   static constexpr unsigned long AUTO_V2_DASHBOARD_LINK_TIMEOUT_MS = 2500;
   static constexpr unsigned long AUTO_V2_TURN_TIMEOUT_MS = 2500;
   static constexpr unsigned long AUTO_V2_FORWARD_TRIAL_MS = 250;

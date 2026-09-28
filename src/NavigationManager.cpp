@@ -52,18 +52,18 @@ void NavigationManager::updateAuto() {
     updateDiagnostics(now);
     return;
   }
-  if (RobotConfig::ENABLE_STUCK_RECOVERY_V2 &&
-      _v2.state() == StuckV2State::TrappedHold) {
-    _motors.stop();
-    updateDiagnostics(now);
-    return;
-  }
   if (handleCriticalSafety(now)) {
     if (RobotConfig::ENABLE_STUCK_RECOVERY_V2 &&
         _v2.state() != StuckV2State::Normal) {
       _v2.abort(); // preserve ordinary AUTO hazard-clear/rescan behavior
       _v2AfterTrial = _v2AlternatePending = false;
     }
+    updateDiagnostics(now);
+    return;
+  }
+  if (RobotConfig::ENABLE_STUCK_RECOVERY_V2 &&
+      _v2.state() == StuckV2State::TrappedHold) {
+    updateV2RetryCooldown(now);
     updateDiagnostics(now);
     return;
   }
@@ -185,8 +185,7 @@ void NavigationManager::notifyOperatorStop() {
   _environmentalRecoveryActive = false;
   _environmentalRecoveryCompleted = false;
   _hazardClearStartedMs = 0;
-  if (RobotConfig::ENABLE_STUCK_RECOVERY_V2 &&
-      _v2.state() != StuckV2State::TrappedHold) _v2.abort();
+  if (RobotConfig::ENABLE_STUCK_RECOVERY_V2) _v2.abort();
   _v2AfterTrial = _v2AlternatePending = false;
   _obstacleRecoveryActive = false;
   _obstacleReevaluationPending = false;
@@ -1185,6 +1184,24 @@ bool NavigationManager::stuckEvidenceSatisfied() const {
          stuckDistanceUnchanged();
 }
 
+void NavigationManager::updateV2RetryCooldown(unsigned long now) {
+  _motors.stop();
+  // serviceLoop continues sensors, Wi-Fi and operator STOP while we wait.
+  // A fresh scan, with motors OFF, rechecks sonar before any new turn.
+  const bool linkReady=!v2ControlLinkLost(
+      _v2RequireLink, v2TransportAvailable(),
+      _v2RequireDashboardPoll, _dashboard.autoDashboardPollAlive());
+  if (!_v2.retryReady(now, RobotConfig::AUTO_V2_RETRY_COOLDOWN_MS,
+                      linkReady && v2ImuReady(now))) return;
+  if (!_v2.beginRetryRound(now)) return;
+  _v2AfterTrial=_v2AlternatePending=false;
+  _relativeTurnDeg=0.0f;
+  _dashboardData.autoSelectedPath="NONE";
+  _v2LastReason="RETRY_FRESH_SCAN";
+  setState(NavigationState::StuckSuspected, "V2_RETRY_FRESH_SCAN");
+  beginScan(ScanPurpose::EscapeV2, now);
+}
+
 void NavigationManager::beginV2Escape(unsigned long now) {
   _motors.stop();
   _servoScanner.detach();
@@ -1314,7 +1331,7 @@ void NavigationManager::updateV2Trial(unsigned long now) {
 void NavigationManager::enterV2TrappedHold(const char* reason, unsigned long now) {
   _motors.stop();
   _servoScanner.detach();
-  _v2.hold();
+  _v2.hold(now);
   _v2AfterTrial = _v2AlternatePending = false;
   _v2LastReason = reason;
   _obstacleRecoveryActive = false;
@@ -1322,7 +1339,7 @@ void NavigationManager::enterV2TrappedHold(const char* reason, unsigned long now
   _dashboardData.autoAssistanceRequired = true;
   setState(NavigationState::TrappedHold, "TRAPPED_HOLD_ASSISTANCE_REQUIRED");
   setPhase(AutoPhase::TrappedHold, now);
-  Serial.printf("[Nav] TRAPPED_HOLD reason=%s attempts=%u\n", reason, _v2.attempts());
+  Serial.printf("[Nav] V2 cooldown reason=%s attempts=%u\n", reason, _v2.attempts());
 }
 
 void NavigationManager::beginStuckRecovery(unsigned long now) {

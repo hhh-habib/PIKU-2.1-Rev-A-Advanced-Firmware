@@ -1,6 +1,6 @@
 # Approved v2 standalone execution record
 
-Current source includes the later [focused correction pass](FOCUSED_CORRECTION_PASS.md). Phase-specific sections below remain the historical results for their individual commits.
+Current source includes the focused correction pass and the final behavior implementation below. Phase-specific sections remain historical results for their individual commits.
 
 ## Baseline and scope
 
@@ -75,3 +75,12 @@ The Phase 1A and 1B sections above record what those individual commits implemen
 V2 remains OFF by default. When enabled, repeated valid avoidance history triggers a motor-off fresh L/F/R scan. Finite side readings above the provisional 30 cm threshold, direction-specific IR, and fresh healthy IMU allow a committed side. The manager uses the existing gyro-Z turn integration with the V2-only 25-degree target, stops after each increment, and rescans. Three stable finite front samples (spread <=5 cm) with median >=50 cm and finite usable sides permit a fresh-front-checked 250 ms forward trial; a full fresh scan after the trial must still meet the provisional gate to return to NORMAL. The first side has at most 3 turns; the opposite side is considered only after a fresh scan, with at most 6 total turns and 30 seconds. Invalid required sensing, STOP, hazards, mode takeover, turn timeout, lost previously present Wi-Fi transport, or exhausted limits stop the attempt. The trapped hold remains latched until deliberate mode rearm. No new V2 reverse was added.
 
 These values are provisional research criteria, not proof of a passable robot-width corridor, measured translation, or actual 25-degree motion. The AUTO browser control session is Manual-only; V2 monitors loss of a Wi-Fi interface or dashboard telemetry poll that was present when escape began, while fully standalone AUTO can run without a browser connection. The AUTO poll is an unauthenticated link signal. A supervised bench test must establish collision clearance, turn calibration, link behavior and useful progress before enabling V2 by default. See [FOCUSED_CORRECTION_PASS.md](FOCUSED_CORRECTION_PASS.md) for source and test evidence.
+
+
+## Final behavior physical-test build
+
+The current local firmware enables `ENABLE_STUCK_RECOVERY_V2=true` for supervised physical testing. Normal AUTO obstacle turns still target 35 degrees; V2 escape alone targets 25 degrees. A failed V2 round now stops motors and displays assistance/retrying during a nonblocking 2,500 ms cooldown. Sensors, Wi-Fi, hazards, STOP and mode changes continue to run. Once the cooldown ends and the required IMU and previously present link policy allow it, the policy clears stale turn history and starts a completely fresh motor-off L/F/R scan. Invalid sonar remains a motor-off scan/retry condition. Flame/gas during recovery enters the existing stable-clearance AUTO path; an explicit STOP cancels retry.
+
+The Control page uses one flame/gas override button and one short AUTO status line. The Manual session remains internal; direction release and 750 ms movement dead-man stop motors without revoking override. Live SoftAP and STA addresses, or piku.local, pass the same origin policy and command endpoints. The independent robot-side safety and navigation gates remain authoritative for all interfaces. Control-origin host tests use arbitrary DHCP STA addresses; actual SoftAP/STA browser and hardware behavior remain pending.
+
+Software validation: `pio run -e esp32-s3-n16r8` PASS with V2 ON; RAM 58,708/327,680 (17.9%), flash 1,034,773/6,553,600 (15.8%), no compiler warning in the final build output. Native MinGW Manual, V2 policy/decision, origin, ring and checksum tests PASS; Python capture schema/checksum test PASS. The embedded dashboard JavaScript and simulated Control page states passed in local headless Edge. These are source and browser simulations, not robot motion observations. No firmware flash, measured 25-degree turn, STOP latency, rear clearance or Wi-Fi stability is claimed.

@@ -41,8 +41,8 @@ public:
       state_=StuckV2State::EscapeScan;
   }
 
-  void rearm() { state_=StuckV2State::Normal; attempts_=0; clearHistory(); resetEscape(); }
-  void abort() { state_=StuckV2State::Normal; clearHistory(); resetEscape(); }
+  void rearm() { state_=StuckV2State::Normal; attempts_=0; clearHistory(); resetEscape(); cooldownStartedMs_=0; }
+  void abort() { state_=StuckV2State::Normal; clearHistory(); resetEscape(); cooldownStartedMs_=0; }
   void noteSustainedClear(uint32_t ms) {
     if (state_ == StuckV2State::Normal && ms >= SUSTAINED_CLEAR_MS) {
       clearHistory();
@@ -88,7 +88,7 @@ public:
   }
   bool startEscape(uint32_t now) {
     if (state_ != StuckV2State::Suspected) return false;
-    if (attempts_ >= MAX_ATTEMPTS) { hold(); return false; }
+    if (attempts_ >= MAX_ATTEMPTS) { hold(now); return false; }
     ++attempts_;
     escapeStartedMs_=now;
     resetEscape();
@@ -100,8 +100,19 @@ public:
            now-escapeStartedMs_ >= limitMs;
   }
   void turnVerified() { if(state_==StuckV2State::EscapeTurn) state_=StuckV2State::EscapeVerify; }
-  void recovered() { state_=StuckV2State::Normal; attempts_=0; clearHistory(); resetEscape(); }
-  void hold() { state_=StuckV2State::TrappedHold; }
+  void recovered() { state_=StuckV2State::Normal; attempts_=0; clearHistory(); resetEscape(); cooldownStartedMs_=0; }
+  void hold(uint32_t now=0) { state_=StuckV2State::TrappedHold; cooldownStartedMs_=now; }
+  bool retryReady(uint32_t now, uint32_t cooldownMs, bool prerequisitesReady) const {
+    return state_==StuckV2State::TrappedHold && prerequisitesReady &&
+           now-cooldownStartedMs_>=cooldownMs;
+  }
+  bool beginRetryRound(uint32_t now) {
+    if (state_!=StuckV2State::TrappedHold) return false;
+    clearHistory(); resetEscape(); attempts_=1;
+    escapeStartedMs_=now; cooldownStartedMs_=0;
+    state_=StuckV2State::EscapeScan;
+    return true;
+  }
   const char* name() const {
     switch(state_) {
       case StuckV2State::Normal: return "NORMAL";
@@ -115,7 +126,7 @@ public:
   }
 private:
   StuckV2State state_=StuckV2State::Normal;
-  uint32_t windowStartedMs_=0, escapeStartedMs_=0;
+  uint32_t windowStartedMs_=0, escapeStartedMs_=0, cooldownStartedMs_=0;
   uint32_t invalidWindowStartedMs_=0;
   uint8_t cycles_=0, reversals_=0, shortFailedSteps_=0;
   uint8_t blockedScans_=0, invalidScans_=0, attempts_=0;
