@@ -1171,6 +1171,9 @@ void WebDashboard::sendJson() {
          ",\"mq2_warmup_age_ms\":" + String(_data.mq2WarmupAgeMs) +
          ",\"gasStatus\":\"" + _data.gasStatus + "\"" +
          ",\"flameDetected\":" + jsonBool(_data.flameDetected) +
+         ",\"gasCritical\":" + jsonBool(_data.gasCritical) +
+         ",\"flameCritical\":" + jsonBool(_data.flameCritical) +
+         ",\"temperatureCritical\":" + jsonBool(_data.temperatureCritical) +
          ",\"flame_state\":\"" + _data.flameState + "\"" +
          ",\"flame_input\":\"DIGITAL_DO\"" +
          ",\"flame_digital_level\":" + String(_data.flameDigitalLevel) +

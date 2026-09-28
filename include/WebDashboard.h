@@ -35,6 +35,9 @@ struct DashboardData {
   unsigned long mq2SampleAgeMs = 0;
   unsigned long mq2WarmupAgeMs = 0;
   bool flameDetected = false;
+  bool gasCritical = false;
+  bool flameCritical = false;
+  bool temperatureCritical = false;
   String flameState = "CLEAR";
   int flameDigitalLevel = HIGH;
   bool flameRawActive = false;

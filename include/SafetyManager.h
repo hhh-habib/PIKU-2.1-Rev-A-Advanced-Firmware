@@ -11,6 +11,9 @@ public:
   void begin();
   void update(const SensorSnapshot& snapshot);
   bool isCritical() const;
+  bool isGasCritical() const { return _gasCritical; }
+  bool isFlameCritical() const { return _flameCritical; }
+  bool isTemperatureCritical() const { return _tempCritical; }
   bool isAutoRecoverableEnvironmentalHazard() const;
   bool hasNonRecoverableCriticalHazard() const;
   bool isCaution() const;

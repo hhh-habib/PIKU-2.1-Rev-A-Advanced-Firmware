@@ -11,6 +11,7 @@
 #include "ManualOverridePolicy.h"
 #include "ManualMotionGate.h"
 #include "NavigationManager.h"
+#include "NavigationTrace.h"
 #include "PinConfig.h"
 #include "RobotConfig.h"
 #include "RadioManager.h"
@@ -70,6 +71,7 @@ BuzzerManager buzzer(PinConfig::BUZZER_PIN);
 SafetyManager safety;
 WebDashboard dashboard;
 DashboardData dashboardData;
+NavigationTrace navTrace;
 DashboardPublisher dashboardPublisher(dashboard, display, dashboardData);
 String lastControlMode = "MANUAL";
 String manualMotorDisplayState = "";
@@ -160,11 +162,11 @@ void onDashboardCommandAccepted(const String& command,
                                 unsigned long acceptedMs) {
   (void)acceptedMs;
   if (command == "STOP" || command == "RELEASE") {
+    // MotorController::stop() writes PWM duty zero before changing GPIO state.
+    // This callback runs inside /cmd before logging or formatting a response.
+    stopMotors();
     if (command == "STOP") revokeManualOverride("OPERATOR_STOP");
     else manualOverride.movementStopped();
-    // MotorController::stop() writes PWM duty zero before changing GPIO state.
-    // This callback runs inside /cmd before WebServer formats its response.
-    stopMotors();
     manualMotorDisplayState = "STOP";
     dashboardData.motorState = "STOP";
     dashboardData.navigationDecision = command == "STOP" ? "OPERATOR_STOP" : "MANUAL_RELEASE_STOP";
@@ -191,8 +193,8 @@ void onDashboardCommandAccepted(const String& command,
 }
 
 void onDashboardModeAccepted(const String& mode) {
-  revokeManualOverride("MODE_CHANGE");
   stopMotors();
+  revokeManualOverride("MODE_CHANGE");
   navigation.cancelForModeChange();
   manualMotorDisplayState = mode == "MANUAL" ? "STOP" : "";
   dashboardData.motorState = "STOP";
@@ -298,6 +300,9 @@ void publishCurrentTelemetry(bool force) {
     ? manualLogicalInspectionAngle
     : logicalDashboardScanAngle(currentServoPosition);
   dashboardData.temperatureValid = snapshot.temperatureValid;
+  dashboardData.gasCritical = safety.isGasCritical();
+  dashboardData.flameCritical = safety.isFlameCritical();
+  dashboardData.temperatureCritical = safety.isTemperatureCritical();
   dashboardData.humidityValid = snapshot.humidityValid;
   dashboardData.environmentSampleAgeMs = sampleAge(snapshot.environmentLastSuccessMs, now);
   dashboardData.distanceSampleAgeMs = sampleAge(snapshot.distanceSampleMs, now);
@@ -660,6 +665,7 @@ bool serviceLoop() {
   buzzer.update();
   allowSlowOutputsThisPass = allowBackgroundWork;
   publishCurrentTelemetry(safetyChanged);
+  navTrace.service(dashboardData);
   allowSlowOutputsThisPass = true;
   return safetyChanged;
 }
@@ -874,6 +880,7 @@ void updateManualMode() {
 
 void setup() {
   Serial.begin(115200);
+  navTrace.begin(esp_random());
   delay(50);
   Serial.println();
   Serial.print("[Boot] ");
