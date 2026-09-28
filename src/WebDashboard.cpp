@@ -1212,7 +1212,8 @@ void WebDashboard::sendJson() {
              ",\"front\":{\"state\":\"" + _data.autoScanFrontState + "\",\"distance_cm\":" + jsonFloat(_data.autoScanFrontDistanceCm, 1) + ",\"trusted\":" + jsonBool(_data.autoScanFrontTrusted) + "}" +
              ",\"right\":{\"state\":\"" + _data.autoScanRightState + "\",\"distance_cm\":" + jsonFloat(_data.autoScanRightDistanceCm, 1) + ",\"trusted\":" + jsonBool(_data.autoScanRightTrusted) + "}}" +
            ",\"hazard\":{\"state\":\"" + _data.autoHazardRecoveryState + "\",\"clear_elapsed_ms\":" + String(_data.autoHazardClearElapsedMs) + ",\"clear_remaining_ms\":" + String(_data.autoHazardClearRemainingMs) + "}" +
-           ",\"stuck\":{\"state\":\"" + _data.autoStuckState + "\",\"attempts\":" + String(_data.autoStuckRecoveryAttempts) + ",\"last_reason\":\"" + _data.autoStuckLastReason + "\"}}" +
+           ",\"stuck\":{\"state\":\"" + _data.autoStuckState + "\",\"attempts\":" + String(_data.autoStuckRecoveryAttempts) + ",\"last_reason\":\"" + _data.autoStuckLastReason + "\"}" +
+           ",\"v2\":{\"state\":\"" + _data.autoV2State + "\",\"attempts\":" + String(_data.autoV2Attempts) + ",\"assistance_required\":" + jsonBool(_data.autoAssistanceRequired) + ",\"reason\":\"" + _data.autoV2Reason + "\"}}" +
          ",\"commandSequence\":" + String(_lastCommandSequence) +
          ",\"softApIp\":\"" + _data.softApIp + "\"" +
          ",\"localHostname\":\"" + _data.localHostname + "\"" +

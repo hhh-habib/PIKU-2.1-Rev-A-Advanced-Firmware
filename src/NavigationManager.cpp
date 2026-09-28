@@ -47,9 +47,31 @@ void NavigationManager::updateAuto() {
   if (elapsedMs > 100) elapsedMs = 100;
   _lastUpdateMs = now;
 
-  if (handleOperatorInterruption() || handleCriticalSafety(now)) {
+  if (handleOperatorInterruption()) {
     updateDiagnostics(now);
     return;
+  }
+  if (RobotConfig::ENABLE_STUCK_RECOVERY_V2 &&
+      _v2.state() == StuckV2State::TrappedHold) {
+    _motors.stop();
+    updateDiagnostics(now);
+    return;
+  }
+  if (handleCriticalSafety(now)) {
+    if (RobotConfig::ENABLE_STUCK_RECOVERY_V2 &&
+        _v2.state() != StuckV2State::Normal)
+      _v2.abort(); // preserve ordinary AUTO hazard-clear/rescan behavior
+    updateDiagnostics(now);
+    return;
+  }
+  if (RobotConfig::ENABLE_STUCK_RECOVERY_V2 &&
+      _v2.state() == StuckV2State::EscapeScan) {
+    if (_v2.escapeTimedOut(now) || currentIrZone() != IrZone::Clear) {
+      enterV2TrappedHold(_v2.escapeTimedOut(now) ?
+                         "ESCAPE_SCAN_TIMEOUT" : "IR_SWEEP_BLOCKED", now);
+      updateDiagnostics(now);
+      return;
+    }
   }
   if (handleIrArbitration(now)) {
     updateDiagnostics(now);
@@ -116,6 +138,7 @@ void NavigationManager::updateAuto() {
       updateBlockedRetryWait(now);
       break;
     case AutoPhase::OperatorStop:
+    case AutoPhase::TrappedHold:
       _motors.stop();
       break;
   }
@@ -139,6 +162,8 @@ void NavigationManager::notifyOperatorStop() {
   _environmentalRecoveryActive = false;
   _environmentalRecoveryCompleted = false;
   _hazardClearStartedMs = 0;
+  if (RobotConfig::ENABLE_STUCK_RECOVERY_V2 &&
+      _v2.state() != StuckV2State::TrappedHold) _v2.abort();
   _obstacleRecoveryActive = false;
   _obstacleReevaluationPending = false;
   _motors.stop();
@@ -162,6 +187,8 @@ void NavigationManager::cancelForModeChange() {
   _blockedRetryCount = 0;
   _obstacleForwardClearMs = 0;
   resetStuckEvidence(true);
+  if (RobotConfig::ENABLE_STUCK_RECOVERY_V2) _v2.rearm();
+  _v2LastReason = "NONE";
   setState(NavigationState::OperatorAbort, "AUTO_MODE_CHANGE");
   setPhase(AutoPhase::Idle, millis());
 }
@@ -204,6 +231,7 @@ const char* NavigationManager::stateName() const {
     case NavigationState::StuckRecovery: return "StuckRecovery";
     case NavigationState::OperatorAbort: return "OperatorAbort";
     case NavigationState::CriticalAbort: return "CriticalAbort";
+    case NavigationState::TrappedHold: return "TrappedHold";
   }
   return "Unknown";
 }
@@ -224,6 +252,7 @@ bool NavigationManager::handleOperatorInterruption() {
   if (_operatorStopLatched && modeCounter != _operatorStopModeCommandCounter) {
     _operatorStopLatched = false;
     resetStuckEvidence(true);
+    if (RobotConfig::ENABLE_STUCK_RECOVERY_V2) _v2.rearm();
     setPhase(AutoPhase::Idle, millis());
   }
   if (_dashboard.getPendingCommand() == "STOP") {
@@ -344,6 +373,8 @@ void NavigationManager::beginUnifiedObstacleRecovery(ScanPurpose purpose,
                                                        unsigned long now) {
   _motors.stop();
   _servoScanner.detach();
+  if (RobotConfig::ENABLE_STUCK_RECOVERY_V2)
+    _v2PriorForwardMs = _obstacleForwardClearMs;
   resetStuckEvidence(purpose != ScanPurpose::StuckRecovery);
   _obstacleForwardClearMs = 0;
   _scanPurpose = purpose;
@@ -391,6 +422,7 @@ void NavigationManager::updateBlockedRetryWait(unsigned long now) {
   if (now - _phaseStartedMs < RobotConfig::AUTO_BLOCKED_RETRY_WAIT_MS) return;
   _obstacleRecoveryAttempts = 0;
   _stuckRecoveryAttempts = 0;
+  // V2 history and lifetime attempt budget survive this normal backoff.
   setState(NavigationState::ObstacleScan, "BLOCKED_RETRY_RESCAN");
   beginScan(_scanPurpose, now);
 }
@@ -469,12 +501,14 @@ void NavigationManager::startForward(unsigned long now, const char* decision) {
 void NavigationManager::updateForward(unsigned long now, unsigned long elapsedMs) {
   _obstacleForwardClearMs += elapsedMs;
   if (_obstacleForwardClearMs >= RobotConfig::AUTO_OBSTACLE_RETRY_RESET_FORWARD_MS) {
+    if (RobotConfig::ENABLE_STUCK_RECOVERY_V2)
+      _v2.noteSustainedClear(_obstacleForwardClearMs);
     _obstacleRecoveryAttempts = 0;
     _blockedRetryCount = 0;
     _obstacleForwardClearMs = 0;
   }
   updateStuckEvidence(now, elapsedMs);
-  if (stuckEvidenceSatisfied()) {
+  if (!RobotConfig::ENABLE_STUCK_RECOVERY_V2 && stuckEvidenceSatisfied()) {
     beginStuckRecovery(now);
     return;
   }
@@ -536,6 +570,8 @@ void NavigationManager::beginScan(ScanPurpose purpose, unsigned long now) {
     _dashboardData.autoAvoidanceSource = "HAZARD";
   else if (purpose == ScanPurpose::StuckRecovery)
     _dashboardData.autoAvoidanceSource = "STUCK";
+  else if (purpose == ScanPurpose::EscapeV2)
+    _dashboardData.autoAvoidanceSource = "STUCK_V2";
   else if (purpose == ScanPurpose::IrBoth)
     _dashboardData.autoAvoidanceSource = "IR_BOTH";
   else if (purpose == ScanPurpose::Obstacle)
@@ -558,6 +594,8 @@ void NavigationManager::commandCurrentScanDirection(unsigned long now) {
     scanState = NavigationState::HazardRecoveryScan;
   else if (_scanPurpose == ScanPurpose::StuckRecovery)
     scanState = NavigationState::StuckRecovery;
+  else if (_scanPurpose == ScanPurpose::EscapeV2)
+    scanState = NavigationState::StuckSuspected;
   else if (_scanPurpose == ScanPurpose::IrSingle ||
            _scanPurpose == ScanPurpose::IrBoth)
     scanState = NavigationState::ObstacleScan;
@@ -703,6 +741,16 @@ void NavigationManager::beginRecenter(unsigned long now) {
 void NavigationManager::selectPathAfterScan(unsigned long now) {
   if (!scanSampleTrusted(_leftScan) || !scanSampleTrusted(_frontScan) ||
       !scanSampleTrusted(_rightScan)) {
+    if (_scanPurpose == ScanPurpose::EscapeV2) {
+      enterV2TrappedHold("ESCAPE_SCAN_INVALID", now);
+      return;
+    }
+    if (RobotConfig::ENABLE_STUCK_RECOVERY_V2 &&
+        _scanPurpose != ScanPurpose::EnvironmentalRecovery &&
+        _v2.noteInvalidScan(now)) {
+      enterV2TrappedHold("REPEATED_INVALID_SCAN", now);
+      return;
+    }
     if (_scanPurpose == ScanPurpose::StuckRecovery)
       _lastStuckReason = "RECOVERY_SCAN_INVALID";
     enterInvalidStop("ULTRASONIC_SCAN_FAULT_STOP");
@@ -712,6 +760,36 @@ void NavigationManager::selectPathAfterScan(unsigned long now) {
   const float left = scanPathClearance(_leftScan);
   const float front = scanPathClearance(_frontScan);
   const float right = scanPathClearance(_rightScan);
+  if (RobotConfig::ENABLE_STUCK_RECOVERY_V2 &&
+      _scanPurpose != ScanPurpose::EnvironmentalRecovery &&
+      _scanPurpose != ScanPurpose::StuckRecovery &&
+      _scanPurpose != ScanPurpose::EscapeV2) {
+    // Count actual completed scans, including scans after a retry backoff.
+    const bool allFinite = _leftScan.ultrasonic.state ==
+        UltrasonicResultState::DistanceValid &&
+        _frontScan.ultrasonic.state == UltrasonicResultState::DistanceValid &&
+        _rightScan.ultrasonic.state == UltrasonicResultState::DistanceValid;
+    _v2.noteAvoidance(now, _v2PriorForwardMs, allFinite);
+    _v2PriorForwardMs = 0;
+    if (_v2.state() == StuckV2State::Suspected) {
+      beginV2Escape(now);
+      return;
+    }
+  }
+  if (_scanPurpose == ScanPurpose::EscapeV2) {
+    // Three forward/side rays and the fitted front IR do not certify a full
+    // robot-width pivot envelope or the uninstrumented rear swept area.
+    const bool provisionalFront = _frontScan.ultrasonic.state ==
+        UltrasonicResultState::DistanceValid &&
+        front >= RobotConfig::AUTO_V2_PROVISIONAL_FRONT_CM;
+    const bool finiteSides = _leftScan.ultrasonic.state ==
+        UltrasonicResultState::DistanceValid &&
+        _rightScan.ultrasonic.state == UltrasonicResultState::DistanceValid;
+    enterV2TrappedHold(provisionalFront && finiteSides &&
+                       currentIrZone() == IrZone::Clear ?
+                       "PIVOT_SWEEP_COVERAGE_UNKNOWN" : "NO_VERIFIED_ESCAPE_CLEARANCE", now);
+    return;
+  }
   const IrZone currentZone = currentIrZone();
   const bool leftIrClear = currentZone != IrZone::Left && currentZone != IrZone::Both;
   const bool rightIrClear = currentZone != IrZone::Right && currentZone != IrZone::Both;
@@ -730,6 +808,14 @@ void NavigationManager::selectPathAfterScan(unsigned long now) {
 
   bool turnLeft = false;
   if (!selectClearestSide(turnLeft)) {
+    if (RobotConfig::ENABLE_STUCK_RECOVERY_V2 &&
+        _scanPurpose != ScanPurpose::EnvironmentalRecovery) {
+      _v2.noteBlockedScan();
+      if (_v2.state() == StuckV2State::Suspected) {
+        beginV2Escape(now);
+        return;
+      }
+    }
     if (_scanPurpose == ScanPurpose::EnvironmentalRecovery) {
       enterInvalidStop("HAZARD_RECOVERY_NO_SAFE_PATH_STOP");
     } else {
@@ -766,6 +852,15 @@ bool NavigationManager::selectClearestSide(bool& turnLeft) const {
 }
 
 void NavigationManager::beginSpinTurn(bool turnLeft, ScanPurpose purpose, unsigned long now) {
+  if (RobotConfig::ENABLE_STUCK_RECOVERY_V2 &&
+      purpose != ScanPurpose::EnvironmentalRecovery &&
+      purpose != ScanPurpose::StuckRecovery) {
+    _v2.noteTurn(turnLeft);
+    if (_v2.state() == StuckV2State::Suspected) {
+      beginV2Escape(now);
+      return;
+    }
+  }
   _turnLeft = turnLeft;
   _scanPurpose = purpose;
   _relativeTurnDeg = 0.0f;
@@ -862,6 +957,11 @@ void NavigationManager::finishRecoveryAfterSettle(unsigned long now) {
 }
 
 void NavigationManager::enterInvalidStop(const char* reason) {
+  if (RobotConfig::ENABLE_STUCK_RECOVERY_V2 &&
+      _v2.state() == StuckV2State::EscapeScan) {
+    enterV2TrappedHold(reason, millis());
+    return;
+  }
   _motors.stop();
   _servoScanner.detach();
   resetStuckEvidence(false);
@@ -982,6 +1082,33 @@ bool NavigationManager::stuckEvidenceSatisfied() const {
          stuckDistanceUnchanged();
 }
 
+void NavigationManager::beginV2Escape(unsigned long now) {
+  _motors.stop();
+  _servoScanner.detach();
+  _obstacleRecoveryActive = false;
+  _obstacleReevaluationPending = false;
+  if (!_v2.startEscape(now)) {
+    enterV2TrappedHold("ESCAPE_BUDGET_EXHAUSTED", now);
+    return;
+  }
+  _v2LastReason = "REPEATED_AVOIDANCE_HISTORY";
+  setState(NavigationState::StuckSuspected, "STUCK_V2_FRESH_SCAN");
+  beginScan(ScanPurpose::EscapeV2, now);
+}
+
+void NavigationManager::enterV2TrappedHold(const char* reason, unsigned long now) {
+  _motors.stop();
+  _servoScanner.detach();
+  _v2.hold();
+  _v2LastReason = reason;
+  _obstacleRecoveryActive = false;
+  _obstacleReevaluationPending = false;
+  _dashboardData.autoAssistanceRequired = true;
+  setState(NavigationState::TrappedHold, "TRAPPED_HOLD_ASSISTANCE_REQUIRED");
+  setPhase(AutoPhase::TrappedHold, now);
+  Serial.printf("[Nav] TRAPPED_HOLD reason=%s attempts=%u\n", reason, _v2.attempts());
+}
+
 void NavigationManager::beginStuckRecovery(unsigned long now) {
   _motors.stop();
   _lastStuckReason = "FORWARD_COMMAND_PLUS_IMU_STILL_PLUS_STATIC_FRONT_GEOMETRY";
@@ -1035,6 +1162,7 @@ const char* NavigationManager::phaseName() const {
     case AutoPhase::InvalidStop: return "INVALID_STOP";
     case AutoPhase::OperatorStop: return "OPERATOR_STOP";
     case AutoPhase::BlockedRetryWait: return "BLOCKED_RETRY_WAIT";
+    case AutoPhase::TrappedHold: return "TRAPPED_HOLD";
   }
   return "UNKNOWN";
 }
@@ -1102,4 +1230,12 @@ void NavigationManager::updateDiagnostics(unsigned long now) {
   }
   _dashboardData.autoStuckRecoveryAttempts = _stuckRecoveryAttempts;
   _dashboardData.autoStuckLastReason = _lastStuckReason;
+  _dashboardData.autoV2State = RobotConfig::ENABLE_STUCK_RECOVERY_V2
+      ? _v2.name() : "OFF";
+  _dashboardData.autoV2Attempts = RobotConfig::ENABLE_STUCK_RECOVERY_V2
+      ? _v2.attempts() : 0;
+  _dashboardData.autoAssistanceRequired =
+      RobotConfig::ENABLE_STUCK_RECOVERY_V2 &&
+      _v2.state() == StuckV2State::TrappedHold;
+  _dashboardData.autoV2Reason = _v2LastReason;
 }

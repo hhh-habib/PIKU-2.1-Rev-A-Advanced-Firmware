@@ -2054,7 +2054,9 @@ function renderTelemetry(d) {
   const hazard = autoNav.hazard || {};
   setText('autoHazardRecovery', (hazard.state || 'IDLE') + (hazard.clear_remaining_ms ? ' / ' + hazard.clear_remaining_ms + ' ms remaining' : ''));
   const stuck = autoNav.stuck || {};
-  setText('autoStuckRecovery', (stuck.state || 'MONITORING') + ' / attempt ' + (stuck.attempts ?? 0));
+  const v2 = autoNav.v2 || {};
+  setText('autoStuckRecovery', (stuck.state || 'MONITORING') + ' / attempt ' + (stuck.attempts ?? 0) +
+    ' / V2 ' + (v2.state || 'OFF') + (v2.assistance_required ? ' / ASSISTANCE REQUIRED' : ''));
 
   setText('systemFirmware', d.firmware || '--');
   setText('systemUptime', uptimeText);

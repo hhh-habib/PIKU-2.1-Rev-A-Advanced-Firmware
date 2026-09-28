@@ -79,6 +79,10 @@ struct DashboardData {
   String autoStuckState = "MONITORING";
   uint8_t autoStuckRecoveryAttempts = 0;
   String autoStuckLastReason = "NONE";
+  String autoV2State = "OFF";
+  uint8_t autoV2Attempts = 0;
+  bool autoAssistanceRequired = false;
+  String autoV2Reason = "NONE";
   String gasStatus = "DISABLED";
   String safetyState = "SAFE";
   String alarmReason = "NONE";

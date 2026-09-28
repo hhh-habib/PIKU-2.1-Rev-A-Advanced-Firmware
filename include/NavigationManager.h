@@ -8,6 +8,7 @@
 #include "SafetyManager.h"
 #include "SensorManager.h"
 #include "ServoScanner.h"
+#include "StuckRecoveryV2Policy.h"
 #include "WebDashboard.h"
 
 enum class NavigationState {
@@ -34,7 +35,8 @@ enum class NavigationState {
   StuckSuspected,
   StuckRecovery,
   OperatorAbort,
-  CriticalAbort
+  CriticalAbort,
+  TrappedHold
 };
 
 class NavigationManager {
@@ -84,7 +86,8 @@ private:
     HazardClearWait,
     InvalidStop,
     OperatorStop,
-    BlockedRetryWait
+    BlockedRetryWait,
+    TrappedHold
   };
 
   enum class ScanPurpose {
@@ -92,7 +95,8 @@ private:
     IrSingle,
     IrBoth,
     EnvironmentalRecovery,
-    StuckRecovery
+    StuckRecovery,
+    EscapeV2
   };
 
   enum class IrZone {
@@ -176,6 +180,9 @@ private:
   uint8_t _stuckRecoveryAttempts;
   bool _stuckRecoveryTrialActive;
   String _lastStuckReason;
+  StuckRecoveryV2Policy _v2;
+  String _v2LastReason = "NONE";
+  unsigned long _v2PriorForwardMs = 0;
 
   void setState(NavigationState state, const String& decision);
   void setPhase(AutoPhase phase, unsigned long now);
@@ -217,6 +224,8 @@ private:
   bool stuckDistanceUnchanged() const;
   bool stuckEvidenceSatisfied() const;
   void beginStuckRecovery(unsigned long now);
+  void beginV2Escape(unsigned long now);
+  void enterV2TrappedHold(const char* reason, unsigned long now);
   bool scanSampleTrusted(const NavigationScanSample& sample) const;
   float scanPathClearance(const NavigationScanSample& sample) const;
   const char* ultrasonicStateName(UltrasonicResultState state) const;

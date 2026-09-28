@@ -100,6 +100,11 @@ namespace RobotConfig {
   static constexpr unsigned long AUTO_INVALID_RETRY_MS = 250;
   static constexpr float AUTO_PATH_TIE_TOLERANCE_CM = 1.0f;
   static constexpr float AUTO_AVOIDANCE_TURN_TARGET_DEG = 35.0f;
+  // OFF preserves the validated normal algorithm. Rev A cannot verify a
+  // complete pivot sweep, so V2 stops at TRAPPED_HOLD after its fresh scan.
+  static constexpr bool ENABLE_STUCK_RECOVERY_V2 = false;
+  static constexpr float AUTO_V2_PROVISIONAL_TURN_TARGET_DEG = 25.0f;
+  static constexpr float AUTO_V2_PROVISIONAL_FRONT_CM = 50.0f;
   static constexpr float AUTO_AVOIDANCE_TURN_TOLERANCE_DEG = 1.0f;
   static constexpr float AUTO_AVOIDANCE_GYRO_DEADBAND_DPS = 2.0f;
   static constexpr unsigned long AUTO_AVOIDANCE_TURN_TIMEOUT_MS = 2500;
