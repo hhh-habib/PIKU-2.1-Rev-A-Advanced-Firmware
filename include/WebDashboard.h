@@ -101,6 +101,10 @@ struct DashboardData {
   uint32_t psramSize = 0;
   String resetReason;
   unsigned long maximumServiceLoopGapMs = 0;
+  uint32_t wifiStaDisconnectCount = 0;
+  uint32_t wifiApTransitionCount = 0;
+  int wifiLastDisconnectReason = 0;
+  uint32_t wifiLastEvent = 0;
 
   bool imuInitialized = false;
   bool imuHealthy = false;
@@ -221,6 +225,8 @@ private:
   ModeAcceptedCallback _modeAcceptedCallback;
   unsigned long _lastWiFiUpdateMs;
   unsigned long _lastWiFiTelemetryMs;
+  unsigned long _lastDiagnosticsLogMs = 0;
+  uint32_t _lastLoggedWifiEvent = 0;
   String _pendingCommand;
   int _pendingSpeedPercent;
   ManualSensorHeadCommand _pendingManualSensorHeadCommand;

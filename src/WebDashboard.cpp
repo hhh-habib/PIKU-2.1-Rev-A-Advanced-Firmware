@@ -5,6 +5,23 @@
 #include "WiFiConfig.h"
 
 namespace {
+  // Called on the Wi-Fi event task; never perform serial or HTTP work here.
+  volatile uint32_t staDisconnectEvents = 0;
+  volatile uint32_t apTransitionEvents = 0;
+  volatile int lastStaDisconnectReason = 0;
+  volatile uint32_t lastWifiEvent = 0;
+  void recordWifiEvent(WiFiEvent_t event, WiFiEventInfo_t info) {
+    lastWifiEvent = static_cast<uint32_t>(event);
+    if (event == ARDUINO_EVENT_WIFI_STA_DISCONNECTED) {
+      ++staDisconnectEvents;
+      lastStaDisconnectReason = info.wifi_sta_disconnected.reason;
+    } else if (event == ARDUINO_EVENT_WIFI_AP_START ||
+               event == ARDUINO_EVENT_WIFI_AP_STOP ||
+               event == ARDUINO_EVENT_WIFI_AP_STACONNECTED ||
+               event == ARDUINO_EVENT_WIFI_AP_STADISCONNECTED) {
+      ++apTransitionEvents;
+    }
+  }
   String jsonFloat(float value, int decimals) {
     if (!isfinite(value)) {
       return "null";
@@ -69,6 +86,7 @@ WebDashboard::WebDashboard()
 
 void WebDashboard::begin(const char* ssid, const char* password, const char* staSsid, const char* staPassword) {
   loadSavedStaCredentials(staSsid, staPassword);
+  WiFi.onEvent(recordWifiEvent);
 
   WiFi.mode(_staConfigured ? WIFI_AP_STA : WIFI_AP);
   // Motors dominate the robot power budget; disabling modem sleep favors
@@ -135,6 +153,30 @@ void WebDashboard::loop() {
 
 void WebDashboard::updateBackground() {
   updateWiFi();
+  const uint32_t event = lastWifiEvent;
+  _data.wifiStaDisconnectCount = staDisconnectEvents;
+  _data.wifiApTransitionCount = apTransitionEvents;
+  _data.wifiLastDisconnectReason = lastStaDisconnectReason;
+  _data.wifiLastEvent = event;
+  if (event != _lastLoggedWifiEvent) {
+    _lastLoggedWifiEvent = event;
+    Serial.printf("[Diag] wifi_event=%lu sta_disconnects=%lu reason=%d ap_transitions=%lu\n",
+                  static_cast<unsigned long>(event),
+                  static_cast<unsigned long>(_data.wifiStaDisconnectCount),
+                  _data.wifiLastDisconnectReason,
+                  static_cast<unsigned long>(_data.wifiApTransitionCount));
+  }
+  const unsigned long now = millis();
+  if (now - _lastDiagnosticsLogMs >= 30000) {
+    _lastDiagnosticsLogMs = now;
+    Serial.printf("[Diag] fw=%s uptime_ms=%lu sta=%s rssi=%d reconnects=%lu heap=%lu min_heap=%lu loop_gap_max_ms=%lu http_errors=%lu http_timeouts=%lu\n",
+                  RobotConfig::FIRMWARE_VERSION, now, _data.staConnected ? "UP" : "DOWN",
+                  _data.staRssi, static_cast<unsigned long>(_wifiReconnectCount),
+                  static_cast<unsigned long>(ESP.getFreeHeap()),
+                  static_cast<unsigned long>(ESP.getMinFreeHeap()),
+                  _data.maximumServiceLoopGapMs, _httpErrorCount,
+                  static_cast<unsigned long>(_server.timeoutCount()));
+  }
 }
 
 void WebDashboard::setControlCallbacks(CommandAcceptedCallback commandCallback,
@@ -1141,6 +1183,10 @@ void WebDashboard::sendJson() {
   appendKey("httpErrorCount"); json += String(_httpErrorCount);
   appendKey("httpTimeoutCount"); json += String(_server.timeoutCount());
   appendKey("wifiReconnectCount"); json += String(_wifiReconnectCount);
+  appendKey("wifiStaDisconnectCount"); json += String(_data.wifiStaDisconnectCount);
+  appendKey("wifiApTransitionCount"); json += String(_data.wifiApTransitionCount);
+  appendKey("wifiLastDisconnectReason"); json += String(_data.wifiLastDisconnectReason);
+  appendKey("wifiLastEvent"); json += String(_data.wifiLastEvent);
   appendKey("softApChannel"); json += String(_data.softApChannel);
   appendKey("softApClients"); json += String(_data.softApClients);
   appendKey("radioEnabled"); json += jsonBool(_data.radioEnabled);
