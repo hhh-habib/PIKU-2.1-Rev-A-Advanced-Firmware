@@ -5,7 +5,7 @@ enum class ManualDirection { Forward, Backward, Left, Right, Release, Stop };
 enum class ManualInhibit {
   None, Release, OperatorStop, Mode, StaleCommand, SessionLost,
   TemperatureCritical, SensorFault, FlameGas, ForwardObstacle,
-  PivotClearanceUnknown
+  TurnObstacle
 };
 struct ManualGateInput {
   ManualDirection direction = ManualDirection::Stop;
@@ -17,7 +17,8 @@ struct ManualGateInput {
   bool overrideEnabled = false;
   bool sessionAlive = false;
   bool forwardObstacle = false;
-  bool pivotSweepVerified = false;
+  bool leftTurnObstacle = false;
+  bool rightTurnObstacle = false;
 };
 inline ManualInhibit manualMotionGate(const ManualGateInput& in) {
   if (in.direction == ManualDirection::Stop) return ManualInhibit::OperatorStop;
@@ -30,9 +31,10 @@ inline ManualInhibit manualMotionGate(const ManualGateInput& in) {
   if (in.flameGasCritical && !in.overrideEnabled) return ManualInhibit::FlameGas;
   if (in.direction == ManualDirection::Forward && in.forwardObstacle)
     return ManualInhibit::ForwardObstacle;
-  if ((in.direction == ManualDirection::Left || in.direction == ManualDirection::Right) &&
-      !in.pivotSweepVerified)
-    return ManualInhibit::PivotClearanceUnknown;
+  if ((in.direction == ManualDirection::Left && in.leftTurnObstacle) ||
+      (in.direction == ManualDirection::Right && in.rightTurnObstacle))
+    return ManualInhibit::TurnObstacle;
+  // Manual turning is held and operator-supervised; no full sweep is certified.
   // Backward requires a fresh held operator command; no rear sensor is implied.
   return ManualInhibit::None;
 }
@@ -48,7 +50,7 @@ inline const char* manualInhibitName(ManualInhibit reason) {
     case ManualInhibit::SensorFault: return "SENSOR_FAULT";
     case ManualInhibit::FlameGas: return "FLAME_GAS";
     case ManualInhibit::ForwardObstacle: return "FORWARD_OBSTACLE";
-    case ManualInhibit::PivotClearanceUnknown: return "PIVOT_CLEARANCE_UNKNOWN";
+    case ManualInhibit::TurnObstacle: return "TURN_OBSTACLE";
   }
   return "UNKNOWN";
 }

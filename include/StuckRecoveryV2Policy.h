@@ -9,15 +9,40 @@ enum class StuckV2State {
 class StuckRecoveryV2Policy {
 public:
   static constexpr uint32_t WINDOW_MS = 15000;
-  static constexpr uint32_t ESCAPE_LIMIT_MS = 15000;
+  static constexpr uint32_t ESCAPE_LIMIT_MS = 30000;
   static constexpr uint32_t SUSTAINED_CLEAR_MS = 5000;
   static constexpr uint8_t MAX_ATTEMPTS = 3;
   StuckV2State state() const { return state_; }
   uint8_t attempts() const { return attempts_; }
   uint8_t cycles() const { return cycles_; }
   uint8_t reversals() const { return reversals_; }
-  void rearm() { state_=StuckV2State::Normal; attempts_=0; clearHistory(); }
-  void abort() { state_=StuckV2State::Normal; clearHistory(); }
+  bool hasCommittedSide() const { return committed_; }
+  bool committedLeft() const { return committedLeft_; }
+  bool previousFailedLeft() const { return hasLastTurn_ && lastTurnLeft_; }
+  bool alternateTried() const { return alternateTried_; }
+  uint8_t sideTurns() const { return sideTurns_; }
+  uint8_t totalTurns() const { return totalTurns_; }
+  void commitSide(bool left) {
+    if (state_ != StuckV2State::EscapeScan) return;
+    if (committed_ && committedLeft_ != left) alternateTried_=true;
+    if (!committed_ || committedLeft_ != left) sideTurns_=0;
+    committed_=true; committedLeft_=left; state_=StuckV2State::EscapeTurn;
+  }
+  bool startTurn(uint8_t maxSide, uint8_t maxTotal) {
+    if (state_ != StuckV2State::EscapeTurn || !committed_ ||
+        sideTurns_ >= maxSide || totalTurns_ >= maxTotal) return false;
+    ++sideTurns_; ++totalTurns_; return true;
+  }
+  void continueTurn() {
+    if (state_ == StuckV2State::EscapeVerify) state_=StuckV2State::EscapeTurn;
+  }
+  void prepareAlternateScan() {
+    if (state_ == StuckV2State::EscapeVerify && !alternateTried_)
+      state_=StuckV2State::EscapeScan;
+  }
+
+  void rearm() { state_=StuckV2State::Normal; attempts_=0; clearHistory(); resetEscape(); }
+  void abort() { state_=StuckV2State::Normal; clearHistory(); resetEscape(); }
   void noteSustainedClear(uint32_t ms) {
     if (state_ == StuckV2State::Normal && ms >= SUSTAINED_CLEAR_MS) {
       clearHistory();
@@ -66,16 +91,16 @@ public:
     if (attempts_ >= MAX_ATTEMPTS) { hold(); return false; }
     ++attempts_;
     escapeStartedMs_=now;
+    resetEscape();
     state_=StuckV2State::EscapeScan;
     return true;
   }
-  bool escapeTimedOut(uint32_t now) const {
+  bool escapeTimedOut(uint32_t now, uint32_t limitMs=ESCAPE_LIMIT_MS) const {
     return state_ != StuckV2State::Normal && state_ != StuckV2State::TrappedHold &&
-           now-escapeStartedMs_ >= ESCAPE_LIMIT_MS;
+           now-escapeStartedMs_ >= limitMs;
   }
-  void scanVerified() { if(state_==StuckV2State::EscapeScan) state_=StuckV2State::EscapeTurn; }
   void turnVerified() { if(state_==StuckV2State::EscapeTurn) state_=StuckV2State::EscapeVerify; }
-  void recovered() { state_=StuckV2State::Normal; attempts_=0; clearHistory(); }
+  void recovered() { state_=StuckV2State::Normal; attempts_=0; clearHistory(); resetEscape(); }
   void hold() { state_=StuckV2State::TrappedHold; }
   const char* name() const {
     switch(state_) {
@@ -95,6 +120,12 @@ private:
   uint8_t cycles_=0, reversals_=0, shortFailedSteps_=0;
   uint8_t blockedScans_=0, invalidScans_=0, attempts_=0;
   bool hasLastTurn_=false, lastTurnLeft_=false;
+  bool committed_=false, committedLeft_=false, alternateTried_=false;
+  uint8_t sideTurns_=0, totalTurns_=0;
+  void resetEscape() {
+    committed_=false; committedLeft_=false; alternateTried_=false;
+    sideTurns_=0; totalTurns_=0;
+  }
   void clearHistory() {
     windowStartedMs_=0; cycles_=0; reversals_=0; shortFailedSteps_=0;
     blockedScans_=0; invalidScans_=0;

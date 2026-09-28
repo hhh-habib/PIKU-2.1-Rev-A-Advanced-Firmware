@@ -14,8 +14,8 @@ int main() {
   assert(p.state()==StuckV2State::Suspected);
   assert(p.startEscape(11000));
   assert(p.state()==StuckV2State::EscapeScan);
-  assert(!p.escapeTimedOut(25999));
-  assert(p.escapeTimedOut(26000));
+  assert(!p.escapeTimedOut(40999));
+  assert(p.escapeTimedOut(41000));
   p.hold(); assert(p.state()==StuckV2State::TrappedHold);
   p.noteAvoidance(30000,100,true); // hold is persistent
   assert(p.state()==StuckV2State::TrappedHold);
@@ -40,7 +40,8 @@ int main() {
   p.noteAvoidance(35000,250,true); p.noteTurn(false);
   assert(p.state()==StuckV2State::Suspected); // repeated short failed steps
   assert(p.startEscape(35000));
-  p.scanVerified(); assert(p.state()==StuckV2State::EscapeTurn);
+  p.commitSide(true); assert(p.state()==StuckV2State::EscapeTurn);
+  assert(p.startTurn(3,6));
   p.turnVerified(); assert(p.state()==StuckV2State::EscapeVerify);
   p.abort(); // STOP, local hazard or manual takeover
   assert(p.state()==StuckV2State::Normal && p.attempts()==1);

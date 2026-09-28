@@ -243,8 +243,8 @@ const char DASHBOARD_HTML[] PROGMEM = R"html(
                   <button id="overrideBtn" type="button" disabled>Enable manual flame/gas override</button>
                   <strong id="overrideStatus">Override OFF</strong>
                 </div>
-                <p id="overrideAlert" class="control-note" role="alert" hidden>HAZARD ACTIVE ? MANUAL OVERRIDE. Flame/gas alarm remains active.</p>
-                <p class="control-note">Manual Reverse is operator-supervised; rear clearance is NOT sensor-verified.</p>
+                <p id="overrideAlert" class="control-note" role="alert" hidden>HAZARD ACTIVE - MANUAL OVERRIDE. Flame/gas alarm remains active.</p>
+                <p class="control-note">Manual Reverse and Left/Right are operator-supervised; rear and turn-sweep clearance are NOT fully sensor-verified.</p>
                 <div class="dpad auto" id="dpad" aria-label="Manual directional controls">
                   <button class="forward hold" type="button" data-move="FORWARD" aria-label="Move forward">
                     <span class="arrow arrow-up" aria-hidden="true"></span>
@@ -1589,7 +1589,7 @@ function updateAlarmBanner(d) {
   let label = 'SYSTEM NORMAL';
   if (d.manualFlameGasOverride) {
     severity = 'critical';
-    label = 'HAZARD ACTIVE ? MANUAL OVERRIDE';
+    label = 'HAZARD ACTIVE - MANUAL OVERRIDE';
   } else if (safetyState === 'CRITICAL') {
     severity = 'critical';
     label = 'CRITICAL';
@@ -2143,7 +2143,7 @@ function renderTelemetry(d) {
   }
   const overrideAlert = byId('overrideAlert');
   if (overrideAlert) overrideAlert.hidden = !d.manualFlameGasOverride;
-  if (d.manualFlameGasOverride) setText('overrideStatus', 'Override ON ? ' + (d.manualMotionInhibitReason || 'NONE'));
+  if (d.manualFlameGasOverride) setText('overrideStatus', 'Override ON - ' + (d.manualMotionInhibitReason || 'NONE'));
 
   updateModeButtons();
   updateSensorHeadControls(d);

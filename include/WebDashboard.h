@@ -174,6 +174,7 @@ public:
   void setOverrideCallback(OverrideActionCallback callback);
   void setManualOverrideState(bool enabled);
   bool sessionAlive() const;
+  bool autoDashboardPollAlive() const;
   void invalidateControlSession();
   bool consumeControlActivity();
   void markCommandApplied(const String& command, unsigned long sequence, const String& stopReason);
@@ -240,6 +241,7 @@ private:
   OverrideActionCallback _overrideActionCallback = nullptr;
   String _sessionToken;
   unsigned long _lastSessionHeartbeatMs = 0;
+  unsigned long _lastAutoDashboardPollMs = 0;
   bool _requireFreshSessionAfterOverride = false;
   unsigned long _lastWiFiUpdateMs;
   unsigned long _lastWiFiTelemetryMs;

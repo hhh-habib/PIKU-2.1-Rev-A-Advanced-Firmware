@@ -100,11 +100,19 @@ namespace RobotConfig {
   static constexpr unsigned long AUTO_INVALID_RETRY_MS = 250;
   static constexpr float AUTO_PATH_TIE_TOLERANCE_CM = 1.0f;
   static constexpr float AUTO_AVOIDANCE_TURN_TARGET_DEG = 35.0f;
-  // OFF preserves the validated normal algorithm. Rev A cannot verify a
-  // complete pivot sweep, so V2 stops at TRAPPED_HOLD after its fresh scan.
+  // OFF preserves the normal AUTO algorithm until supervised validation.
+  // V2 uses provisional research-prototype clearance, not a certified sweep.
   static constexpr bool ENABLE_STUCK_RECOVERY_V2 = false;
   static constexpr float AUTO_V2_PROVISIONAL_TURN_TARGET_DEG = 25.0f;
   static constexpr float AUTO_V2_PROVISIONAL_FRONT_CM = 50.0f;
+  static constexpr float AUTO_V2_PROVISIONAL_SIDE_CM = 30.0f;
+  static constexpr float AUTO_V2_FRONT_STABILITY_SPREAD_CM = 5.0f;
+  static constexpr uint8_t AUTO_V2_MAX_TURNS_PER_SIDE = 3;
+  static constexpr uint8_t AUTO_V2_MAX_TOTAL_TURNS = 6;
+  static constexpr unsigned long AUTO_V2_TOTAL_TIMEOUT_MS = 30000;
+  static constexpr unsigned long AUTO_V2_DASHBOARD_LINK_TIMEOUT_MS = 2500;
+  static constexpr unsigned long AUTO_V2_TURN_TIMEOUT_MS = 2500;
+  static constexpr unsigned long AUTO_V2_FORWARD_TRIAL_MS = 250;
   static constexpr float AUTO_AVOIDANCE_TURN_TOLERANCE_DEG = 1.0f;
   static constexpr float AUTO_AVOIDANCE_GYRO_DEADBAND_DPS = 2.0f;
   static constexpr unsigned long AUTO_AVOIDANCE_TURN_TIMEOUT_MS = 2500;

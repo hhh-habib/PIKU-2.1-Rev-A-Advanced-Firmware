@@ -19,12 +19,14 @@ int main() {
   x.sensorFault = false; x.forwardObstacle = true;
   assert(manualMotionGate(x) == ManualInhibit::ForwardObstacle);
   x.forwardObstacle = false; x.direction = ManualDirection::Left;
-  assert(manualMotionGate(x) == ManualInhibit::PivotClearanceUnknown);
-  x.pivotSweepVerified = true;
+  assert(manualMotionGate(x) == ManualInhibit::None); // supervised turn
+  x.leftTurnObstacle = true;
+  assert(manualMotionGate(x) == ManualInhibit::TurnObstacle);
+  x.leftTurnObstacle = false; x.direction = ManualDirection::Right;
   assert(manualMotionGate(x) == ManualInhibit::None);
-  x.direction = ManualDirection::Right;
-  assert(manualMotionGate(x) == ManualInhibit::None);
-  x.direction = ManualDirection::Backward; x.pivotSweepVerified = false;
+  x.rightTurnObstacle = true;
+  assert(manualMotionGate(x) == ManualInhibit::TurnObstacle);
+  x.rightTurnObstacle = false; x.direction = ManualDirection::Backward;
   assert(manualMotionGate(x) == ManualInhibit::None); // supervised rear
   x.staleCommand = true;
   assert(manualMotionGate(x) == ManualInhibit::StaleCommand);

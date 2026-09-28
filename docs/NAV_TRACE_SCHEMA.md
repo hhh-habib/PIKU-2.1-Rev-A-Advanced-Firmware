@@ -19,7 +19,7 @@ Use the actual port and a new output filename. Opening a serial port may reboot 
 | `left_validity`, `front_validity`, `right_validity` | `DISTANCE_VALID`, `CLEAR_NO_ECHO`, `SENSOR_FAULT`, `STALE` or `NOT_SAMPLED`. A non-current nominal distance is marked `STALE`. `CLEAR_NO_ECHO` gives no finite distance. |
 | `ir_left`, `ir_right` | Debounced low front IR zone flags (0/1). They are not rear coverage. |
 | `gyro_status`, `gyro_relative_est_deg` | IMU health and the firmware's short-term relative gyro estimate. This is not a measured heading or translation. |
-| `intended_turn_deg`, `observed_turn_est_deg` | Configured target and gyro relative estimate only for a turn decision. An absent or unusable estimate is `NOT_MEASURED`. No 25-degree V2 motion is deployed. |
+| `intended_turn_deg`, `observed_turn_est_deg` | Configured target and gyro relative estimate only for a turn decision. An absent or unusable estimate is `NOT_MEASURED`. The provisional 25-degree V2 motion is compiled but OFF by default and has no physical validation. |
 | `recovery_attempt`, `motor_stop` | V2 attempt count when enabled, otherwise normal obstacle attempt count; motor STOP flag. |
 | `flame`, `gas`, `temp` | Distinct debounced critical-hazard flags, not raw gas concentration or fire certification. |
 | `elapsed_ms`, `outcome`, `dropped_total` | Milliseconds since previous device record; software outcome `PENDING`, `CLEARANCE_REGAINED`, `TRAP_HOLD` or `ABORTED`; records dropped from the RAM ring before this record. |

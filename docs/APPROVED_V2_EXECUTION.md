@@ -1,5 +1,7 @@
 # Approved v2 standalone execution record
 
+Current source includes the later [focused correction pass](FOCUSED_CORRECTION_PASS.md). Phase-specific sections below remain the historical results for their individual commits.
+
 ## Baseline and scope
 
 - Date: 2026-09-28; local baseline commit `e765ab756ad3faf6d6e83bf3b4b4eec14d1f76fd`; local annotated tag `approved-v2-baseline-20260928`. Git objects preserve the tracked baseline without copying the deployment secret header.
@@ -64,3 +66,12 @@ Reproducible supervised comparison: capture serial and `/data` for five minutes 
 - Added the optional 16-record RAM navigation trace and bounded serial CSV transmitter described in [NAV_TRACE_SCHEMA.md](NAV_TRACE_SCHEMA.md). It begins OFF on every boot, requires a serial `TRACE ON` action, captures state/decision transitions and at most 1 Hz observations, and has no continuous flash writes. A PC pyserial capture script accepts a run ID and writes a new CSV without contacting a robot during source validation.
 - CSV contains firmware/boot/run IDs, uptime, mode, navigation state/decision, L/F/R distances and explicit validity, IR, IMU health and relative estimate, intended/observed turn estimate, recovery count, distinct critical hazards, STOP, elapsed time, software outcome and ring-drop count. Manual-mode historical AUTO scan values are marked not measured; stale AUTO scans are invalidated.
 - Host C++ ring ordering/overflow and checksum known-vector tests passed with `-std=c++11 -Wall -Wextra -Werror`; Python checksum/schema capture test and script syntax/help checks passed. The logger accepts only 31-column rows with a matching FNV-1a checksum, dropping corrupt serial output. Final firmware build: PASS, 58,676/327,680 RAM (17.9%), 1,030,353/6,553,600 flash (15.7%); no compiler warnings. Serial transport, output-rate effects and actual dataset content remain PENDING supervised bench capture.
+
+
+## Focused correction pass (later than Phase 1C)
+
+The Phase 1A and 1B sections above record what those individual commits implemented and tested. The focused correction commit restores held operator-supervised Manual Left/Right. A matching front IR zone, a fresh near-front ultrasonic reading (<=7 cm), or an available fresh side-inspection obstruction vetoes the affected turn; the service loop also stops an active turn on matching IR/near-front evidence. The 750 ms movement dead-man, explicit STOP, temperature and session gates remain. Rear and complete pivot-sweep clearance are not sensor verified.
+
+V2 remains OFF by default. When enabled, repeated valid avoidance history triggers a motor-off fresh L/F/R scan. Finite side readings above the provisional 30 cm threshold, direction-specific IR, and fresh healthy IMU allow a committed side. The manager uses the existing gyro-Z turn integration with the V2-only 25-degree target, stops after each increment, and rescans. Three stable finite front samples (spread <=5 cm) with median >=50 cm and finite usable sides permit a fresh-front-checked 250 ms forward trial; a full fresh scan after the trial must still meet the provisional gate to return to NORMAL. The first side has at most 3 turns; the opposite side is considered only after a fresh scan, with at most 6 total turns and 30 seconds. Invalid required sensing, STOP, hazards, mode takeover, turn timeout, lost previously present Wi-Fi transport, or exhausted limits stop the attempt. The trapped hold remains latched until deliberate mode rearm. No new V2 reverse was added.
+
+These values are provisional research criteria, not proof of a passable robot-width corridor, measured translation, or actual 25-degree motion. The AUTO browser control session is Manual-only; V2 monitors loss of a Wi-Fi interface or dashboard telemetry poll that was present when escape began, while fully standalone AUTO can run without a browser connection. The AUTO poll is an unauthenticated link signal. A supervised bench test must establish collision clearance, turn calibration, link behavior and useful progress before enabling V2 by default. See [FOCUSED_CORRECTION_PASS.md](FOCUSED_CORRECTION_PASS.md) for source and test evidence.

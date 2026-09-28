@@ -202,6 +202,12 @@ void WebDashboard::invalidateControlSession() {
   _requireFreshSessionAfterOverride = true;
 }
 
+bool WebDashboard::autoDashboardPollAlive() const {
+  return _lastAutoDashboardPollMs != 0 &&
+      millis() - _lastAutoDashboardPollMs <
+      RobotConfig::AUTO_V2_DASHBOARD_LINK_TIMEOUT_MS;
+}
+
 bool WebDashboard::sessionAlive() const {
   return _sessionToken.length() > 0 && _lastSessionHeartbeatMs != 0 &&
          millis() - _lastSessionHeartbeatMs < RobotConfig::MANUAL_SESSION_TIMEOUT_MS;
@@ -329,6 +335,7 @@ void WebDashboard::handleJs() {
 }
 
 void WebDashboard::handleData() {
+  if (_data.controlMode == "AUTO") _lastAutoDashboardPollMs = millis();
   // The existing telemetry poll proves browser session liveness independently
   // of held movement refreshes, without an additional HTTP polling stream.
   if (_server.hasArg("token") && validSessionToken())

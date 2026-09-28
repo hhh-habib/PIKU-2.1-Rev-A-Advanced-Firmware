@@ -538,6 +538,14 @@ bool updateManualSensorHeadOperation() {
   return false;
 }
 
+bool manualFrontTurnVeto(const SensorSnapshot& snapshot, unsigned long now) {
+  return snapshot.distanceFacingFront && snapshot.distanceValid &&
+      snapshot.ultrasonicState == UltrasonicResultState::DistanceValid &&
+      snapshot.distanceSampleMs != 0 &&
+      now - snapshot.distanceSampleMs <= RobotConfig::ULTRASONIC_STALE_MS &&
+      snapshot.distanceCm <= RobotConfig::NEAR_OBSTACLE_CM;
+}
+
 bool serviceLoop() {
   const unsigned long serviceStartedMs = millis();
   if (lastServiceLoopStartedMs != 0) {
@@ -570,6 +578,21 @@ bool serviceLoop() {
     sensors.updateControlSensors();
   }
   safety.update(sensors.snapshot());
+  if (dashboard.getControlMode() == "MANUAL") {
+    const MotorState motion=motors.getState();
+    const bool nearFront=manualFrontTurnVeto(sensors.snapshot(), millis());
+    const bool leftTurning=motion == MotorState::LeftTurn || motion == MotorState::SpinLeft;
+    const bool rightTurning=motion == MotorState::RightTurn || motion == MotorState::SpinRight;
+    if ((leftTurning && (safety.isLeftIrObstacleActive() || nearFront)) ||
+        (rightTurning && (safety.isRightIrObstacleActive() || nearFront))) {
+      stopMotors();
+      manualMotorDisplayState="STOP";
+      dashboard.setPendingCommand("");
+      dashboardData.navigationDecision="MANUAL_TURN_OBSTACLE_STOP";
+      dashboardData.manualMotionInhibitReason="TURN_OBSTACLE";
+      dashboard.markStopApplied("TURN_OBSTACLE");
+    }
+  }
   const bool hadOverride = manualOverride.enabled();
   const bool sessionLive = dashboard.sessionAlive();
   const SensorSnapshot& guardSnapshot = sensors.snapshot();
@@ -730,8 +753,17 @@ bool handleManualControl() {
       (manualOverride.enabled() &&
        (!gateSnapshot.distanceFacingFront || !gateSnapshot.distanceValid ||
         millis() - gateSnapshot.distanceSampleMs > RobotConfig::ULTRASONIC_STALE_MS));
-  // The fitted front/side sensors do not cover the complete body sweep.
-  gate.pivotSweepVerified = false;
+  // Front IR and a fresh side inspection can veto a known obstruction.
+  // The operator supervises the remaining unsensed turn sweep.
+  const bool freshSideInspection = manualInspectionState.ready &&
+      manualInspectionState.obstacle &&
+      gateSnapshot.distanceSampleMs != 0 &&
+      millis() - gateSnapshot.distanceSampleMs <= RobotConfig::NAVIGATION_SCAN_SET_MAX_AGE_MS;
+  const bool nearFront=manualFrontTurnVeto(gateSnapshot, millis());
+  gate.leftTurnObstacle = safety.isLeftIrObstacleActive() || nearFront ||
+      (freshSideInspection && manualInspectionState.orientation == ManualSensorHeadCommand::Left);
+  gate.rightTurnObstacle = safety.isRightIrObstacleActive() || nearFront ||
+      (freshSideInspection && manualInspectionState.orientation == ManualSensorHeadCommand::Right);
   const ManualInhibit inhibit = manualMotionGate(gate);
   if (inhibit != ManualInhibit::None) {
     stopMotors();
@@ -778,6 +810,10 @@ bool handleManualControl() {
     manualMovementActive = false;
   }
   if (!result.executed) {
+    if (command == currentManualState && motors.getState() != MotorState::Stopped) {
+      dashboard.markCommandApplied(command, commandSequence, "HELD_REFRESH");
+      return true;
+    }
     dashboard.markCommandApplied("STOP", commandSequence, "COMMAND_REJECTED");
     return false;
   }
@@ -788,7 +824,8 @@ bool handleManualControl() {
   manualMotorDisplayState = result.motorDisplayState;
   dashboardData.navigationDecision = result.navigationDecision;
   dashboardData.manualMotionInhibitReason =
-      command == "BACKWARD" ? "REAR_CLEARANCE_NOT_SENSOR_VERIFIED" : "NONE";
+      command == "BACKWARD" ? "REAR_CLEARANCE_NOT_SENSOR_VERIFIED" :
+      (command == "LEFT" || command == "RIGHT") ? "TURN_OPERATOR_SUPERVISED" : "NONE";
   dashboard.markCommandApplied(command,
                                commandSequence,
                                command == "STOP" ? "OPERATOR_STOP" : "NONE");
