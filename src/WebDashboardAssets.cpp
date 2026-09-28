@@ -23,9 +23,9 @@ const char DASHBOARD_HTML[] PROGMEM = R"html(
           </div>
           <div class="header-status">
             <span class="status-badge mode-badge">Mode: <strong data-bind="mode">--</strong></span>
-            <span class="status-badge connection-badge is-updating" id="connectionState">
+            <span class="status-badge connection-badge is-offline" id="connectionState">
               <span class="connection-dot" aria-hidden="true"></span>
-              <strong>Updating</strong>
+              <strong>Offline</strong>
             </span>
           </div>
         </div>
@@ -187,7 +187,6 @@ const char DASHBOARD_HTML[] PROGMEM = R"html(
               <p class="eyebrow">Operations</p>
               <h2>Control &amp; Radar</h2>
             </div>
-            <span class="section-status" data-bind="navigationDecision">--</span>
           </div>
 
           <div class="control-layout">
@@ -220,25 +219,12 @@ const char DASHBOARD_HTML[] PROGMEM = R"html(
                 </div>
                 <div class="control-readouts">
                   <div><span>Movement</span><strong id="motor">--</strong></div>
-                  <div><span>Navigation</span><strong id="nav">--</strong></div>
                   <div><span>Turn mode</span><strong id="turnMode">--</strong></div>
-                  <div><span>Control RTT</span><strong id="controlRtt">--</strong></div>
-                  <div><span>Command age</span><strong id="controlCommandAge">--</strong></div>
                 </div>
-
-                <div class="control-readouts" aria-label="AUTO navigation diagnostics">
-                  <div><span>AUTO state</span><strong id="autoNavState">--</strong></div>
-                  <div><span>IR zone / source</span><strong id="autoIrSource">--</strong></div>
-                  <div><span>Relative spin</span><strong id="autoTurnAngle">--</strong></div>
-                  <div><span>Preferred / selected</span><strong id="autoSelectedPath">--</strong></div>
-                  <div><span>Spin result</span><strong id="autoTurnResult">--</strong></div>
-                  <div><span>Recovery / blocked</span><strong id="autoBlockedRetry">--</strong></div>
-                  <div><span>Scan L / F / R</span><strong id="autoScanSummary">--</strong></div>
-                  <div><span>Hazard recovery</span><strong id="autoHazardRecovery">--</strong></div>
-                  <div><span>Stuck recovery</span><strong id="autoStuckRecovery">--</strong></div>
-                </div>
-
-                <p class="control-note" id="controlAvailability">Manual controls are unavailable while AUTO mode is active.</p>
+                <p id="autoNavigationSummary" class="control-note" hidden>Auto Navigation: Normal</p>
+                <p class="control-note" id="controlAvailability">AUTO mode active.</p>
+                <p id="overrideAlert" class="control-note" role="alert" hidden>Flame/Gas Hazard Detected</p>
+                <button class="mode-btn" id="overrideBtn" type="button" hidden disabled>Override Hazard &amp; Control</button>
                 <div class="dpad auto" id="dpad" aria-label="Manual directional controls">
                   <button class="forward hold" type="button" data-move="FORWARD" aria-label="Move forward">
                     <span class="arrow arrow-up" aria-hidden="true"></span>
@@ -735,7 +721,8 @@ h1 { margin-bottom:1px; font-size:20px; letter-spacing:.025em; }
   color:var(--cyan-soft);
   box-shadow:inset 0 0 0 1px rgba(54,216,255,.08);
 }
-.dashboard-section[hidden] { display:none !important; }
+.dashboard-section[hidden], #overrideBtn[hidden], #overrideAlert[hidden],
+#autoNavigationSummary[hidden] { display:none !important; }
 .dashboard-section.active { display:block; }
 .section-heading {
   display:flex;
@@ -1074,6 +1061,8 @@ h1 { margin-bottom:1px; font-size:20px; letter-spacing:.025em; }
 
 const char DASHBOARD_JS[] PROGMEM = R"js(
 let mode = 'AUTO';
+let controlSessionToken = null;
+let sessionRequestInFlight = false;
 let turnMode = 'PIVOT';
 let audioCtx = null;
 let alarmOutput = null;
@@ -1086,8 +1075,12 @@ let activePress = false;
 let activeMove = null;
 let moveRefreshTimer = null;
 const MOVE_REFRESH_MS = 250;
-const TELEMETRY_INTERVAL_MS = 450;
-const TELEMETRY_TIMEOUT_MS = 1200;
+const TELEMETRY_INTERVAL_MS = 850;
+const TELEMETRY_TIMEOUT_MS = 1800;
+const PING_INTERVAL_MS = 650;
+const PING_TIMEOUT_MS = 1000;
+const HEARTBEAT_OFFLINE_MS = 3000;
+const TELEMETRY_STALE_MS = 3000;
 let commandSequence = 0;
 let moveRequestInFlight = false;
 let stopRequestsInFlight = 0;
@@ -1095,6 +1088,7 @@ let pendingMove = null;
 let activePointerId = null;
 let moveAbortController = null;
 let dataAbortController = null;
+let pingAbortController = null;
 let lastControlRttMs = null;
 let telemetryTimeoutCount = 0;
 const scanSamples = [];
@@ -1107,6 +1101,10 @@ let dataRequestPromise = null;
 let radarFrameStarted = false;
 let dataRequestInFlight = false;
 let lastTelemetrySuccess = 0;
+let lastTelemetryNodeAgeMs = 0;
+let lastHeartbeatSuccess = 0;
+let pingRequestInFlight = false;
+let pingTimer = null;
 let wifiScanTimer = null;
 let wifiScanInFlight = false;
 let sensorHeadRequestedOrientation = null;
@@ -1163,6 +1161,7 @@ function setMode(nextMode) {
   fetch('/mode?set=' + encodeURIComponent(nextMode), { cache:'no-store' })
     .then(response => {
       if (!response.ok) throw new Error('Mode request rejected');
+      controlSessionToken = null;
       return loadData();
     })
     .catch(() => loadData());
@@ -1178,13 +1177,14 @@ function toggleTurnMode() {
 }
 
 function sendCmd(move) {
-  if (move === 'STOP') {
+  if (move === 'STOP' || move === 'RELEASE') {
     // STOP bypasses a slow direction request. The higher sequence makes any
     // older direction harmless if it reaches the ESP32 afterward.
     pendingMove = null;
     if (moveAbortController) moveAbortController.abort();
     moveAbortController = null;
     if (dataAbortController) dataAbortController.abort();
+    if (pingAbortController) pingAbortController.abort();
     stopRequestsInFlight += 1;
     return issueCmd(move)
       .catch(() => {})
@@ -1204,14 +1204,15 @@ function issueCmd(move) {
   commandSequence += 1;
   const issuedSequence = commandSequence;
   const query = '/cmd?move=' + encodeURIComponent(move) +
-    '&seq=' + encodeURIComponent(issuedSequence);
+    '&seq=' + encodeURIComponent(issuedSequence) +
+    (controlSessionToken ? '&token=' + encodeURIComponent(controlSessionToken) : '');
   const controller = new AbortController();
-  if (move !== 'STOP') moveAbortController = controller;
+  if (move !== 'STOP' && move !== 'RELEASE') moveAbortController = controller;
   const started = performance.now();
   return fetch(query, {
     signal:controller.signal,
     cache:'no-store',
-    keepalive:move === 'STOP'
+    keepalive:move === 'STOP' || move === 'RELEASE'
   }).then(response => {
     if (!response.ok) throw new Error('Control request rejected');
     if (issuedSequence === commandSequence) {
@@ -1220,7 +1221,7 @@ function issueCmd(move) {
     }
     return response;
   }).finally(() => {
-    if (move !== 'STOP' && moveAbortController === controller) {
+    if (move !== 'STOP' && move !== 'RELEASE' && moveAbortController === controller) {
       moveAbortController = null;
     }
   });
@@ -1285,7 +1286,7 @@ function stopMove() {
   activePress = false;
   activePointerId = null;
   clearMoveRefresh();
-  sendCmd('STOP');
+  sendCmd('RELEASE');
 }
 
 function explicitStop() {
@@ -1308,9 +1309,12 @@ function updateModeButtons() {
   if (autoButton) autoButton.classList.toggle('active', mode === 'AUTO');
   if (manualButton) manualButton.classList.toggle('active', manualActive);
   if (dpad) dpad.classList.toggle('auto', !manualActive);
+  const hazardBlocked = manualActive && latestData &&
+    (latestData.flameCritical || latestData.gasCritical) &&
+    !latestData.manualFlameGasOverride;
   document.querySelectorAll('.hold').forEach(button => {
-    button.disabled = !manualActive;
-    button.setAttribute('aria-disabled', manualActive ? 'false' : 'true');
+    button.disabled = !manualActive || hazardBlocked;
+    button.setAttribute('aria-disabled', button.disabled ? 'true' : 'false');
   });
   const stopButton = byId('stopBtn');
   if (stopButton) {
@@ -1319,8 +1323,8 @@ function updateModeButtons() {
   }
   if (turnButton) turnButton.disabled = !manualActive;
   setText('controlAvailability', manualActive
-    ? 'Manual controls active. Releasing a direction sends STOP; lost refreshes stop the robot.'
-    : 'Directional controls are unavailable in AUTO mode. STOP remains available.');
+    ? (hazardBlocked ? 'Manual controls paused.' : 'Manual controls ready.')
+    : 'AUTO mode active. STOP is available.');
 }
 
 function updateSensorHeadControls(d) {
@@ -1505,6 +1509,39 @@ function startHighRiskTimers() {
   highRiskVibeTimer = setInterval(() => vibrateHighRisk(), 1200);
 }
 
+function controlPost(path, values) {
+  return fetch(path, {
+    method:'POST', cache:'no-store',
+    headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body:new URLSearchParams(values)
+  }).then(async response => {
+    if (response.ok) return response;
+    throw new Error(await response.text());
+  });
+}
+
+function ensureControlSession() {
+  if (mode !== 'MANUAL' || document.hidden || controlSessionToken || sessionRequestInFlight) return;
+  sessionRequestInFlight = true;
+  controlPost('/control-session', {}).then(response => response.json())
+    .then(result => {
+      controlSessionToken = result.token;
+      const button = byId('overrideBtn');
+      if (button && !button.hidden) button.disabled = false;
+    }).catch(() => {})
+    .finally(() => { sessionRequestInFlight = false; });
+}
+
+function toggleManualOverride() {
+  if (mode !== 'MANUAL') return;
+  if (!controlSessionToken) { ensureControlSession(); return; }
+  const enable = !(latestData && latestData.manualFlameGasOverride);
+  controlPost('/manual-override', {
+    set:enable ? 'on' : 'off', token:controlSessionToken,
+    confirm:enable ? '1' : '0'
+  }).then(() => loadData()).catch(() => loadData());
+}
+
 function updateAlarmBanner(d) {
   const indicator = byId('alarmIndicator');
   const reasons = [];
@@ -1540,7 +1577,10 @@ function updateAlarmBanner(d) {
 
   let severity = 'normal';
   let label = 'SYSTEM NORMAL';
-  if (safetyState === 'CRITICAL') {
+  if (d.manualFlameGasOverride) {
+    severity = 'critical';
+    label = 'HAZARD ACTIVE - OVERRIDE ON';
+  } else if (safetyState === 'CRITICAL') {
     severity = 'critical';
     label = 'CRITICAL';
   } else if (d.nearObstacleHazard) {
@@ -2004,7 +2044,19 @@ function renderTelemetry(d) {
   const hazard = autoNav.hazard || {};
   setText('autoHazardRecovery', (hazard.state || 'IDLE') + (hazard.clear_remaining_ms ? ' / ' + hazard.clear_remaining_ms + ' ms remaining' : ''));
   const stuck = autoNav.stuck || {};
-  setText('autoStuckRecovery', (stuck.state || 'MONITORING') + ' / attempt ' + (stuck.attempts ?? 0));
+  const v2 = autoNav.v2 || {};
+  setText('autoStuckRecovery', (stuck.state || 'MONITORING') + ' / attempt ' + (stuck.attempts ?? 0) +
+    ' / V2 ' + (v2.state || 'OFF') + (v2.assistance_required ? ' / ASSISTANCE REQUIRED' : ''));
+  const autoSummary = byId('autoNavigationSummary');
+  if (autoSummary) {
+    autoSummary.hidden = d.mode !== 'AUTO';
+    autoSummary.textContent = v2.assistance_required
+      ? 'Auto Navigation: Assistance Required - Retrying'
+      : ((v2.state && v2.state !== 'NORMAL' && v2.state !== 'OFF') ||
+         (hazard.state && hazard.state !== 'IDLE') ||
+         (autoNav.avoidance_source && autoNav.avoidance_source !== 'NONE')
+         ? 'Auto Navigation: Recovering' : 'Auto Navigation: Normal');
+  }
 
   setText('systemFirmware', d.firmware || '--');
   setText('systemUptime', uptimeText);
@@ -2075,6 +2127,30 @@ function renderTelemetry(d) {
 
   mode = d.mode;
   turnMode = d.turnMode;
+  if (mode === 'MANUAL' && !d.controlSessionAlive) {
+    controlSessionToken = null;
+    if (activePress) {
+      activePress = false;
+      clearMoveRefresh();
+      sendCmd('STOP');
+    }
+  }
+  if (mode === 'MANUAL') ensureControlSession();
+  const hazardActive = Boolean(d.flameCritical || d.gasCritical || d.manualFlameGasOverride);
+  const overrideButton = byId('overrideBtn');
+  if (overrideButton) {
+    overrideButton.hidden = mode !== 'MANUAL' || !hazardActive;
+    overrideButton.disabled = !controlSessionToken;
+    overrideButton.textContent = d.manualFlameGasOverride
+      ? 'Turn Override Off' : 'Override Hazard & Control';
+  }
+  const overrideAlert = byId('overrideAlert');
+  if (overrideAlert) {
+    overrideAlert.hidden = mode !== 'MANUAL' || !hazardActive;
+    overrideAlert.textContent = d.manualFlameGasOverride
+      ? 'HAZARD ACTIVE - OVERRIDE ON' : 'Flame/Gas Hazard Detected';
+  }
+
   updateModeButtons();
   updateSensorHeadControls(d);
   updateTurnModeButton();
@@ -2089,8 +2165,48 @@ function updateConnectionState(state) {
   const label = indicator.querySelector('strong');
   if (label) {
     label.textContent = state === 'live' ? 'Live' :
-      (state === 'stale' ? 'Stale' : (state === 'offline' ? 'Offline' : 'Updating'));
+      (state === 'stale' ? 'Stale' : 'Offline');
   }
+}
+
+function refreshConnectionBadge() {
+  const now = Date.now();
+  if (!lastHeartbeatSuccess ||
+      now - lastHeartbeatSuccess > HEARTBEAT_OFFLINE_MS) {
+    updateConnectionState('offline');
+    return;
+  }
+  const telemetryAge = lastTelemetrySuccess
+    ? now - lastTelemetrySuccess + lastTelemetryNodeAgeMs
+    : Number.POSITIVE_INFINITY;
+  updateConnectionState(telemetryAge > TELEMETRY_STALE_MS ? 'stale' : 'live');
+}
+
+function pollPing() {
+  if (document.hidden || pingRequestInFlight) return;
+  pingRequestInFlight = true;
+  const controller = new AbortController();
+  pingAbortController = controller;
+  const timeout = setTimeout(() => controller.abort(), PING_TIMEOUT_MS);
+  const pingUrl = controlSessionToken
+    ? '/ping?token=' + encodeURIComponent(controlSessionToken) : '/ping';
+  fetch(pingUrl, { signal:controller.signal, cache:'no-store' })
+    .then(response => {
+      if (!response.ok) throw new Error('Heartbeat request failed');
+      return response.json();
+    })
+    .then(result => {
+      if (!result.ok) throw new Error('Heartbeat rejected');
+      lastHeartbeatSuccess = Date.now();
+    })
+    .catch(() => {})
+    .finally(() => {
+      clearTimeout(timeout);
+      if (pingAbortController === controller) pingAbortController = null;
+      pingRequestInFlight = false;
+      refreshConnectionBadge();
+      if (!document.hidden) pingTimer = setTimeout(pollPing, PING_INTERVAL_MS);
+    });
 }
 
 function loadData() {
@@ -2101,7 +2217,6 @@ function loadData() {
     telemetryTimer = null;
   }
   dataRequestInFlight = true;
-  if (!lastTelemetrySuccess) updateConnectionState('updating');
   const controller = new AbortController();
   dataAbortController = controller;
   let timedOut = false;
@@ -2109,14 +2224,17 @@ function loadData() {
     timedOut = true;
     controller.abort();
   }, TELEMETRY_TIMEOUT_MS);
-  dataRequestPromise = fetch('/data', { signal:controller.signal, cache:'no-store' })
+  const dataUrl = controlSessionToken
+    ? '/data?token=' + encodeURIComponent(controlSessionToken) : '/data';
+  dataRequestPromise = fetch(dataUrl, { signal:controller.signal, cache:'no-store' })
     .then(response => {
       if (!response.ok) throw new Error('Telemetry request failed');
       return response.json();
     })
     .then(data => {
       lastTelemetrySuccess = Date.now();
-      updateConnectionState(Number(data.telemetry_age_ms) > 1200 ? 'stale' : 'live');
+      lastTelemetryNodeAgeMs = Math.max(0, Number(data.telemetry_age_ms) || 0);
+      refreshConnectionBadge();
       renderTelemetry(data);
     })
     .catch(() => {
@@ -2124,8 +2242,7 @@ function loadData() {
         telemetryTimeoutCount += 1;
         setText('systemTelemetryTimeouts', telemetryTimeoutCount);
       }
-      const age = lastTelemetrySuccess ? Date.now() - lastTelemetrySuccess : Number.POSITIVE_INFINITY;
-      updateConnectionState(age > 5000 ? 'offline' : 'stale');
+      refreshConnectionBadge();
     })
     .then(() => {
       clearTimeout(timeout);
@@ -2210,8 +2327,12 @@ function initializeControls() {
       if (telemetryTimer) clearTimeout(telemetryTimer);
       telemetryTimer = null;
       if (dataAbortController) dataAbortController.abort();
+      if (pingTimer) clearTimeout(pingTimer);
+      pingTimer = null;
+      if (pingAbortController) pingAbortController.abort();
       explicitStop();
     } else {
+      pollPing();
       loadData();
     }
   });
@@ -2222,10 +2343,14 @@ function initializeDashboard() {
   dashboardInitialized = true;
   initializeNavigation();
   initializeControls();
+  const overrideButton = byId('overrideBtn');
+  if (overrideButton) overrideButton.addEventListener('click', toggleManualOverride);
   if (!radarFrameStarted) {
     radarFrameStarted = true;
     requestAnimationFrame(radarLoop);
   }
+  refreshConnectionBadge();
+  pollPing();
   loadData();
 }
 

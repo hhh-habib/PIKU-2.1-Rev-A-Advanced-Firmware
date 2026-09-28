@@ -1,10 +1,29 @@
 #include "WebDashboard.h"
+#include "ControlOriginPolicy.h"
 #include <ESPmDNS.h>
 #include "RobotConfig.h"
+#include "StaReconnectPolicy.h"
 #include "WebDashboardAssets.h"
 #include "WiFiConfig.h"
 
 namespace {
+  // Called on the Wi-Fi event task; never perform serial or HTTP work here.
+  volatile uint32_t staDisconnectEvents = 0;
+  volatile uint32_t apTransitionEvents = 0;
+  volatile int lastStaDisconnectReason = 0;
+  volatile uint32_t lastWifiEvent = 0;
+  void recordWifiEvent(WiFiEvent_t event, WiFiEventInfo_t info) {
+    lastWifiEvent = static_cast<uint32_t>(event);
+    if (event == ARDUINO_EVENT_WIFI_STA_DISCONNECTED) {
+      ++staDisconnectEvents;
+      lastStaDisconnectReason = info.wifi_sta_disconnected.reason;
+    } else if (event == ARDUINO_EVENT_WIFI_AP_START ||
+               event == ARDUINO_EVENT_WIFI_AP_STOP ||
+               event == ARDUINO_EVENT_WIFI_AP_STACONNECTED ||
+               event == ARDUINO_EVENT_WIFI_AP_STADISCONNECTED) {
+      ++apTransitionEvents;
+    }
+  }
   String jsonFloat(float value, int decimals) {
     if (!isfinite(value)) {
       return "null";
@@ -48,6 +67,7 @@ WebDashboard::WebDashboard()
     _staPassword(""),
     _staCredentialsPendingPersistence(false),
     _lastStaAttemptMs(0),
+    _staRetryIntervalMs(RobotConfig::WIFI_STA_INITIAL_RETRY_MS),
     _alarmEnabled(true),
     _alarmMuted(false),
     _alarmTestRequested(false),
@@ -69,11 +89,13 @@ WebDashboard::WebDashboard()
 
 void WebDashboard::begin(const char* ssid, const char* password, const char* staSsid, const char* staPassword) {
   loadSavedStaCredentials(staSsid, staPassword);
+  WiFi.onEvent(recordWifiEvent);
 
   WiFi.mode(_staConfigured ? WIFI_AP_STA : WIFI_AP);
   // Motors dominate the robot power budget; disabling modem sleep favors
   // predictable dashboard command latency over small ESP32 energy savings.
   WiFi.setSleep(false);
+  WiFi.setAutoReconnect(true);
   WiFi.softAP(ssid, password);
   delay(100);
   refreshWiFiTelemetry(true);
@@ -83,6 +105,7 @@ void WebDashboard::begin(const char* ssid, const char* password, const char* sta
     beginStaAssociation();
     _staConnectStarted = true;
     _lastStaAttemptMs = millis();
+    _staRetryIntervalMs = RobotConfig::WIFI_STA_INITIAL_RETRY_MS;
   }
 
   _server.on("/", [this]() { handleRoot(); });
@@ -94,6 +117,9 @@ void WebDashboard::begin(const char* ssid, const char* password, const char* sta
   _server.on("/turn-mode", [this]() { handleTurnMode(); });
   _server.on("/speed", [this]() { handleSpeed(); });
   _server.on("/cmd", [this]() { handleCommand(); });
+  _server.on("/control-session", HTTP_POST, [this]() { handleSession(); });
+  _server.on("/control-heartbeat", HTTP_POST, [this]() { handleSessionHeartbeat(); });
+  _server.on("/manual-override", HTTP_POST, [this]() { handleOverride(); });
   _server.on("/sensor-head", [this]() { handleSensorHead(); });
   _server.on("/alarm/enable", [this]() { handleAlarmEnable(); });
   _server.on("/alarm/mute", [this]() { handleAlarmMute(); });
@@ -135,12 +161,66 @@ void WebDashboard::loop() {
 
 void WebDashboard::updateBackground() {
   updateWiFi();
+  const uint32_t event = lastWifiEvent;
+  _data.wifiStaDisconnectCount = staDisconnectEvents;
+  _data.wifiApTransitionCount = apTransitionEvents;
+  _data.wifiLastDisconnectReason = lastStaDisconnectReason;
+  _data.wifiLastEvent = event;
+  if (event != _lastLoggedWifiEvent) {
+    _lastLoggedWifiEvent = event;
+    Serial.printf("[Diag] wifi_event=%lu sta_disconnects=%lu reason=%d ap_transitions=%lu\n",
+                  static_cast<unsigned long>(event),
+                  static_cast<unsigned long>(_data.wifiStaDisconnectCount),
+                  _data.wifiLastDisconnectReason,
+                  static_cast<unsigned long>(_data.wifiApTransitionCount));
+  }
+  const unsigned long now = millis();
+  if (now - _lastDiagnosticsLogMs >= 30000) {
+    _lastDiagnosticsLogMs = now;
+    Serial.printf("[Diag] fw=%s uptime_ms=%lu sta=%s rssi=%d reconnects=%lu heap=%lu min_heap=%lu loop_gap_max_ms=%lu http_errors=%lu http_timeouts=%lu\n",
+                  RobotConfig::FIRMWARE_VERSION, now, _data.staConnected ? "UP" : "DOWN",
+                  _data.staRssi, static_cast<unsigned long>(_wifiReconnectCount),
+                  static_cast<unsigned long>(ESP.getFreeHeap()),
+                  static_cast<unsigned long>(ESP.getMinFreeHeap()),
+                  _data.maximumServiceLoopGapMs, _httpErrorCount,
+                  static_cast<unsigned long>(_server.timeoutCount()));
+  }
 }
 
 void WebDashboard::setControlCallbacks(CommandAcceptedCallback commandCallback,
                                        ModeAcceptedCallback modeCallback) {
   _commandAcceptedCallback = commandCallback;
   _modeAcceptedCallback = modeCallback;
+}
+
+void WebDashboard::setOverrideCallback(OverrideActionCallback callback) {
+  _overrideActionCallback = callback;
+}
+
+void WebDashboard::setManualOverrideState(bool enabled) {
+  _data.manualFlameGasOverride = enabled;
+}
+
+void WebDashboard::invalidateControlSession() {
+  _sessionToken = "";
+  _lastSessionHeartbeatMs = 0;
+  _requireFreshSessionAfterOverride = true;
+}
+
+bool WebDashboard::autoDashboardPollAlive() const {
+  return _lastAutoDashboardPollMs != 0 &&
+      millis() - _lastAutoDashboardPollMs <
+      RobotConfig::AUTO_V2_DASHBOARD_LINK_TIMEOUT_MS;
+}
+
+bool WebDashboard::sessionAlive() const {
+  return _sessionToken.length() > 0 && _lastSessionHeartbeatMs != 0 &&
+         millis() - _lastSessionHeartbeatMs < RobotConfig::MANUAL_SESSION_TIMEOUT_MS;
+}
+
+bool WebDashboard::validSessionToken() {
+  return sessionAlive() && _server.hasArg("token") &&
+         _server.arg("token") == _sessionToken;
 }
 
 bool WebDashboard::consumeControlActivity() {
@@ -168,6 +248,10 @@ void WebDashboard::markStopApplied(const String& stopReason) {
 
 void WebDashboard::setData(const DashboardData& data) {
   _data = data;
+  _data.wifiStaDisconnectCount = staDisconnectEvents;
+  _data.wifiApTransitionCount = apTransitionEvents;
+  _data.wifiLastDisconnectReason = lastStaDisconnectReason;
+  _data.wifiLastEvent = lastWifiEvent;
   refreshWiFiTelemetry();
 }
 
@@ -256,15 +340,25 @@ void WebDashboard::handleJs() {
 }
 
 void WebDashboard::handleData() {
+  if (_data.controlMode == "AUTO") _lastAutoDashboardPollMs = millis();
+  // Full telemetry and lightweight ping both prove browser session liveness
+  // independently of held movement refreshes.
+  if (_server.hasArg("token") && validSessionToken())
+    _lastSessionHeartbeatMs = millis();
   addCoordinatorCors();
   _server.sendHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
   _server.sendHeader("Pragma", "no-cache");
   _server.sendHeader("Expires", "0");
   refreshWiFiTelemetry();
+  _server.beginTelemetryResponse();
   sendJson();
+  _server.endTelemetryResponse();
 }
 
 void WebDashboard::handlePing() {
+  if (_data.controlMode == "AUTO") _lastAutoDashboardPollMs = millis();
+  if (_server.hasArg("token") && validSessionToken())
+    _lastSessionHeartbeatMs = millis();
   addCoordinatorCors();
   _server.sendHeader("Cache-Control", "no-store");
   const String telemetryAge = _data.uptimeMs == 0
@@ -343,6 +437,56 @@ void WebDashboard::handleSpeed() {
   _controlActivity = true;
   sendOk();
 }
+void WebDashboard::handleSession() {
+  if (!controlOriginAllowed()) return;
+  if (_data.controlMode != "MANUAL") {
+    sendError(409, "application/json", "{\"ok\":false,\"error\":\"manual_required\"}");
+    return;
+  }
+  if (_overrideActionCallback) _overrideActionCallback(false);
+  _sessionToken = String(esp_random(), HEX) + String(esp_random(), HEX);
+  _lastSessionHeartbeatMs = millis();
+  _requireFreshSessionAfterOverride = false;
+  _server.send(200, "application/json",
+               String("{\"ok\":true,\"token\":\"") + _sessionToken +
+               "\",\"timeout_ms\":" + RobotConfig::MANUAL_SESSION_TIMEOUT_MS + "}");
+}
+
+void WebDashboard::handleSessionHeartbeat() {
+  if (!controlOriginAllowed()) return;
+  if (!validSessionToken() || _data.controlMode != "MANUAL") {
+    sendError(409, "application/json", "{\"ok\":false,\"error\":\"session_expired\"}");
+    return;
+  }
+  _lastSessionHeartbeatMs = millis();
+  sendOk();
+}
+
+void WebDashboard::handleOverride() {
+  if (!controlOriginAllowed()) return;
+  if (!validSessionToken() || _data.controlMode != "MANUAL" ||
+      _overrideActionCallback == nullptr) {
+    sendError(409, "application/json", "{\"ok\":false,\"error\":\"session_or_mode_rejected\"}");
+    return;
+  }
+  const String action = _server.arg("set");
+  if (action != "on" && action != "off") {
+    sendError(400, "application/json", "{\"ok\":false,\"error\":\"invalid_action\"}");
+    return;
+  }
+  if (action == "on" && _server.arg("confirm") != "1") {
+    sendError(409, "application/json", "{\"ok\":false,\"error\":\"confirmation_required\"}");
+    return;
+  }
+  if (!_overrideActionCallback(action == "on")) {
+    sendError(409, "application/json", "{\"ok\":false,\"error\":\"safety_rejected\"}");
+    return;
+  }
+  _server.send(200, "application/json",
+               action == "on" ? "{\"ok\":true,\"enabled\":true}" :
+                                "{\"ok\":true,\"enabled\":false}");
+}
+
 void WebDashboard::handleCommand() {
   if (!controlOriginAllowed()) return;
   prepareControlResponse();
@@ -354,7 +498,7 @@ void WebDashboard::handleCommand() {
   String command = _server.arg("move");
   command.toUpperCase();
   if (command != "FORWARD" && command != "BACKWARD" && command != "LEFT" &&
-      command != "RIGHT" && command != "STOP") {
+      command != "RIGHT" && command != "STOP" && command != "RELEASE") {
     sendError(400, "text/plain", "ERR");
     return;
   }
@@ -380,6 +524,12 @@ void WebDashboard::handleCommand() {
     }
   }
 
+  if ((_data.manualFlameGasOverride || _requireFreshSessionAfterOverride) &&
+      command != "STOP" &&
+      command != "RELEASE" && !validSessionToken()) {
+    sendError(409, "text/plain", "SESSION_REJECTED");
+    return;
+  }
   if (applyCommand(command, sequence, sequenced)) {
     sendOk();
   } else {
@@ -501,6 +651,7 @@ void WebDashboard::handleWifiReconnect() {
   beginStaAssociation();
   _staConnectStarted = true;
   _lastStaAttemptMs = millis();
+  _staRetryIntervalMs = RobotConfig::WIFI_STA_INITIAL_RETRY_MS;
   ++_wifiReconnectCount;
   _server.send(202, "application/json", R"json({"ok":true,"state":"CONNECTING"})json");
 }
@@ -568,6 +719,9 @@ bool WebDashboard::applyCommand(const String& command, unsigned long sequence, b
   // STOP is an all-mode operator intervention. Directional commands remain
   // Manual-only and continue through the existing command handler.
   if (command == "STOP" || _data.controlMode == "MANUAL") {
+    if ((_data.manualFlameGasOverride || _requireFreshSessionAfterOverride) &&
+        command != "STOP" &&
+        command != "RELEASE" && !validSessionToken()) return false;
     if (sequenced) {
       // The browser assigns increasing sequence numbers. A STOP that reaches
       // the ESP32 first therefore makes every older in-flight direction stale.
@@ -631,6 +785,7 @@ void WebDashboard::configureSta(const String& ssid, const String& password, bool
     beginStaAssociation();
     _staConnectStarted = true;
     _lastStaAttemptMs = millis();
+    _staRetryIntervalMs = RobotConfig::WIFI_STA_INITIAL_RETRY_MS;
   } else {
     _staState = StaState::NotConfigured;
     _staConnectStarted = false;
@@ -675,6 +830,7 @@ void WebDashboard::clearStaCredentials() {
   _staConnectStarted = false;
   _staState = StaState::NotConfigured;
   _lastStaAttemptMs = 0;
+  _staRetryIntervalMs = RobotConfig::WIFI_STA_INITIAL_RETRY_MS;
   updateMdns(false);
   WiFi.disconnect(false, true);
   WiFi.mode(WIFI_AP);
@@ -698,6 +854,7 @@ void WebDashboard::updateWiFi() {
   setStaStateFromWiFiStatus();
   if (WiFi.status() == WL_CONNECTED) {
     _staConnectStarted = false;
+    _staRetryIntervalMs = RobotConfig::WIFI_STA_INITIAL_RETRY_MS;
     if (_staCredentialsPendingPersistence) {
       _preferences.begin("piku-wifi", false);
       _preferences.putString("ssid", _staSsid);
@@ -710,24 +867,16 @@ void WebDashboard::updateWiFi() {
     return;
   }
 
-  // Keep wrong-password failure visible without automatic radio churn. A new
-  // Connect or explicit Reconnect action starts another non-blocking attempt.
-  if (_staState == StaState::AuthFailed) {
-    updateMdns(false);
-    refreshWiFiTelemetry(true);
-    return;
-  }
-
   updateMdns(false);
 
-  if (_lastStaAttemptMs == 0 || now - _lastStaAttemptMs >= RobotConfig::WIFI_STA_RETRY_MS) {
-    if (WiFi.getMode() != WIFI_AP_STA) {
-      WiFi.mode(WIFI_AP_STA);
-    }
+  if (staRetryDue(now, _lastStaAttemptMs, _staRetryIntervalMs)) {
+    if (WiFi.getMode() != WIFI_AP_STA) WiFi.mode(WIFI_AP_STA);
     _staState = StaState::Connecting;
-    beginStaAssociation();
+    if (!WiFi.reconnect()) beginStaAssociation();
     _staConnectStarted = true;
     _lastStaAttemptMs = now;
+    _staRetryIntervalMs = staNextRetryInterval(
+        _staRetryIntervalMs, RobotConfig::WIFI_STA_MAX_RETRY_MS);
     ++_wifiReconnectCount;
   }
   refreshWiFiTelemetry(true);
@@ -968,10 +1117,11 @@ bool WebDashboard::controlOriginAllowed() {
     addCoordinatorCors();
     return true;
   }
-  if (origin == "http://192.168.4.1" || origin == "http://192.168.10.22" ||
-      origin == "http://piku.local") {
-    return true;
-  }
+  const String softApIp=WiFi.softAPIP().toString();
+  const bool staConnected=WiFi.status() == WL_CONNECTED;
+  const String staIp=staConnected ? WiFi.localIP().toString() : "";
+  if (robotControlOriginAllowed(origin.c_str(), softApIp.c_str(),
+                                staIp.c_str(), staConnected)) return true;
 
   ++_httpErrorCount;
   _server.send(403, "application/json", "{\"ok\":false,\"error\":\"origin_not_allowed\"}");
@@ -1035,6 +1185,9 @@ void WebDashboard::sendJson() {
          ",\"mq2_warmup_age_ms\":" + String(_data.mq2WarmupAgeMs) +
          ",\"gasStatus\":\"" + _data.gasStatus + "\"" +
          ",\"flameDetected\":" + jsonBool(_data.flameDetected) +
+         ",\"gasCritical\":" + jsonBool(_data.gasCritical) +
+         ",\"flameCritical\":" + jsonBool(_data.flameCritical) +
+         ",\"temperatureCritical\":" + jsonBool(_data.temperatureCritical) +
          ",\"flame_state\":\"" + _data.flameState + "\"" +
          ",\"flame_input\":\"DIGITAL_DO\"" +
          ",\"flame_digital_level\":" + String(_data.flameDigitalLevel) +
@@ -1076,7 +1229,8 @@ void WebDashboard::sendJson() {
              ",\"front\":{\"state\":\"" + _data.autoScanFrontState + "\",\"distance_cm\":" + jsonFloat(_data.autoScanFrontDistanceCm, 1) + ",\"trusted\":" + jsonBool(_data.autoScanFrontTrusted) + "}" +
              ",\"right\":{\"state\":\"" + _data.autoScanRightState + "\",\"distance_cm\":" + jsonFloat(_data.autoScanRightDistanceCm, 1) + ",\"trusted\":" + jsonBool(_data.autoScanRightTrusted) + "}}" +
            ",\"hazard\":{\"state\":\"" + _data.autoHazardRecoveryState + "\",\"clear_elapsed_ms\":" + String(_data.autoHazardClearElapsedMs) + ",\"clear_remaining_ms\":" + String(_data.autoHazardClearRemainingMs) + "}" +
-           ",\"stuck\":{\"state\":\"" + _data.autoStuckState + "\",\"attempts\":" + String(_data.autoStuckRecoveryAttempts) + ",\"last_reason\":\"" + _data.autoStuckLastReason + "\"}}" +
+           ",\"stuck\":{\"state\":\"" + _data.autoStuckState + "\",\"attempts\":" + String(_data.autoStuckRecoveryAttempts) + ",\"last_reason\":\"" + _data.autoStuckLastReason + "\"}" +
+           ",\"v2\":{\"state\":\"" + _data.autoV2State + "\",\"attempts\":" + String(_data.autoV2Attempts) + ",\"assistance_required\":" + jsonBool(_data.autoAssistanceRequired) + ",\"reason\":\"" + _data.autoV2Reason + "\"}}" +
          ",\"commandSequence\":" + String(_lastCommandSequence) +
          ",\"softApIp\":\"" + _data.softApIp + "\"" +
          ",\"localHostname\":\"" + _data.localHostname + "\"" +
@@ -1134,6 +1288,9 @@ void WebDashboard::sendJson() {
   appendKey("lastAcceptedCommand"); json += char(34); json += jsonEscape(_lastAcceptedCommand); json += char(34);
   appendKey("lastAppliedCommand"); json += char(34); json += jsonEscape(_lastAppliedCommand); json += char(34);
   appendKey("lastStopReason"); json += char(34); json += jsonEscape(_lastStopReason); json += char(34);
+  appendKey("manualFlameGasOverride"); json += jsonBool(_data.manualFlameGasOverride);
+  appendKey("manualMotionInhibitReason"); json += char(34); json += jsonEscape(_data.manualMotionInhibitReason); json += char(34);
+  appendKey("controlSessionAlive"); json += jsonBool(sessionAlive());
   appendKey("commandAcceptedMs"); json += String(_lastCommandAcceptedMs);
   appendKey("commandAppliedMs"); json += String(_lastCommandAppliedMs);
   appendKey("commandAgeMs"); json += _lastCommandAcceptedMs == 0 ? "null" : String(millis() - _lastCommandAcceptedMs);
@@ -1141,6 +1298,10 @@ void WebDashboard::sendJson() {
   appendKey("httpErrorCount"); json += String(_httpErrorCount);
   appendKey("httpTimeoutCount"); json += String(_server.timeoutCount());
   appendKey("wifiReconnectCount"); json += String(_wifiReconnectCount);
+  appendKey("wifiStaDisconnectCount"); json += String(_data.wifiStaDisconnectCount);
+  appendKey("wifiApTransitionCount"); json += String(_data.wifiApTransitionCount);
+  appendKey("wifiLastDisconnectReason"); json += String(_data.wifiLastDisconnectReason);
+  appendKey("wifiLastEvent"); json += String(_data.wifiLastEvent);
   appendKey("softApChannel"); json += String(_data.softApChannel);
   appendKey("softApClients"); json += String(_data.softApClients);
   appendKey("radioEnabled"); json += jsonBool(_data.radioEnabled);

@@ -35,6 +35,9 @@ struct DashboardData {
   unsigned long mq2SampleAgeMs = 0;
   unsigned long mq2WarmupAgeMs = 0;
   bool flameDetected = false;
+  bool gasCritical = false;
+  bool flameCritical = false;
+  bool temperatureCritical = false;
   String flameState = "CLEAR";
   int flameDigitalLevel = HIGH;
   bool flameRawActive = false;
@@ -52,6 +55,8 @@ struct DashboardData {
   int speedPercent = 60;
   String obstacleDecision = "CLEAR";
   String navigationDecision = "IDLE";
+  bool manualFlameGasOverride = false;
+  String manualMotionInhibitReason = "NONE";
   String autoNavigationState = "IDLE";
   String autoIrZoneState = "CLEAR";
   String autoAvoidanceSource = "NONE";
@@ -77,6 +82,10 @@ struct DashboardData {
   String autoStuckState = "MONITORING";
   uint8_t autoStuckRecoveryAttempts = 0;
   String autoStuckLastReason = "NONE";
+  String autoV2State = "OFF";
+  uint8_t autoV2Attempts = 0;
+  bool autoAssistanceRequired = false;
+  String autoV2Reason = "NONE";
   String gasStatus = "DISABLED";
   String safetyState = "SAFE";
   String alarmReason = "NONE";
@@ -101,6 +110,10 @@ struct DashboardData {
   uint32_t psramSize = 0;
   String resetReason;
   unsigned long maximumServiceLoopGapMs = 0;
+  uint32_t wifiStaDisconnectCount = 0;
+  uint32_t wifiApTransitionCount = 0;
+  int wifiLastDisconnectReason = 0;
+  uint32_t wifiLastEvent = 0;
 
   bool imuInitialized = false;
   bool imuHealthy = false;
@@ -151,12 +164,18 @@ class WebDashboard {
 public:
   using CommandAcceptedCallback = void (*)(const String&, unsigned long, unsigned long);
   using ModeAcceptedCallback = void (*)(const String&);
+  using OverrideActionCallback = bool (*)(bool);
 
   WebDashboard();
   void begin(const char* ssid, const char* password, const char* staSsid = "", const char* staPassword = "");
   void loop();
   void updateBackground();
   void setControlCallbacks(CommandAcceptedCallback commandCallback, ModeAcceptedCallback modeCallback);
+  void setOverrideCallback(OverrideActionCallback callback);
+  void setManualOverrideState(bool enabled);
+  bool sessionAlive() const;
+  bool autoDashboardPollAlive() const;
+  void invalidateControlSession();
   bool consumeControlActivity();
   void markCommandApplied(const String& command, unsigned long sequence, const String& stopReason);
   void markStopApplied(const String& stopReason);
@@ -202,6 +221,7 @@ private:
   String _staPassword;
   bool _staCredentialsPendingPersistence;
   unsigned long _lastStaAttemptMs;
+  unsigned long _staRetryIntervalMs;
   bool _alarmEnabled;
   bool _alarmMuted;
   bool _alarmTestRequested;
@@ -219,8 +239,15 @@ private:
   bool _controlActivity;
   CommandAcceptedCallback _commandAcceptedCallback;
   ModeAcceptedCallback _modeAcceptedCallback;
+  OverrideActionCallback _overrideActionCallback = nullptr;
+  String _sessionToken;
+  unsigned long _lastSessionHeartbeatMs = 0;
+  unsigned long _lastAutoDashboardPollMs = 0;
+  bool _requireFreshSessionAfterOverride = false;
   unsigned long _lastWiFiUpdateMs;
   unsigned long _lastWiFiTelemetryMs;
+  unsigned long _lastDiagnosticsLogMs = 0;
+  uint32_t _lastLoggedWifiEvent = 0;
   String _pendingCommand;
   int _pendingSpeedPercent;
   ManualSensorHeadCommand _pendingManualSensorHeadCommand;
@@ -248,6 +275,10 @@ private:
   void handleTurnMode();
   void handleSpeed();
   void handleCommand();
+  void handleSession();
+  void handleSessionHeartbeat();
+  void handleOverride();
+  bool validSessionToken();
   void handleSensorHead();
   void handleAlarmEnable();
   void handleAlarmMute();

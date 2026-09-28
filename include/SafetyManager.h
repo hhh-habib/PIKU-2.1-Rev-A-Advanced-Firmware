@@ -11,6 +11,9 @@ public:
   void begin();
   void update(const SensorSnapshot& snapshot);
   bool isCritical() const;
+  bool isGasCritical() const { return _gasCritical; }
+  bool isFlameCritical() const { return _flameCritical; }
+  bool isTemperatureCritical() const { return _tempCritical; }
   bool isAutoRecoverableEnvironmentalHazard() const;
   bool hasNonRecoverableCriticalHazard() const;
   bool isCaution() const;
@@ -19,9 +22,9 @@ public:
   bool isRightIrObstacleActive() const;
   bool isNearObstacleHazardActive() const;
   bool isUltrasonicWarningActive() const;
-  bool blocksMotion() const;
+  bool blocksMotion(bool allowFlameGas = false) const;
   bool blocksForwardMotion() const;
-  bool blocksManualForwardMotion() const;
+  bool blocksManualForwardMotion(bool allowFlameGas = false) const;
   bool stateChanged();
   String stateName() const;
   String alarmReason() const;

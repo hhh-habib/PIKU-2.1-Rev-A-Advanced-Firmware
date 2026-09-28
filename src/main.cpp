@@ -8,7 +8,10 @@
 #include "DriveCommandHandler.h"
 #include "ImuManager.h"
 #include "MotorController.h"
+#include "ManualOverridePolicy.h"
+#include "ManualMotionGate.h"
 #include "NavigationManager.h"
+#include "NavigationTrace.h"
 #include "PinConfig.h"
 #include "RobotConfig.h"
 #include "RadioManager.h"
@@ -68,6 +71,7 @@ BuzzerManager buzzer(PinConfig::BUZZER_PIN);
 SafetyManager safety;
 WebDashboard dashboard;
 DashboardData dashboardData;
+NavigationTrace navTrace;
 DashboardPublisher dashboardPublisher(dashboard, display, dashboardData);
 String lastControlMode = "MANUAL";
 String manualMotorDisplayState = "";
@@ -94,6 +98,7 @@ bool criticalStopLatched = false;
 bool criticalStopRequiresManualRearm = false;
 bool manualForwardBlockedByUltrasonic = false;
 bool manualMovementActive = false;
+ManualOverridePolicy manualOverride;
 bool allowSlowOutputsThisPass = true;
 unsigned long lastServiceLoopStartedMs = 0;
 
@@ -116,19 +121,59 @@ void stopMotors() {
   manualMovementActive = false;
 }
 
+void revokeManualOverride(const char* reason) {
+  if (!manualOverride.enabled()) return;
+  manualOverride.revoke();
+  dashboardData.manualFlameGasOverride = false;
+  dashboard.setManualOverrideState(false);
+  dashboard.invalidateControlSession();
+  dashboardData.manualMotionInhibitReason = reason;
+  Serial.printf("[Safety] Manual flame/gas override revoked: %s\n", reason);
+}
+
+bool onManualOverrideAction(bool enable) {
+  stopMotors();
+  dashboard.setPendingCommand("");
+  if (!enable) {
+    revokeManualOverride("OVERRIDE_OFF");
+    return true;
+  }
+  sensors.updateControlSensors();
+  safety.update(sensors.snapshot());
+  const SensorSnapshot& overrideSnapshot = sensors.snapshot();
+  if (!overrideSnapshot.flameSampleValid ||
+      overrideSnapshot.ultrasonicState == UltrasonicResultState::SensorFault)
+    return false;
+  const bool accepted = manualOverride.enable(
+      dashboard.getControlMode() == "MANUAL",
+      safety.isAutoRecoverableEnvironmentalHazard(),
+      safety.hasNonRecoverableCriticalHazard(),
+      dashboard.sessionAlive(), true);
+  if (!accepted) return false;
+  dashboardData.manualFlameGasOverride = true;
+  dashboard.setManualOverrideState(true);
+  dashboardData.manualMotionInhibitReason = "AWAIT_FRESH_DIRECTION";
+  Serial.println("[Safety] Manual flame/gas override enabled; rear clearance unverified.");
+  return true;
+}
+
 void onDashboardCommandAccepted(const String& command,
                                 unsigned long sequence,
                                 unsigned long acceptedMs) {
   (void)acceptedMs;
-  if (command == "STOP") {
+  if (command == "STOP" || command == "RELEASE") {
     // MotorController::stop() writes PWM duty zero before changing GPIO state.
-    // This callback runs inside /cmd before WebServer formats its response.
+    // This callback runs inside /cmd before logging or formatting a response.
     stopMotors();
+    if (command == "STOP") revokeManualOverride("OPERATOR_STOP");
+    else manualOverride.movementStopped();
     manualMotorDisplayState = "STOP";
     dashboardData.motorState = "STOP";
-    dashboardData.navigationDecision = "OPERATOR_STOP";
-    dashboard.markCommandApplied("STOP", sequence, "OPERATOR_STOP");
-    if (dashboard.getControlMode() == "AUTO") {
+    dashboardData.navigationDecision = command == "STOP" ? "OPERATOR_STOP" : "MANUAL_RELEASE_STOP";
+    dashboardData.manualMotionInhibitReason = command == "STOP" ? "OPERATOR_STOP" : "MANUAL_RELEASE";
+    dashboard.markCommandApplied("STOP", sequence,
+                                 command == "STOP" ? "OPERATOR_STOP" : "MANUAL_RELEASE");
+    if (command == "STOP" && dashboard.getControlMode() == "AUTO") {
       navigation.notifyOperatorStop();
     }
     return;
@@ -149,6 +194,7 @@ void onDashboardCommandAccepted(const String& command,
 
 void onDashboardModeAccepted(const String& mode) {
   stopMotors();
+  revokeManualOverride("MODE_CHANGE");
   navigation.cancelForModeChange();
   manualMotorDisplayState = mode == "MANUAL" ? "STOP" : "";
   dashboardData.motorState = "STOP";
@@ -254,6 +300,9 @@ void publishCurrentTelemetry(bool force) {
     ? manualLogicalInspectionAngle
     : logicalDashboardScanAngle(currentServoPosition);
   dashboardData.temperatureValid = snapshot.temperatureValid;
+  dashboardData.gasCritical = safety.isGasCritical();
+  dashboardData.flameCritical = safety.isFlameCritical();
+  dashboardData.temperatureCritical = safety.isTemperatureCritical();
   dashboardData.humidityValid = snapshot.humidityValid;
   dashboardData.environmentSampleAgeMs = sampleAge(snapshot.environmentLastSuccessMs, now);
   dashboardData.distanceSampleAgeMs = sampleAge(snapshot.distanceSampleMs, now);
@@ -489,6 +538,14 @@ bool updateManualSensorHeadOperation() {
   return false;
 }
 
+bool manualFrontTurnVeto(const SensorSnapshot& snapshot, unsigned long now) {
+  return snapshot.distanceFacingFront && snapshot.distanceValid &&
+      snapshot.ultrasonicState == UltrasonicResultState::DistanceValid &&
+      snapshot.distanceSampleMs != 0 &&
+      now - snapshot.distanceSampleMs <= RobotConfig::ULTRASONIC_STALE_MS &&
+      snapshot.distanceCm <= RobotConfig::NEAR_OBSTACLE_CM;
+}
+
 bool serviceLoop() {
   const unsigned long serviceStartedMs = millis();
   if (lastServiceLoopStartedMs != 0) {
@@ -521,7 +578,45 @@ bool serviceLoop() {
     sensors.updateControlSensors();
   }
   safety.update(sensors.snapshot());
-  if (safety.isCritical()) {
+  if (dashboard.getControlMode() == "MANUAL") {
+    const MotorState motion=motors.getState();
+    const bool nearFront=manualFrontTurnVeto(sensors.snapshot(), millis());
+    const bool leftTurning=motion == MotorState::LeftTurn || motion == MotorState::SpinLeft;
+    const bool rightTurning=motion == MotorState::RightTurn || motion == MotorState::SpinRight;
+    if ((leftTurning && (safety.isLeftIrObstacleActive() || nearFront)) ||
+        (rightTurning && (safety.isRightIrObstacleActive() || nearFront))) {
+      stopMotors();
+      manualMotorDisplayState="STOP";
+      dashboard.setPendingCommand("");
+      dashboardData.navigationDecision="MANUAL_TURN_OBSTACLE_STOP";
+      dashboardData.manualMotionInhibitReason="TURN_OBSTACLE";
+      dashboard.markStopApplied("TURN_OBSTACLE");
+    }
+  }
+  const bool hadOverride = manualOverride.enabled();
+  const bool sessionLive = dashboard.sessionAlive();
+  const SensorSnapshot& guardSnapshot = sensors.snapshot();
+  const bool sensorFault = !guardSnapshot.flameSampleValid ||
+      guardSnapshot.ultrasonicState == UltrasonicResultState::SensorFault;
+  manualOverride.tick(millis(), dashboard.getControlMode() == "MANUAL",
+                      safety.isAutoRecoverableEnvironmentalHazard(),
+                      safety.hasNonRecoverableCriticalHazard() || sensorFault,
+                      sessionLive);
+  if (hadOverride && !manualOverride.enabled()) {
+    const char* reason = !sessionLive ? "CONTROL_SESSION_LOST" :
+        safety.hasNonRecoverableCriticalHazard() ? "TEMPERATURE_CRITICAL" :
+        sensorFault ? "SENSOR_FAULT" : "HAZARD_CLEARED";
+    stopMotors();
+    dashboard.setPendingCommand("");
+    dashboardData.manualFlameGasOverride = false;
+    dashboard.setManualOverrideState(false);
+    dashboard.invalidateControlSession();
+    dashboardData.manualMotionInhibitReason = reason;
+    dashboard.markStopApplied(reason);
+  }
+  const bool hazardExempt = manualOverride.exemptsFlameGas(
+      dashboard.getControlMode() == "MANUAL", sessionLive);
+  if (safety.blocksMotion(hazardExempt)) {
     if (!criticalStopLatched) {
       criticalStopLatched = true;
       criticalStopModeCommandCounter = dashboard.modeCommandCounter();
@@ -548,7 +643,9 @@ bool serviceLoop() {
     stopMotors();
     manualMotorDisplayState = "STOP";
     dashboard.setPendingCommand("");
+    manualOverride.movementStopped();
     dashboardData.navigationDecision = "MANUAL_DEADMAN_STOP";
+    dashboardData.manualMotionInhibitReason = "MANUAL_DEADMAN";
     dashboard.markStopApplied("MANUAL_DEADMAN");
     syncDashboardState("MANUAL");
     manualDeadmanTriggered = true;
@@ -591,6 +688,7 @@ bool serviceLoop() {
   buzzer.update();
   allowSlowOutputsThisPass = allowBackgroundWork;
   publishCurrentTelemetry(safetyChanged);
+  navTrace.service(dashboardData);
   allowSlowOutputsThisPass = true;
   return safetyChanged;
 }
@@ -602,7 +700,7 @@ bool handleManualControl() {
     return false;
   }
 
-  if (command != "STOP" &&
+  if (command != "STOP" && command != "RELEASE" &&
       millis() - dashboard.lastCommandReceivedMs() >= RobotConfig::MANUAL_COMMAND_TIMEOUT_MS) {
     stopMotors();
     manualMotorDisplayState = "STOP";
@@ -613,12 +711,67 @@ bool handleManualControl() {
     return false;
   }
 
-  if (safety.blocksMotion() && command != "STOP") {
+  if (safety.blocksMotion(manualOverride.exemptsFlameGas(
+          dashboard.getControlMode() == "MANUAL", dashboard.sessionAlive())) &&
+      command != "STOP" && command != "RELEASE") {
     stopMotors();
     manualMotorDisplayState = "STOP";
     dashboard.setPendingCommand("");
     dashboardData.navigationDecision = "SAFETY_STOP";
     dashboard.markCommandApplied("STOP", commandSequence, "SAFETY_INTERLOCK");
+    syncDashboardState("MANUAL");
+    return false;
+  }
+
+  if (command == "RELEASE") {
+    stopMotors();
+    manualMotorDisplayState = "STOP";
+    dashboard.setPendingCommand("");
+    dashboardData.navigationDecision = "MANUAL_RELEASE_STOP";
+    dashboardData.manualMotionInhibitReason = "MANUAL_RELEASE";
+    dashboard.markCommandApplied("STOP", commandSequence, "MANUAL_RELEASE");
+    syncDashboardState("MANUAL");
+    return true;
+  }
+
+  ManualGateInput gate;
+  gate.manualMode = dashboard.getControlMode() == "MANUAL";
+  gate.direction = command == "FORWARD" ? ManualDirection::Forward :
+      command == "BACKWARD" ? ManualDirection::Backward :
+      command == "LEFT" ? ManualDirection::Left : ManualDirection::Right;
+  gate.flameGasCritical = safety.isAutoRecoverableEnvironmentalHazard();
+  gate.temperatureCritical = safety.hasNonRecoverableCriticalHazard();
+  gate.overrideEnabled = manualOverride.enabled();
+  gate.sessionAlive = dashboard.sessionAlive();
+  const SensorSnapshot& gateSnapshot = sensors.snapshot();
+  gate.sensorFault = manualOverride.enabled() &&
+      (!gateSnapshot.flameSampleValid ||
+       gateSnapshot.ultrasonicState == UltrasonicResultState::SensorFault ||
+       gateSnapshot.ultrasonicState == UltrasonicResultState::Stale);
+  gate.forwardObstacle = manualForwardBlockedByUltrasonic ||
+      safety.blocksManualForwardMotion(true) ||
+      (manualOverride.enabled() &&
+       (!gateSnapshot.distanceFacingFront || !gateSnapshot.distanceValid ||
+        millis() - gateSnapshot.distanceSampleMs > RobotConfig::ULTRASONIC_STALE_MS));
+  // Front IR and a fresh side inspection can veto a known obstruction.
+  // The operator supervises the remaining unsensed turn sweep.
+  const bool freshSideInspection = manualInspectionState.ready &&
+      manualInspectionState.obstacle &&
+      gateSnapshot.distanceSampleMs != 0 &&
+      millis() - gateSnapshot.distanceSampleMs <= RobotConfig::NAVIGATION_SCAN_SET_MAX_AGE_MS;
+  const bool nearFront=manualFrontTurnVeto(gateSnapshot, millis());
+  gate.leftTurnObstacle = safety.isLeftIrObstacleActive() || nearFront ||
+      (freshSideInspection && manualInspectionState.orientation == ManualSensorHeadCommand::Left);
+  gate.rightTurnObstacle = safety.isRightIrObstacleActive() || nearFront ||
+      (freshSideInspection && manualInspectionState.orientation == ManualSensorHeadCommand::Right);
+  const ManualInhibit inhibit = manualMotionGate(gate);
+  if (inhibit != ManualInhibit::None) {
+    stopMotors();
+    manualMotorDisplayState = "STOP";
+    dashboard.setPendingCommand("");
+    dashboardData.navigationDecision = manualInhibitName(inhibit);
+    dashboardData.manualMotionInhibitReason = manualInhibitName(inhibit);
+    dashboard.markCommandApplied("STOP", commandSequence, manualInhibitName(inhibit));
     syncDashboardState("MANUAL");
     return false;
   }
@@ -633,7 +786,8 @@ bool handleManualControl() {
     return false;
   }
 
-  if (command == "FORWARD" && safety.blocksManualForwardMotion()) {
+  if (command == "FORWARD" && safety.blocksManualForwardMotion(
+          manualOverride.exemptsFlameGas(true, dashboard.sessionAlive()))) {
     stopMotors();
     manualMotorDisplayState = "STOP";
     dashboard.setPendingCommand("");
@@ -656,6 +810,10 @@ bool handleManualControl() {
     manualMovementActive = false;
   }
   if (!result.executed) {
+    if (command == currentManualState && motors.getState() != MotorState::Stopped) {
+      dashboard.markCommandApplied(command, commandSequence, "HELD_REFRESH");
+      return true;
+    }
     dashboard.markCommandApplied("STOP", commandSequence, "COMMAND_REJECTED");
     return false;
   }
@@ -665,6 +823,9 @@ bool handleManualControl() {
   }
   manualMotorDisplayState = result.motorDisplayState;
   dashboardData.navigationDecision = result.navigationDecision;
+  dashboardData.manualMotionInhibitReason =
+      command == "BACKWARD" ? "REAR_CLEARANCE_NOT_SENSOR_VERIFIED" :
+      (command == "LEFT" || command == "RIGHT") ? "TURN_OPERATOR_SUPERVISED" : "NONE";
   dashboard.markCommandApplied(command,
                                commandSequence,
                                command == "STOP" ? "OPERATOR_STOP" : "NONE");
@@ -742,7 +903,8 @@ void updateManualMode() {
   }
 
   if (motors.getState() == MotorState::Forward &&
-      safety.blocksManualForwardMotion()) {
+      safety.blocksManualForwardMotion(manualOverride.exemptsFlameGas(
+          true, dashboard.sessionAlive()))) {
     stopMotors();
     manualMotorDisplayState = "STOP";
     dashboard.setPendingCommand("");
@@ -755,6 +917,7 @@ void updateManualMode() {
 
 void setup() {
   Serial.begin(115200);
+  navTrace.begin(esp_random());
   delay(50);
   Serial.println();
   Serial.print("[Boot] ");
@@ -808,6 +971,7 @@ void setup() {
 
   dashboardData.resetReason = resetReasonName(esp_reset_reason());
   dashboard.setControlCallbacks(onDashboardCommandAccepted, onDashboardModeAccepted);
+  dashboard.setOverrideCallback(onManualOverrideAction);
   dashboard.begin(PIKU_SOFTAP_SSID,
                   PIKU_SOFTAP_PASSWORD,
                   WiFiConfig::HOME_WIFI_SSID,
@@ -840,7 +1004,8 @@ void loop() {
     syncDashboardState(controlMode);
   }
 
-  if (safety.isCritical()) {
+  if (safety.blocksMotion(manualOverride.exemptsFlameGas(
+          controlMode == "MANUAL", dashboard.sessionAlive()))) {
     if (controlMode == "AUTO" &&
         safety.isAutoRecoverableEnvironmentalHazard() &&
         !criticalStopRequiresManualRearm) {

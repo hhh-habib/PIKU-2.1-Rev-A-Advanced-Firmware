@@ -8,6 +8,8 @@
 #include "SafetyManager.h"
 #include "SensorManager.h"
 #include "ServoScanner.h"
+#include "StuckRecoveryV2Policy.h"
+#include "V2EscapeDecision.h"
 #include "WebDashboard.h"
 
 enum class NavigationState {
@@ -34,7 +36,8 @@ enum class NavigationState {
   StuckSuspected,
   StuckRecovery,
   OperatorAbort,
-  CriticalAbort
+  CriticalAbort,
+  TrappedHold
 };
 
 class NavigationManager {
@@ -84,7 +87,11 @@ private:
     HazardClearWait,
     InvalidStop,
     OperatorStop,
-    BlockedRetryWait
+    BlockedRetryWait,
+    V2TrialFrontSettle,
+    V2TrialFrontWait,
+    V2ForwardTrial,
+    TrappedHold
   };
 
   enum class ScanPurpose {
@@ -92,7 +99,8 @@ private:
     IrSingle,
     IrBoth,
     EnvironmentalRecovery,
-    StuckRecovery
+    StuckRecovery,
+    EscapeV2
   };
 
   enum class IrZone {
@@ -108,6 +116,8 @@ private:
     UltrasonicSample ultrasonic;
     bool completed = false;
     uint8_t trustedReadings = 0;
+    uint8_t finiteReadings = 0;
+    float spreadCm = NAN;
   };
 
   struct ScanAccumulator {
@@ -176,6 +186,14 @@ private:
   uint8_t _stuckRecoveryAttempts;
   bool _stuckRecoveryTrialActive;
   String _lastStuckReason;
+  StuckRecoveryV2Policy _v2;
+  String _v2LastReason = "NONE";
+  unsigned long _v2PriorForwardMs = 0;
+  bool _v2AfterTrial = false;
+  bool _v2AlternatePending = false;
+  bool _v2RequireLink = false;
+  bool _v2RequireDashboardPoll = false;
+  unsigned long _v2TrialGuardSequence = 0;
 
   void setState(NavigationState state, const String& decision);
   void setPhase(AutoPhase phase, unsigned long now);
@@ -217,6 +235,14 @@ private:
   bool stuckDistanceUnchanged() const;
   bool stuckEvidenceSatisfied() const;
   void beginStuckRecovery(unsigned long now);
+  void beginV2Escape(unsigned long now);
+  void updateV2RetryCooldown(unsigned long now);
+  void beginV2Turn(bool turnLeft, unsigned long now);
+  void beginV2TrialFrontCheck(unsigned long now);
+  void updateV2Trial(unsigned long now);
+  bool v2ImuReady(unsigned long now) const;
+  bool v2TransportAvailable() const;
+  void enterV2TrappedHold(const char* reason, unsigned long now);
   bool scanSampleTrusted(const NavigationScanSample& sample) const;
   float scanPathClearance(const NavigationScanSample& sample) const;
   const char* ultrasonicStateName(UltrasonicResultState state) const;
