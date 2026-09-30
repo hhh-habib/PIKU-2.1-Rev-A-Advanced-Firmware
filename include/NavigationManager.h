@@ -88,9 +88,8 @@ private:
     InvalidStop,
     OperatorStop,
     BlockedRetryWait,
-    V2TrialFrontSettle,
-    V2TrialFrontWait,
-    V2ForwardTrial,
+    RecoveryFrontSettle,
+    RecoveryFrontWait,
     TrappedHold
   };
 
@@ -100,7 +99,8 @@ private:
     IrBoth,
     EnvironmentalRecovery,
     StuckRecovery,
-    EscapeV2
+    EscapeV2,
+    RecoverySide
   };
 
   enum class IrZone {
@@ -189,11 +189,7 @@ private:
   StuckRecoveryV2Policy _v2;
   String _v2LastReason = "NONE";
   unsigned long _v2PriorForwardMs = 0;
-  bool _v2AfterTrial = false;
-  bool _v2AlternatePending = false;
-  bool _v2RequireLink = false;
-  bool _v2RequireDashboardPoll = false;
-  unsigned long _v2TrialGuardSequence = 0;
+  uint8_t _recoverySideRechecks = 0;
 
   void setState(NavigationState state, const String& decision);
   void setPhase(AutoPhase phase, unsigned long now);
@@ -235,15 +231,18 @@ private:
   bool stuckDistanceUnchanged() const;
   bool stuckEvidenceSatisfied() const;
   void beginStuckRecovery(unsigned long now);
-  void beginV2Escape(unsigned long now);
+  void beginV2Escape(unsigned long now, bool reuseScan);
+  void selectRecoveryDirection(unsigned long now);
+  void beginRecoverySideCheck(unsigned long now);
+  void finishRecoverySideCheck(unsigned long now);
+  void beginRecoveryFrontCheck(unsigned long now);
+  void updateRecoveryFrontCheck(unsigned long now);
   void updateV2RetryCooldown(unsigned long now);
   void beginV2Turn(bool turnLeft, unsigned long now);
-  void beginV2TrialFrontCheck(unsigned long now);
-  void updateV2Trial(unsigned long now);
   bool v2ImuReady(unsigned long now) const;
-  bool v2TransportAvailable() const;
   void enterV2TrappedHold(const char* reason, unsigned long now);
   bool scanSampleTrusted(const NavigationScanSample& sample) const;
+  RecoveryReading recoveryReading(const NavigationScanSample& sample) const;
   float scanPathClearance(const NavigationScanSample& sample) const;
   const char* ultrasonicStateName(UltrasonicResultState state) const;
   const char* phaseName() const;

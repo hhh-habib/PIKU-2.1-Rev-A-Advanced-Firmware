@@ -102,19 +102,17 @@ namespace RobotConfig {
   static constexpr unsigned long AUTO_INVALID_RETRY_MS = 250;
   static constexpr float AUTO_PATH_TIE_TOLERANCE_CM = 1.0f;
   static constexpr float AUTO_AVOIDANCE_TURN_TARGET_DEG = 35.0f;
-  // Physical-test build: normal AUTO still uses the same obstacle path.
-  // V2 uses provisional research-prototype clearance, not a certified sweep.
+  // Normal AUTO obstacle handling is separate from the bounded recovery mission.
   static constexpr bool ENABLE_STUCK_RECOVERY_V2 = true;
-  static constexpr float AUTO_V2_PROVISIONAL_TURN_TARGET_DEG = 25.0f;
-  static constexpr float AUTO_V2_PROVISIONAL_FRONT_CM = 50.0f;
-  static constexpr float AUTO_V2_FRONT_STABILITY_SPREAD_CM = 5.0f;
-  static constexpr uint8_t AUTO_V2_MAX_TURNS_PER_SIDE = 3;
-  static constexpr uint8_t AUTO_V2_MAX_TOTAL_TURNS = 6;
-  static constexpr unsigned long AUTO_V2_TOTAL_TIMEOUT_MS = 30000;
-  static constexpr unsigned long AUTO_V2_RETRY_COOLDOWN_MS = 2500;
+  static constexpr float RECOVERY_TURN_TARGET_DEG = 25.0f;
+  static constexpr float RECOVERY_FRONT_EXIT_CM = 30.0f;
+  static constexpr float RECOVERY_HARD_VETO_CM = 7.0f;
+  static constexpr float RECOVERY_BOXED_SIDE_CM = 30.0f;
+  static constexpr uint8_t RECOVERY_MAX_TURNS = 7;
+  static constexpr unsigned long RECOVERY_MISSION_TIMEOUT_MS = 30000;
+  static constexpr unsigned long RECOVERY_COOLDOWN_MS = 2500;
   static constexpr unsigned long AUTO_V2_DASHBOARD_LINK_TIMEOUT_MS = 2500;
-  static constexpr unsigned long AUTO_V2_TURN_TIMEOUT_MS = 2500;
-  static constexpr unsigned long AUTO_V2_FORWARD_TRIAL_MS = 250;
+  static constexpr unsigned long RECOVERY_TURN_TIMEOUT_MS = 2500;
   static constexpr float AUTO_AVOIDANCE_TURN_TOLERANCE_DEG = 1.0f;
   static constexpr float AUTO_AVOIDANCE_GYRO_DEADBAND_DPS = 2.0f;
   static constexpr unsigned long AUTO_AVOIDANCE_TURN_TIMEOUT_MS = 2500;
