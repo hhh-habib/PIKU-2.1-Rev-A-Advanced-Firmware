@@ -1,6 +1,8 @@
 # Approved v2 standalone execution record
 
-Current source includes the focused correction pass and the final behavior implementation below. Phase-specific sections remain historical results for their individual commits.
+**Status: This is a historical V2 development record. The phrase "current source" below describes its original 2026-09-28 stage, not the frozen V3.2 executable. For current behavior, see [README.md](../README.md), [SOFTWARE_EXPLANATION.md](../SOFTWARE_EXPLANATION.md), and [V3.2 software verification](RECOVERY_V32_SOFTWARE_VERIFICATION.md).**
+
+At the time of this record, the source included the focused correction pass and the behavior implementation below. Phase-specific sections remain historical results for their individual commits.
 
 ## Baseline and scope
 

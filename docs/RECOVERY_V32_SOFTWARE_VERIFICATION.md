@@ -1,4 +1,4 @@
-# Recovery V3.2 software verification ? 2026-10-01
+# Recovery V3.2 software verification - 2026-10-01
 
 Scope: standalone PIKU 2.1 Rev A firmware on the locked-recovery branch. This is a software review and build record, not physical validation or an instrumented latency measurement.
 
@@ -18,6 +18,10 @@ AUTO's previous invalid-stop/trapped-hold paths could impose a retry/cooldown or
 
 The dashboard shows VALID/numeric, OPEN/OPEN, FAULT, or STALE for ultrasonic state. Normal 35-degree navigation, locked 25-degree recovery, boxed-in detection, 30 cm recovery handoff, 7 cm veto, 200 ms/five-pulse IR backoff, seven-turn limit, communications, and Control page layout are otherwise unchanged.
 
+## Frozen executable source
+
+The verified V3.2 executable and test source is commit `41281d8325d88c70e074e008a2550a1164102132`. This document records software evidence only. The project owner's later supervised functional physical PASS is recorded separately in [PIKU_2.1_REVA_V32_PHYSICAL_VALIDATION.md](PIKU_2.1_REVA_V32_PHYSICAL_VALIDATION.md).
+
 ## Final software gates
 
 - Firmware build: PASS; RAM 58,740 / 327,680 bytes; flash 1,038,217 / 6,553,600 bytes.
@@ -27,6 +31,6 @@ The dashboard shows VALID/numeric, OPEN/OPEN, FAULT, or STALE for ultrasonic sta
 - `git diff --check`: PASS.
 - No push, merge, hardware flash, or physical test was performed.
 
-## Supervised physical follow-up
+## Remaining measurement boundaries
 
-Verify IR stopping distance in Manual mode, held-command/deadman behavior with disconnected HC-SR04, actual 20/25 cm hysteresis, two-sample reacquisition latency and motor-off behavior, no stale pivot replay, no-echo interpretation in the real environment, and hazard/STOP/Manual preemption while moving. Source and host tests do not measure these physical latencies or clearances.
+The owner's later supervised functional PASS confirms satisfactory final behavior for the tested setup. Exact IR stopping latency, reverse displacement, 20/25 cm transition error, two-sample reacquisition timing distribution, pivot-angle error, and broader environmental reliability were not instrumented. The software checks above do not measure physical latency or clearance.

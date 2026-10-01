@@ -1,4 +1,6 @@
-# Recovery V3.1 software verification ? 2026-10-01
+# Recovery V3.1 software verification - 2026-10-01
+
+**Status: Historical Recovery V3.1 software gate. V3.2 later changed Manual sonar authority and AUTO fault reacquisition; see [V3.2 software verification](RECOVERY_V32_SOFTWARE_VERIFICATION.md).**
 
 Scope: standalone PIKU 2.1 Rev A repository, continuing Recovery V3. This records software evidence only; physical behavior and response latency were not instrumented or validated.
 

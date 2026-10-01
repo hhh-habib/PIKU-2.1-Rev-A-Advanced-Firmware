@@ -1,5 +1,7 @@
 # PIKU 2.1 Rev A Stage-2
 
+**Status: Historical Stage-2 development record. Its Manual sonar-fault rules and physical-test checklist describe that earlier stage; see [README.md](../README.md) and [V3.2 software verification](RECOVERY_V32_SOFTWARE_VERIFICATION.md) for current behavior.**
+
 ## Objective and status
 
 Stage-2 adds environmental sensing, MPU6050 robot-state telemetry, a local SH1106 status display, and Node V1-compatible nRF24 communication around the physically verified Stage-1 motion/navigation foundation. Firmware identity is `PIKU 2.1 Rev A`, stage `STAGE-2`, version `2.1.0-revA-stage2`.

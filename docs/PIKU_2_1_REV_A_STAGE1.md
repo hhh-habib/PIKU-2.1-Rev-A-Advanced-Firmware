@@ -1,5 +1,7 @@
 # PIKU 2.1 Rev A Stage-1 Engineering Note
 
+**Status: Historical Stage-1 development record. Its behavior and verification boundary belong to that stage; see [README.md](../README.md) for the frozen V3.2 firmware.**
+
 ## Scope
 
 This Stage-1 firmware migrates the proven PIKU 2.0.1 control architecture to the ESP32-S3 DevKitC-1 N16R8 and includes fixed-enable 4WD motion, Manual and Auto control, SG90 directional scanning, HC-SR04 ranging, dual front IR sensing, and the existing HTTP Wi-Fi dashboard.

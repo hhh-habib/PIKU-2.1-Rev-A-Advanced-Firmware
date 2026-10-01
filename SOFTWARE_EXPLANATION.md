@@ -1,148 +1,111 @@
-# PIKU 2.1 Rev A — Software Explanation
+# How the PIKU 2.1 Rev A firmware works
 
-This is a simple study guide for the validated standalone PIKU 2.1 Rev A firmware. For engineering details, configuration values, and test evidence, see the [main README](README.md).
+This is the human-readable guide to the frozen standalone V3.2 source at `41281d8325d88c70e074e008a2550a1164102132`. Start with the [README](README.md) for the release summary. Exact software gates are in [V3.2 software verification](docs/RECOVERY_V32_SOFTWARE_VERIFICATION.md); the owner's supervised functional result is in [V3.2 physical validation](docs/PIKU_2.1_REVA_V32_PHYSICAL_VALIDATION.md).
 
-## What this software is
+## The control path
 
-PIKU 2.1 Rev A is the embedded brain software of a mobile environmental inspection robot. It runs on an ESP32-S3 and brings the robot's movement, sensors, autonomous navigation, environmental monitoring, communication, and safety behavior together.
+PIKU repeatedly services browser commands, current sensors, safety decisions, and the selected mode. Motion is owned by `MotorController`; the dashboard displays state but does not drive GPIO itself.
 
-This repository contains the standalone robot firmware. It is not the later Stage 4 CPS Integration repository and is not the complete multi-node CPS platform.
+```text
+Sensors -> current evidence -> safety and operator STOP
+                                 |
+                                 +-> MANUAL: supervised held command
+                                 |
+                                 +-> AUTO: normal navigation
+                                           |-> locked-side recovery
+                                           +-> sonar reacquisition
+                                 |
+                                 +-> MotorController -> wheels
+```
 
-## What the robot can do
+`main.cpp` starts the components and runs the cooperative loop. Accepted STOP/RELEASE and mode changes stop motors promptly; the loop also services Wi-Fi, sensors, telemetry, the OLED, and the secondary radio. Navigation and recovery use timestamps and phases so the service loop can keep running. This is priority-aware cooperative firmware, not a hard real-time safety controller.
 
-- Drive under Manual control
-- Navigate in AUTO mode
-- Detect obstacles
-- Scan left, front, and right
-- Choose a safer path
-- Recover when its path is blocked
-- Detect configured environmental hazards
-- Stop when a hazard is active
-- Resume AUTO after a continuously safe clear period
-- Provide live information through a browser dashboard
-- Work through direct SoftAP Wi-Fi or STA/Home Wi-Fi
+## How evidence reaches a decision
 
-## Main hardware
+`SensorManager` schedules ultrasonic, IR, flame, gas, temperature/humidity, and other samples. The HC-SR04 can face front or move with the SG90 head for a left/front/right scan. The ultrasonic state carries meaning separately from the centimetre field:
 
-- **ESP32-S3:** runs the firmware and Wi-Fi dashboard.
-- **Four-wheel-drive chassis:** provides the mobile base.
-- **L298N:** controls the drive motors.
-- **SG90 servo:** turns the ultrasonic sensor to scan different directions.
-- **HC-SR04:** checks the front and scanned areas with ultrasonic ranging.
-- **Left and right IR sensors:** monitor low obstacle zones near the front of the chassis.
-- **MPU6050:** measures motion and short-term rotation.
-- **DHT22:** measures temperature and humidity.
-- **MQ-2:** provides a relative gas/smoke sensor signal.
-- **Digital flame sensor:** provides an optical flame/infrared hazard signal.
-- **OLED:** shows local status and warnings.
-- **nRF24:** provides a secondary experimental radio link.
+| State | Meaning in V3.2 |
+| --- | --- |
+| `DistanceValid` | Fresh trusted finite distance; compare the numeric range |
+| `ClearNoEcho` | No useful echo; operationally OPEN, without inventing a distance |
+| `SensorFault` | Untrusted fault evidence |
+| `Stale` | Old/untrusted evidence |
 
-## How obstacle avoidance works
+`ClearNoEcho` is useful for path choice, but it is not a proof that all space beyond the sensor is empty. A disconnected LOW echo line may resemble a true no-return. The dashboard presents these states as VALID with centimetres, OPEN, FAULT, and STALE.
 
-When AUTO detects an obstacle, the normal recovery sequence is:
+`SafetyManager` combines environmental hazards, low front IR zones, and near-obstacle evidence. It preserves immediate STOP and critical-hazard authority. IR covers a different low chassis zone from the higher servo-mounted HC-SR04; neither sensor gives a complete swept-volume guarantee.
 
-    Obstacle detected
-      → STOP
-      → reverse slightly
-      → scan LEFT / FRONT / RIGHT
-      → choose a safe side
-      → spin approximately 35°
-      → check the sensors again
-      → continue AUTO when safe
+## Manual: the operator holds authority
 
-The left IR sensor is connected to GPIO7, and the right IR sensor is connected to GPIO8. They monitor low obstacle zones near the robot body. The servo-mounted HC-SR04 monitors a different, higher scanning zone. These sensors complement one another; one clear sensor does not automatically cancel an obstacle reported by another valid sensor.
+The browser offers Forward, Backward, Left, Right, STOP, Pivot/Spin selection, and speed. A held movement command is refreshed; release, STOP, mode change, command timeout, and applicable control-session loss stop motion. Backward has no rear-clearance certificate, and turns are supervised by the operator with the existing near/side vetoes.
 
-Reflective IR sensing depends on surface color, angle, distance, and lighting. In physical tests, representative black objects were not reliably detected, so the ultrasonic sensor and supervised operation remain important.
+The front ultrasonic Forward latch uses a **fresh finite** front result. At **20 cm or less**, Forward blocks or stops; at **25 cm or more**, it clears; between these values it keeps the prior state. Trusted no-echo clears the sonar latch. SensorFault or Stale is unknown and does not, by itself, remove Manual movement authority. The two front IR sensors still block Forward independently, including with unavailable sonar. Known close-obstacle guards and higher-priority safety conditions still apply.
 
-## MPU6050
+Flame/gas override is an intentional Manual action. It bypasses the local flame/gas motion lock only while its other control conditions hold. Flame/gas evidence remains visible. STOP, dead-man/session rules, critical temperature, known obstacles, and other independent protections remain authoritative. The override never certifies the environment as safe.
 
-The MPU6050 is used for:
+## AUTO: ordinary navigation first
 
-- motion sensing;
-- tilt and movement information; and
-- short-term relative gyro rotation.
+`NavigationManager` starts with current front validation. Trusted no-echo or a finite clear front permits normal Forward steps; a finite front reading at or below **20 cm** calls the ordinary obstacle path. Normal handling is roughly:
 
-During an AUTO turn, gyro measurements help control an approximately 35° relative spin. This is not a compass, absolute heading, localization system, or wheel odometry.
+```text
+Obstacle -> STOP -> short bounded reverse -> fresh L/F/R scan
+         -> safe-side choice -> ~35-degree relative turn
+         -> STOP -> fresh obstacle decision
+```
 
-## Environmental monitoring
+Normal AUTO also arbitrates low front IR evidence and can stop/retry if neither side is safe. The ordinary turn target and obstacle thresholds are separate from boxed-in recovery. No second AUTO press is needed to clear an ordinary recoverable obstacle.
 
-- **DHT22:** reports temperature and humidity.
-- **MQ-2:** reports a relative gas/smoke signal. It is not calibrated in ppm.
-- **Flame DO sensor:** reports an optical flame/infrared hazard signal through its digital output.
+`MotorController` owns PWM and direction primitives. `ImuManager` provides fresh gyro-Z samples for short-term relative turns. The gyro does not give a compass heading, localization, or wheel odometry. Normal obstacle turning retains its existing bounded fallback and timeout; recovery requires a usable relative-turn path and has its own safety bounds.
 
-The final tested flame-sensor setup included a small black optical shroud to reduce unwanted light. This remains prototype hazard sensing, not certified fire detection.
+## Boxed-in recovery: one side, then return to AUTO
 
-## Hazard behavior
+After a **trusted complete L/F/R scan**, all three directions must be finite and **strictly below 30 cm** to trigger immediate boxed-in recovery. A trusted `ClearNoEcho` makes that scan not fully boxed. Less obvious oscillation can still be detected by the existing history policy. The initial recovery decision reuses the scan when fresh and complete.
 
-When a configured environmental hazard is detected:
+The recovery mission chooses LEFT or RIGHT once and locks it. It does not re-rank the opposite side after every turn:
 
-    Hazard detected
-      → robot stops
-      → dashboard shows the alarm
-      → robot keeps monitoring
+```text
+Choose and lock side -> ~25-degree turn -> STOP -> front-only check
+    front >=30 cm or ClearNoEcho -> end recovery -> normal AUTO
+    front still blocked -> inspect locked side only -> next bounded turn if safe
+```
 
-When the hazard clears:
+A selected-side finite range of **7 cm or less** forbids a direct pivot. Recovery permits at most **seven** same-direction increments. A genuinely failed mission stops for about **2,500 ms**, then a fresh complete scan may start a new mission and choose a new side. A clear front heading hands control back immediately; there is no recovery-only forward trial or repeated full scan after each increment.
 
-    Hazard clears
-      → remain continuously clear for approximately 2 seconds
-      → scan the surroundings
-      → continue AUTO when safe
+### IR clearance within a recovery mission
 
-If the hazard returns during the clear period, the alarm returns, the timer resets, and the robot remains stopped.
+Either front IR sensor can stop recovery motion, including an active pivot. IR is a close-obstacle veto, not a direction planner. The interrupted gyro target is discarded, but the locked side remains.
 
-## Communication
+```text
+IR active -> STOP -> backward pulse, timed 200 ms
+          -> STOP and check IR
+          -> another pulse only if still blocked
+IR clear -> STOP -> fresh front check -> continue same side only if needed
+```
 
-Wi-Fi is the primary control and telemetry path. It can operate in two ways:
+The software caps commanded reverse at **five pulses per mission**; each pulse uses the current selected motor speed. The robot has no rear sensor, so reverse distance is not verified. STOP, mode change, hazards, and sonar fault preempt backoff.
 
-- **SoftAP:** a phone or computer connects directly to the robot.
-- **STA/Home Wi-Fi:** the robot joins a provisioned local 2.4 GHz network.
+## Sonar fault: stop, reacquire, decide fresh
 
-The nRF24 is a secondary, experimental machine-to-machine communication path. It is not the primary interactive control system.
+AUTO is not operator-supervised in the same way as Manual. `SensorFault` or `Stale` in AUTO/recovery therefore stops motors, cancels the current gyro target and IR backoff, discards recovery commitment, centers the sensor, and enters `SONAR_REACQUIRE`. `ClearNoEcho` does not enter this state.
 
-## Dashboard
+During reacquisition the robot stays stopped, takes normal-cadence **front-only** samples, and does not spin, reverse, or perform full directional sweeps. The first new trusted front result keeps it stopped. A **second consecutive fresh trusted front result**, finite or no-echo, immediately enters the existing normal front decision. That decision can drive, avoid a newly seen obstacle, or honor current IR evidence. It never replays an interrupted turn.
 
-The browser dashboard provides:
+The **1,000 ms** fast window changes diagnostic status; it is not a one-second blocking wait or a deadline to drive blind. If the fault persists, front sampling and Wi-Fi/control service continue with motors off. Trusted sensing later resumes AUTO automatically without reboot or another AUTO click.
 
-- sensor information;
-- Manual and AUTO mode selection;
-- movement controls;
-- radar and scan information;
-- communication status; and
-- safety and system diagnostics.
+## Environmental hazards and priority
 
-## Important source files
+Flame and gas can stop local AUTO motion. After a recoverable hazard remains continuously clear for about **two seconds**, AUTO performs its existing fresh environmental-recovery scan and resumes only from current evidence. A recurring hazard resets that clear wait. Critical temperature and other nonrecoverable conditions retain their separate stop/re-arm authority.
 
-- **MotorController:** controls motor direction and speed.
-- **NavigationManager:** runs AUTO navigation, scanning, turning, retry, and recovery states.
-- **SensorManager:** reads sensors and prepares consistent sensor snapshots.
-- **SafetyManager:** decides when hazards or sensor conditions must stop movement.
-- **WebDashboard:** manages Wi-Fi, browser requests, commands, and dashboard data.
-- **DashboardPublisher:** sends updated telemetry at controlled rates.
-- **RadioManager:** manages the bounded secondary nRF24 communication path.
-- **ImuManager:** samples the MPU6050 and reports its health and motion data.
-- **ServoScanner:** moves the scanning servo to left, front, and right positions.
-- **main.cpp:** starts the subsystems and coordinates the priority service loop and robot modes.
+In practical order, explicit STOP and mode changes, critical safety, and required sensor validity outrank navigation commands. This prevents a stale forward, turn, or backoff command from being replayed after an interruption.
 
-## Physical testing summary
+## Web dashboard, radio, and traces
 
-The final prototype test observations included:
+`WebDashboard` provides the embedded browser page and HTTP endpoints. SoftAP allows direct local access; STA joins a provisioned network and has bounded reconnect handling. The browser separates `/ping` heartbeat from `/data` telemetry. `DashboardPublisher` updates telemetry without increasing control-loop polling. The Control page keeps operational buttons before diagnostics. The SH1106 OLED reports local status. nRF24 is a secondary experimental heartbeat/status path, not the browser control channel.
 
-- an approximately 30-minute final test;
-- successful physical operation through both SoftAP and STA Wi-Fi;
-- practical STA operation around 30 ft / 9 m in the tested environment;
-- AUTO spins observed at approximately 30–35°;
-- representative obstacles detected by the reflective IR sensors around approximately 7 cm;
-- tested black objects not reliably detected by reflective IR;
-- no false hazard alarms observed during the final approximately 30-minute test with the flame-sensor shroud installed;
-- working flame, gas, and temperature paths; and
-- qualitatively responsive control and telemetry.
+An optional RAM-only navigation trace can be enabled for supervised diagnostic capture. It does not write continuous flash logs. Its unchanged format is documented in [NAV_TRACE_SCHEMA.md](docs/NAV_TRACE_SCHEMA.md).
 
-These are observations from a functional research prototype in its tested environment. They are not calibrated specifications, formal latency measurements, safety certification, or guaranteed performance.
+## What validation establishes
 
-## Where this repository fits
+The project owner reported a supervised functional physical PASS for final V3.2 behavior on **2026-10-01**. The frozen source also passes the PlatformIO build, ten native tests, three Python tests, and dashboard JavaScript parsing. Earlier dated trials are kept as history in [PIKU_2.1_REV_A_TESTING.md](docs/PIKU_2.1_REV_A_TESTING.md).
 
-This repository makes PIKU 2.1 Rev A work as a validated standalone robot. The separate Stage 4 CPS Integration stage later migrates this foundation into a multi-node architecture involving CPS Node V1, PIKU 2.0.1, and PIKU 2.1. Capabilities such as localization, mapping, ROS 2, edge intelligence, and more advanced coordination remain future research directions rather than features of this standalone firmware.
-
-## In simple words
-
-PIKU 2.1 Rev A is the brain software of an autonomous environmental inspection robot. It allows the ESP32-S3 robot to sense its surroundings, avoid obstacles, monitor hazards, move automatically, receive Wi-Fi commands, and report its condition through a browser dashboard.
+Neither the owner report nor host tests provide a latency distribution, turn-angle error distribution, reverse displacement, RF reliability statistic, or industrial safety certification. The no-rear-sensor, partial IR coverage, HC-SR04 no-return ambiguity, and uncalibrated MQ-2 remain evidence boundaries for this research prototype.

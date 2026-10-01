@@ -1,4 +1,6 @@
-# Recovery V3 software verification ? 2026-10-01
+# Recovery V3 software verification - 2026-10-01
+
+**Status: Historical Recovery V3 software gate. V3.1 and V3.2 changed later behavior; see [V3.2 software verification](RECOVERY_V32_SOFTWARE_VERIFICATION.md) and the [current README](../README.md).**
 
 Scope: standalone PIKU 2.1 Rev A repository only. This record covers source, host-test, dashboard parse, and firmware-build evidence. It does not claim physical validation, calibrated clearance, or measured control latency.
 
