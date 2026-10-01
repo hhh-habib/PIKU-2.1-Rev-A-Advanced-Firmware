@@ -5,6 +5,8 @@
 #include "ImuManager.h"
 #include "MotorController.h"
 #include "RobotConfig.h"
+#include "RecoveryIrBackoffPolicy.h"
+#include "SonarReacquirePolicy.h"
 #include "SafetyManager.h"
 #include "SensorManager.h"
 #include "ServoScanner.h"
@@ -25,6 +27,7 @@ enum class NavigationState {
   SpinLeft,
   SpinRight,
   InvalidStop,
+  SonarReacquire,
   ObstacleRecovery,
   ObstacleScan,
   ObstacleSpin,
@@ -35,6 +38,7 @@ enum class NavigationState {
   HazardRecoveryScan,
   StuckSuspected,
   StuckRecovery,
+  RecoveryIrBackoff,
   OperatorAbort,
   CriticalAbort,
   TrappedHold
@@ -86,11 +90,12 @@ private:
     HazardActive,
     HazardClearWait,
     InvalidStop,
+    SonarReacquire,
     OperatorStop,
     BlockedRetryWait,
-    V2TrialFrontSettle,
-    V2TrialFrontWait,
-    V2ForwardTrial,
+    RecoveryFrontSettle,
+    RecoveryFrontWait,
+    RecoveryIrBackoff,
     TrappedHold
   };
 
@@ -100,7 +105,8 @@ private:
     IrBoth,
     EnvironmentalRecovery,
     StuckRecovery,
-    EscapeV2
+    EscapeV2,
+    RecoverySide
   };
 
   enum class IrZone {
@@ -189,11 +195,10 @@ private:
   StuckRecoveryV2Policy _v2;
   String _v2LastReason = "NONE";
   unsigned long _v2PriorForwardMs = 0;
-  bool _v2AfterTrial = false;
-  bool _v2AlternatePending = false;
-  bool _v2RequireLink = false;
-  bool _v2RequireDashboardPoll = false;
-  unsigned long _v2TrialGuardSequence = 0;
+  uint8_t _recoverySideRechecks = 0;
+  RecoveryIrBackoffPolicy _recoveryIrBackoff;
+  SonarReacquirePolicy _sonarReacquire;
+  bool _sonarReacquireExtended = false;
 
   void setState(NavigationState state, const String& decision);
   void setPhase(AutoPhase phase, unsigned long now);
@@ -226,6 +231,8 @@ private:
   void completeSpin(const char* reason, unsigned long now);
   void finishRecoveryAfterSettle(unsigned long now);
   void enterInvalidStop(const char* reason);
+  void beginSonarReacquire(unsigned long now);
+  void updateSonarReacquire(unsigned long now);
   void enterEnvironmentalHazard(unsigned long now);
   void updateEnvironmentalRecovery(unsigned long now);
   void completeEnvironmentalRecovery();
@@ -235,15 +242,20 @@ private:
   bool stuckDistanceUnchanged() const;
   bool stuckEvidenceSatisfied() const;
   void beginStuckRecovery(unsigned long now);
-  void beginV2Escape(unsigned long now);
+  void beginV2Escape(unsigned long now, bool reuseScan);
+  void selectRecoveryDirection(unsigned long now);
+  void beginRecoverySideCheck(unsigned long now);
+  void finishRecoverySideCheck(unsigned long now);
+  void beginRecoveryFrontCheck(unsigned long now);
+  void updateRecoveryFrontCheck(unsigned long now);
+  void beginRecoveryIrBackoff(unsigned long now, bool requireFirstPulse=false);
+  void updateRecoveryIrBackoff(unsigned long now);
   void updateV2RetryCooldown(unsigned long now);
   void beginV2Turn(bool turnLeft, unsigned long now);
-  void beginV2TrialFrontCheck(unsigned long now);
-  void updateV2Trial(unsigned long now);
   bool v2ImuReady(unsigned long now) const;
-  bool v2TransportAvailable() const;
   void enterV2TrappedHold(const char* reason, unsigned long now);
   bool scanSampleTrusted(const NavigationScanSample& sample) const;
+  RecoveryReading recoveryReading(const NavigationScanSample& sample) const;
   float scanPathClearance(const NavigationScanSample& sample) const;
   const char* ultrasonicStateName(UltrasonicResultState state) const;
   const char* phaseName() const;

@@ -19,8 +19,8 @@ namespace RobotConfig {
 
   static constexpr float OBSTACLE_CM = 25;
   static constexpr float AUTO_OBSTACLE_CM = 20.0f;
-  static constexpr float MANUAL_FORWARD_STOP_CM = 25.0f;
-  static constexpr float MANUAL_FORWARD_CLEAR_CM = 30.0f;
+  static constexpr float MANUAL_FORWARD_STOP_CM = 20.0f;
+  static constexpr float MANUAL_FORWARD_CLEAR_CM = 25.0f;
   static constexpr float NEAR_OBSTACLE_CM = 7.0f;
   static constexpr float ULTRASONIC_MAX_CM = 350;
   // Retained Stage-2 thresholds require calibration after that hardware is installed.
@@ -74,6 +74,7 @@ namespace RobotConfig {
   static constexpr unsigned long ULTRASONIC_GUARD_INTERVAL_MS = 100;
   static constexpr unsigned long ULTRASONIC_SAMPLE_TIMEOUT_MS = 40;
   static constexpr unsigned long ULTRASONIC_STALE_MS = 500;
+  static constexpr unsigned long SONAR_FAST_REACQUIRE_WINDOW_MS = 1000;
   static constexpr unsigned long NAVIGATION_SCAN_SET_MAX_AGE_MS = 5000;
   static constexpr unsigned long AUTO_FORWARD_STEP_MS = 300;
   static constexpr unsigned long AUTO_STOP_SETTLE_MS = 100;
@@ -102,19 +103,19 @@ namespace RobotConfig {
   static constexpr unsigned long AUTO_INVALID_RETRY_MS = 250;
   static constexpr float AUTO_PATH_TIE_TOLERANCE_CM = 1.0f;
   static constexpr float AUTO_AVOIDANCE_TURN_TARGET_DEG = 35.0f;
-  // Physical-test build: normal AUTO still uses the same obstacle path.
-  // V2 uses provisional research-prototype clearance, not a certified sweep.
+  // Normal AUTO obstacle handling is separate from the bounded recovery mission.
   static constexpr bool ENABLE_STUCK_RECOVERY_V2 = true;
-  static constexpr float AUTO_V2_PROVISIONAL_TURN_TARGET_DEG = 25.0f;
-  static constexpr float AUTO_V2_PROVISIONAL_FRONT_CM = 50.0f;
-  static constexpr float AUTO_V2_FRONT_STABILITY_SPREAD_CM = 5.0f;
-  static constexpr uint8_t AUTO_V2_MAX_TURNS_PER_SIDE = 3;
-  static constexpr uint8_t AUTO_V2_MAX_TOTAL_TURNS = 6;
-  static constexpr unsigned long AUTO_V2_TOTAL_TIMEOUT_MS = 30000;
-  static constexpr unsigned long AUTO_V2_RETRY_COOLDOWN_MS = 2500;
+  static constexpr float RECOVERY_TURN_TARGET_DEG = 25.0f;
+  static constexpr float RECOVERY_FRONT_EXIT_CM = 30.0f;
+  static constexpr float RECOVERY_HARD_VETO_CM = 7.0f;
+  static constexpr float RECOVERY_BOXED_SIDE_CM = 30.0f;
+  static constexpr uint8_t RECOVERY_MAX_TURNS = 7;
+  static constexpr unsigned long RECOVERY_IR_BACKOFF_PULSE_MS = 200;
+  static constexpr uint8_t RECOVERY_IR_BACKOFF_MAX_PULSES = 5;
+  static constexpr unsigned long RECOVERY_MISSION_TIMEOUT_MS = 30000;
+  static constexpr unsigned long RECOVERY_COOLDOWN_MS = 2500;
   static constexpr unsigned long AUTO_V2_DASHBOARD_LINK_TIMEOUT_MS = 2500;
-  static constexpr unsigned long AUTO_V2_TURN_TIMEOUT_MS = 2500;
-  static constexpr unsigned long AUTO_V2_FORWARD_TRIAL_MS = 250;
+  static constexpr unsigned long RECOVERY_TURN_TIMEOUT_MS = 2500;
   static constexpr float AUTO_AVOIDANCE_TURN_TOLERANCE_DEG = 1.0f;
   static constexpr float AUTO_AVOIDANCE_GYRO_DEADBAND_DPS = 2.0f;
   static constexpr unsigned long AUTO_AVOIDANCE_TURN_TIMEOUT_MS = 2500;

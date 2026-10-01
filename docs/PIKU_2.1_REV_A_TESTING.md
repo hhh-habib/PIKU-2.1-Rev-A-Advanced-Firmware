@@ -1,5 +1,7 @@
 # PIKU 2.1 Rev A Physical Testing Record
 
+**Status: historical Rev A development and 2026-09-10 physical-test record.** The current owner-reported V3.2 functional validation (2026-10-01) is recorded in [PIKU_2.1_REVA_V32_PHYSICAL_VALIDATION.md](PIKU_2.1_REVA_V32_PHYSICAL_VALIDATION.md). Values and observations below remain attached to their original test dates and firmware states.
+
 ## Record identification
 
 - Test date: 2026-09-09

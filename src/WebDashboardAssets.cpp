@@ -217,14 +217,14 @@ const char DASHBOARD_HTML[] PROGMEM = R"html(
                     <span>100%</span>
                   </div>
                 </div>
-                <div class="control-readouts">
-                  <div><span>Movement</span><strong id="motor">--</strong></div>
-                  <div><span>Turn mode</span><strong id="turnMode">--</strong></div>
-                </div>
-                <p id="autoNavigationSummary" class="control-note" hidden>Auto Navigation: Normal</p>
                 <p class="control-note" id="controlAvailability">AUTO mode active.</p>
                 <p id="overrideAlert" class="control-note" role="alert" hidden>Flame/Gas Hazard Detected</p>
                 <button class="mode-btn" id="overrideBtn" type="button" hidden disabled>Override Hazard &amp; Control</button>
+                <div class="alarm-bar control-alarm-bar" aria-label="Alarm controls">
+                  <button class="alarm-btn" id="enableAlarmBtn" type="button" onclick="enableAlarm(event)">Enable alarm</button>
+                  <button class="alarm-btn" id="testBeepBtn" type="button" onclick="testBeep(event)">Test beep</button>
+                  <button class="alarm-btn danger" id="muteAlarmBtn" type="button" onclick="disableAlarm(event)">Mute alarm</button>
+                </div>
                 <div class="dpad auto" id="dpad" aria-label="Manual directional controls">
                   <button class="forward hold" type="button" data-move="FORWARD" aria-label="Move forward">
                     <span class="arrow arrow-up" aria-hidden="true"></span>
@@ -264,6 +264,11 @@ const char DASHBOARD_HTML[] PROGMEM = R"html(
                   <p class="sensor-head-availability" id="sensorHeadAvailability">Available in Manual mode</p>
                   <p class="sensor-head-status" id="sensorHeadStatus" role="status" aria-live="polite">Manual mode required</p>
                 </div>
+                <div class="control-readouts">
+                  <div><span>Movement</span><strong id="motor">--</strong></div>
+                  <div><span>Turn mode</span><strong id="turnMode">--</strong></div>
+                </div>
+                <p id="autoNavigationSummary" class="control-note" hidden>Auto Navigation: Normal</p>
               </article>
             </div>
 
@@ -494,7 +499,7 @@ const char DASHBOARD_HTML[] PROGMEM = R"html(
               <div class="panel-heading">
                 <div>
                   <p class="eyebrow">Audible warning</p>
-                  <h3>Alarm controls</h3>
+                  <h3>Alarm status</h3>
                 </div>
                 <span class="panel-badge" id="alarmSound">--</span>
               </div>
@@ -503,11 +508,6 @@ const char DASHBOARD_HTML[] PROGMEM = R"html(
                 <div class="detail-item"><span>Browser audio</span><strong id="audioStatus">AUDIO DISABLED</strong></div>
                 <div class="detail-item"><span>Operating mode</span><strong data-bind="mode">--</strong></div>
                 <div class="detail-item"><span>Turn mode</span><strong data-bind="turnMode">--</strong></div>
-              </div>
-              <div class="alarm-bar">
-                <button class="alarm-btn" id="enableAlarmBtn" type="button" onclick="enableAlarm(event)">Enable alarm</button>
-                <button class="alarm-btn" id="testBeepBtn" type="button" onclick="testBeep(event)">Test beep</button>
-                <button class="alarm-btn danger" id="muteAlarmBtn" type="button" onclick="disableAlarm(event)">Mute alarm</button>
               </div>
               <p class="system-note">Browser audio requires a user action. Muting sound never hides visual warnings.</p>
             </article>
@@ -811,9 +811,9 @@ h1 { margin-bottom:1px; font-size:20px; letter-spacing:.025em; }
 }
 .secondary-btn:hover, .mode-btn:hover, .turn-btn:hover, .wifi-btn:hover, .alarm-btn:hover { border-color:rgba(54,216,255,.55); }
 .compact-btn { min-height:38px; padding:7px 12px; font-size:12px; }
-.control-layout { display:grid; grid-template-columns:minmax(330px,.88fr) minmax(390px,1.12fr); gap:14px; }
+.control-layout { display:grid; grid-template-columns:1fr; gap:12px; }
 .control-column, .radar-column { min-width:0; }
-.control-panel { height:100%; }
+.control-panel { height:auto; }
 .mode-bar { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
 .mode-btn { min-height:50px; color:var(--muted); }
 .mode-btn.active { border-color:rgba(54,216,255,.62); background:#12677f; color:white; box-shadow:inset 0 0 0 1px rgba(168,239,255,.18); }
@@ -832,7 +832,7 @@ h1 { margin-bottom:1px; font-size:20px; letter-spacing:.025em; }
 .speed-control strong { color:var(--cyan); font-size:15px; }
 .speed-range { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:10px; margin-top:8px; color:var(--muted); font-size:11px; }
 .speed-range input { width:100%; accent-color:var(--cyan); cursor:pointer; }
-.control-readouts { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin:12px 0; }
+.control-readouts { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin:12px 0; }
 .control-note {
   min-height:20px;
   margin:4px 0 11px;
@@ -1002,7 +1002,8 @@ h1 { margin-bottom:1px; font-size:20px; letter-spacing:.025em; }
   color:var(--muted);
   font-size:11px;
 }
-.alarm-bar { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-top:12px; }
+.alarm-bar { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-top:10px; }
+.control-alarm-bar { margin:8px 0 12px; }
 @media (max-width:900px) {
   .summary-grid-primary { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .overview-layout, .control-layout { grid-template-columns:1fr; }
@@ -1052,7 +1053,7 @@ h1 { margin-bottom:1px; font-size:20px; letter-spacing:.025em; }
   .detail-grid, .large-reading-grid { grid-template-columns:1fr; }
   .detail-item.full { grid-column:auto; }
   .control-readouts { grid-template-columns:1fr; }
-  .alarm-bar, .wifi-actions { grid-template-columns:1fr; }
+  .wifi-actions { grid-template-columns:1fr; }
 }
 @media (prefers-reduced-motion:reduce) {
   *, *::before, *::after { scroll-behavior:auto !important; transition:none !important; }
@@ -1932,7 +1933,12 @@ function renderTelemetry(d) {
 
   const temperatureText = d.temperature === null ? '-- C' : d.temperature + ' C';
   const humidityText = d.humidity === null ? '-- %' : d.humidity + ' %';
-  const distanceText = d.distanceValid ? d.distance + ' cm' : '-- cm';
+  const distanceText = d.ultrasonicState === 'CLEAR_NO_ECHO' ? 'OPEN' :
+    (d.distanceValid ? d.distance + ' cm' : '-- cm');
+  const distanceBadge = d.ultrasonicState === 'CLEAR_NO_ECHO' ? 'OPEN' :
+    d.ultrasonicState === 'SENSOR_FAULT' ? 'FAULT' :
+    d.ultrasonicState === 'STALE' ? 'STALE' :
+    d.distanceValid ? 'VALID' : 'STALE';
   const flameText = d.flame_sample_valid
     ? (d.flameDetected ? 'FLAME_DETECTED' : 'CLEAR')
     : 'INVALID';
@@ -2082,7 +2088,7 @@ function renderTelemetry(d) {
   setBound('temperature', temperatureText);
   setBound('humidity', humidityText);
   setBound('distance', distanceText);
-  setBound('distanceValidity', d.distanceValid ? 'VALID' : 'NOT VALID');
+  setBound('distanceValidity', distanceBadge);
   setBound('servoAngle', d.servoAngle + ' deg');
   setBound('scanOrientation', d.scanOrientation || '--');
   setBound('ultrasonicState', d.ultrasonicState || '--');

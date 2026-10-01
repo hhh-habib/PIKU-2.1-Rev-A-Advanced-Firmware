@@ -1,5 +1,7 @@
 # PIKU V2.0.1 Communication Latency Audit
 
+**Status: Historical PIKU V2.0.1 communication audit. Its quantitative statements are configured values or estimates for that stage, and its reported responsiveness was qualitative. The frozen Rev A V3.2 control path is summarized in [README.md](../README.md).**
+
 Date: 2026-08-25
 
 **Physical Validation Status: PASSED**

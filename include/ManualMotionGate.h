@@ -2,6 +2,16 @@
 #define MANUAL_MOTION_GATE_H
 
 enum class ManualDirection { Forward, Backward, Left, Right, Release, Stop };
+enum class ManualSonarEvidence { DistanceValid, ClearNoEcho, Unknown };
+inline bool manualForwardSonarBlocked(bool previouslyBlocked,
+                                     ManualSonarEvidence evidence,
+                                     float distanceCm,
+                                     float stopCm, float clearCm) {
+  if (evidence != ManualSonarEvidence::DistanceValid) return false;
+  if (distanceCm <= stopCm) return true;
+  if (distanceCm >= clearCm) return false;
+  return previouslyBlocked;
+}
 enum class ManualInhibit {
   None, Release, OperatorStop, Mode, StaleCommand, SessionLost,
   TemperatureCritical, SensorFault, FlameGas, ForwardObstacle,

@@ -2,52 +2,54 @@
 #define V2_ESCAPE_DECISION_H
 #include <stdint.h>
 
-// Pure scan decision used by NavigationManager and native integration tests.
-// Distances are finite fresh aggregate scan values; no-echo is invalid here.
-enum class V2ScanAction { TurnLeft, TurnRight, ForwardTrial, Recovered, AlternateScan, Hold };
-struct V2ScanDecisionInput {
-  float leftCm=0, frontCm=0, rightCm=0;
-  bool leftValid=false, frontValid=false, rightValid=false, frontStable=false;
-  bool irLeft=false, irRight=false, imuReady=false;
-  bool committed=false, committedLeft=false, previousFailedLeft=false;
-  bool afterTurn=false, afterTrial=false, alternatePending=false, alternateTried=false;
-  uint8_t sideTurns=0, totalTurns=0;
-  float hardCollisionCm=7, frontMinimumCm=50, tieToleranceCm=1;
-  uint8_t maxSideTurns=3, maxTotalTurns=6;
+// Pure recovery decisions. A clear no-echo is open; fault/stale is untrusted.
+enum class RecoveryReadingState { DistanceValid, ClearNoEcho, Invalid };
+struct RecoveryReading {
+  RecoveryReadingState state=RecoveryReadingState::Invalid;
+  float cm=0;
 };
-inline bool v2ControlLinkLost(bool requireTransport, bool transportAvailable,
-                              bool requirePoll, bool pollAlive) {
-  return (requireTransport && !transportAvailable) ||
-         (requirePoll && !pollAlive);
+enum class V2ScanAction { TurnLeft, TurnRight, Hold };
+struct V2ScanDecisionInput {
+  RecoveryReading left, front, right;
+  bool imuReady=false;
+  bool previousFailedLeft=false;
+  float hardCollisionCm=7, tieToleranceCm=1;
+};
+inline bool recoveryReadingTrusted(const RecoveryReading& reading) {
+  return reading.state != RecoveryReadingState::Invalid;
+}
+inline bool recoveryPathSafe(const RecoveryReading& reading, float hardCollisionCm) {
+  return reading.state == RecoveryReadingState::ClearNoEcho ||
+      (reading.state == RecoveryReadingState::DistanceValid &&
+       reading.cm > hardCollisionCm);
+}
+inline bool recoveryFrontClear(const RecoveryReading& reading, float exitCm) {
+  return reading.state == RecoveryReadingState::ClearNoEcho ||
+      (reading.state == RecoveryReadingState::DistanceValid &&
+       reading.cm >= exitCm);
+}
+inline bool obviousBoxedIn(const V2ScanDecisionInput& in, float boxedSideCm) {
+  return in.front.state == RecoveryReadingState::DistanceValid &&
+      in.front.cm < boxedSideCm &&
+      in.left.state == RecoveryReadingState::DistanceValid &&
+      in.right.state == RecoveryReadingState::DistanceValid &&
+      in.left.cm < boxedSideCm && in.right.cm < boxedSideCm;
 }
 inline V2ScanAction decideV2Scan(const V2ScanDecisionInput& in) {
-  if (!in.leftValid || !in.frontValid || !in.rightValid || !in.imuReady)
+  if (!recoveryReadingTrusted(in.left) || !recoveryReadingTrusted(in.front) ||
+      !recoveryReadingTrusted(in.right) || !in.imuReady)
     return V2ScanAction::Hold;
-  const bool leftSafe=!in.irLeft && in.leftCm > in.hardCollisionCm;
-  const bool rightSafe=!in.irRight && in.rightCm > in.hardCollisionCm;
-  const bool trialClear=in.frontStable && !in.irLeft && !in.irRight &&
-      in.frontCm >= in.frontMinimumCm;
-  if (in.afterTrial && trialClear) return V2ScanAction::Recovered;
-  if (in.afterTurn && !in.afterTrial && trialClear) return V2ScanAction::ForwardTrial;
-  if (in.totalTurns >= in.maxTotalTurns) return V2ScanAction::Hold;
-  if (in.alternatePending) {
-    if (!in.committed || in.alternateTried) return V2ScanAction::Hold;
-    if (in.committedLeft) return rightSafe ? V2ScanAction::TurnRight : V2ScanAction::Hold;
-    return leftSafe ? V2ScanAction::TurnLeft : V2ScanAction::Hold;
-  }
-  if (in.committed) {
-    if (in.sideTurns < in.maxSideTurns &&
-        (in.committedLeft ? leftSafe : rightSafe))
-      return in.committedLeft ? V2ScanAction::TurnLeft : V2ScanAction::TurnRight;
-    return in.alternateTried ? V2ScanAction::Hold : V2ScanAction::AlternateScan;
-  }
+  const bool leftSafe=recoveryPathSafe(in.left,in.hardCollisionCm);
+  const bool rightSafe=recoveryPathSafe(in.right,in.hardCollisionCm);
   if (!leftSafe && !rightSafe) return V2ScanAction::Hold;
   if (!leftSafe) return V2ScanAction::TurnRight;
   if (!rightSafe) return V2ScanAction::TurnLeft;
-  if (in.leftCm > in.rightCm + in.tieToleranceCm) return V2ScanAction::TurnLeft;
-  if (in.rightCm > in.leftCm + in.tieToleranceCm) return V2ScanAction::TurnRight;
-  // The last normal avoidance turn failed; tie-break away from it once,
-  // then retain the committed side across incremental scans.
+  if (in.left.state == RecoveryReadingState::ClearNoEcho)
+    return V2ScanAction::TurnLeft;
+  if (in.right.state == RecoveryReadingState::ClearNoEcho)
+    return V2ScanAction::TurnRight;
+  if (in.left.cm > in.right.cm + in.tieToleranceCm) return V2ScanAction::TurnLeft;
+  if (in.right.cm > in.left.cm + in.tieToleranceCm) return V2ScanAction::TurnRight;
   return in.previousFailedLeft ? V2ScanAction::TurnRight : V2ScanAction::TurnLeft;
 }
 #endif

@@ -1,5 +1,7 @@
 # PIKU V2.0.1 Advanced Firmware Testing Record
 
+**Status: Historical PIKU V2.0.1 testing record. Its observations are not evidence for the later Rev A V3.2 physical test; see [V3.2 physical validation](PIKU_2.1_REVA_V32_PHYSICAL_VALIDATION.md).**
+
 ## Scope
 
 This document records the final reported functional prototype testing for the PIKU V2.0.1 Advanced firmware. It is not a certification report and does not claim calibrated sensor performance.

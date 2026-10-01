@@ -1,5 +1,7 @@
 # Focused correction pass - source validation
 
+**Status: Historical development record for an earlier V2 correction. For the frozen V3.2 behavior, see [README.md](../README.md) and [V3.2 software verification](RECOVERY_V32_SOFTWARE_VERIFICATION.md).**
+
 The previous Phase 1A gate set `pivotSweepVerified=false` for every Manual command, so the Manual gate rejected both Left and Right. The corrected gate uses front IR, fresh near-front ultrasonic and available side-inspection obstruction as vetoes; the operator supervises unsensed turning. Forward obstacle blocking and held supervised Reverse remain.
 
 The previous Phase 1B `selectPathAfterScan` branch for `EscapeV2` always called `enterV2TrappedHold`. The corrected branch calls the pure `decideV2Scan` function and drives `StuckRecoveryV2Policy` committed-side and turn counts through `beginV2Turn`, `updateSpinTurn`, `finishRecoveryAfterSettle`, `beginV2TrialFrontCheck` and `updateV2Trial`. The normal 35-degree target remains in the non-V2 branch. `AUTO_V2_PROVISIONAL_TURN_TARGET_DEG` is used in the operational gyro completion test and telemetry.
