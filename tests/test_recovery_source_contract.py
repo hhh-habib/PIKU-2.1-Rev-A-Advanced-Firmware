@@ -18,38 +18,90 @@ post_turn = body("finishRecoveryAfterSettle(", "enterInvalidStop(")
 assert "beginRecoveryFrontCheck(now)" in post_turn
 assert "beginScan(ScanPurpose::EscapeV2" not in post_turn
 
-front = body("updateRecoveryFrontCheck(", "v2ImuReady(")
+front = body("updateRecoveryFrontCheck(", "beginRecoveryIrBackoff(")
 assert "recoveryFrontClear(reading, RobotConfig::RECOVERY_FRONT_EXIT_CM)" in front
 assert "beginRecoverySideCheck(now)" in front
 assert "_scanPurpose = ScanPurpose::Obstacle;" in front
 assert "_motors.forward()" not in front
 assert "beginScan(ScanPurpose::EscapeV2" not in front
+assert "front.state == UltrasonicResultState::ClearNoEcho" in front
+assert "setPhase(AutoPhase::Idle, now);" in front
+normal_front = body("updateFrontValidation(", "updateForward(")
+assert "front.state == UltrasonicResultState::ClearNoEcho" in normal_front
+assert "_motors.forward();" in normal_front
+normal_rank = nav.split("bool NavigationManager::selectClearestSide(", 1)[1].split(
+    "void NavigationManager::beginSpinTurn(", 1
+)[0]
+assert "scanPathClearance(_leftScan)" in normal_rank
+assert "scanPathClearance(_rightScan)" in normal_rank
+assert "scanSampleTrusted(_leftScan)" in normal_rank
+assert "scanSampleTrusted(_rightScan)" in normal_rank
+scan_clearance = nav.split("float NavigationManager::scanPathClearance(", 1)[1].split(
+    "const char* NavigationManager::ultrasonicStateName(", 1
+)[0]
+assert "UltrasonicResultState::ClearNoEcho" in scan_clearance
+assert "RobotConfig::ULTRASONIC_MAX_CM + 1.0f" in scan_clearance
 
 active = nav.split("void NavigationManager::updateAuto()", 1)[1].split(
     "void NavigationManager::resetRecoveryLatchIfClear()", 1
 )[0]
-assert "_phase == AutoPhase::Turn && selectedIr" in active
-assert "_motors.stop();" in active.split(
-    "if (_phase == AutoPhase::Turn && selectedIr)", 1
-)[1].split("beginRecoverySideCheck(now)", 1)[0]
+assert "_v2.hasCommittedSide() && currentIrZone() != IrZone::Clear" in active
+assert "_phase != AutoPhase::RecoveryIrBackoff" in active
+ir_branch = active.split("if (_v2.hasCommittedSide() && currentIrZone()", 1)[1].split(
+    "else if (handleIrArbitration(now))", 1
+)[0]
+assert "_motors.stop();" in ir_branch
+assert "beginRecoveryIrBackoff(now);" in ir_branch
+assert "case AutoPhase::RecoveryIrBackoff:" in active
+assert "updateRecoveryIrBackoff(now);" in active
 assert "else if (handleIrArbitration(now))" in active
 assert "case AutoPhase::OperatorStop:" in active
 
 side_result = body("finishRecoverySideCheck(", "beginRecoveryFrontCheck(")
-assert "scanSampleTrusted(side) && !selectedIr" in side_result
-assert "recoveryPathSafe(recoveryReading(side), RobotConfig::RECOVERY_HARD_VETO_CM)" in side_result
+assert "currentIrZone() != IrZone::Clear" in side_result
+assert "beginRecoveryIrBackoff(now);" in side_result
+assert "reading.cm <= RobotConfig::RECOVERY_HARD_VETO_CM" in side_result
+assert "beginRecoveryIrBackoff(now, true);" in side_result
+assert "recoveryPathSafe(reading, RobotConfig::RECOVERY_HARD_VETO_CM)" in side_result
+assert "_v2.continueTurn();" in side_result
+assert "beginV2Turn(_v2.committedLeft(), now)" in side_result
 assert "_recoverySideRechecks == 0" in side_result
 assert "enterV2TrappedHold" in side_result
 
+backoff_start = body("beginRecoveryIrBackoff(", "updateRecoveryIrBackoff(")
+assert "_motors.stop();" in backoff_start
+assert "_turnUsingGyro = false;" in backoff_start
+assert "_relativeTurnDeg = 0.0f;" in backoff_start
+assert "_motors.backward();" in backoff_start
+assert "_recoveryIrBackoff.pulseCommanded(millis());" in backoff_start
+backoff_update = body("updateRecoveryIrBackoff(", "v2ImuReady(")
+assert "currentIrZone() != IrZone::Clear" in backoff_update
+assert "case RecoveryIrBackoffPolicy::Action::Stop:" in backoff_update
+assert "case RecoveryIrBackoffPolicy::Action::FrontCheck:" in backoff_update
+assert "beginRecoveryFrontCheck(now);" in backoff_update
+assert "case RecoveryIrBackoffPolicy::Action::Failed:" in backoff_update
+assert "enterV2TrappedHold" in backoff_update
+assert "beginScan(" not in backoff_start + backoff_update
+assert "delay(" not in backoff_start + backoff_update
+turn = body("beginV2Turn(", "enterV2TrappedHold(")
+assert "currentIrZone() != IrZone::Clear" in turn
+assert "beginRecoveryIrBackoff(now);" in turn
+assert "_v2.startTurn(RobotConfig::RECOVERY_MAX_TURNS)" in turn
+assert "RobotConfig::RECOVERY_TURN_TARGET_DEG" in turn
+
 operator = body("notifyOperatorStop(", "cancelForModeChange(")
 assert "_motors.stop();" in operator and "_v2.abort();" in operator
+assert "_recoveryIrBackoff.resetMission();" in operator
 mode = nav.split("void NavigationManager::cancelForModeChange()", 1)[1].split(
     "bool NavigationManager::environmentalRecoveryInProgress()", 1
 )[0]
 assert "_motors.stop();" in mode and "_v2.rearm();" in mode
+assert "_recoveryIrBackoff.resetMission();" in mode
 assert "_scanPurpose = ScanPurpose::Obstacle;" in mode
 assert "cancelForModeChange();" in nav.split("bool NavigationManager::handleOperatorInterruption()", 1)[1].split("bool NavigationManager::handleCriticalSafety(", 1)[0]
 assert "beginScan(ScanPurpose::EnvironmentalRecovery, now)" in nav
+assert "_v2.abort(); // preserve ordinary AUTO hazard-clear/rescan behavior" in active
+assert "_recoveryIrBackoff.resetMission();" in active
 
 side = body("beginRecoverySideCheck(", "finishRecoverySideCheck(")
 assert "_v2.committedLeft() ? 0 : 2" in side
@@ -69,4 +121,4 @@ positions = [control.index(item) for item in ordered]
 assert positions == sorted(positions)
 assert html.count('id="enableAlarmBtn"') == 1
 assert html.count('id="muteAlarmBtn"') == 1
-print("recovery source and Control order: PASS")
+print("recovery V3.1 source and Control order: PASS")

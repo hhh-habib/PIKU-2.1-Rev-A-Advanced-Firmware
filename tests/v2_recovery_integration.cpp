@@ -13,6 +13,10 @@ static_assert(RobotConfig::RECOVERY_HARD_VETO_CM == 7.0f,
               "hard collision veto changed");
 static_assert(RobotConfig::RECOVERY_MAX_TURNS == 7,
               "recovery mission limit changed");
+static_assert(RobotConfig::RECOVERY_IR_BACKOFF_PULSE_MS == 200,
+              "IR backoff pulse changed");
+static_assert(RobotConfig::RECOVERY_IR_BACKOFF_MAX_PULSES == 5,
+              "IR backoff bound changed");
 
 static RecoveryReading valid(float cm) {
   RecoveryReading r;
@@ -38,21 +42,33 @@ int main() {
   assert(normal.state()==StuckV2State::Normal); // ordinary AUTO stays normal
 
   auto boxed=scan(valid(10),valid(6),valid(15));
-  assert(obviousBoxedIn(boxed,RobotConfig::AUTO_OBSTACLE_CM,
-                       RobotConfig::RECOVERY_BOXED_SIDE_CM));
+  assert(obviousBoxedIn(boxed,RobotConfig::RECOVERY_BOXED_SIDE_CM));
   assert(decideV2Scan(boxed)==V2ScanAction::TurnRight);
   boxed=scan(valid(25),valid(10),valid(15));
-  assert(obviousBoxedIn(boxed,RobotConfig::AUTO_OBSTACLE_CM,
-                       RobotConfig::RECOVERY_BOXED_SIDE_CM));
+  assert(obviousBoxedIn(boxed,RobotConfig::RECOVERY_BOXED_SIDE_CM));
   assert(decideV2Scan(boxed)==V2ScanAction::TurnLeft);
+  assert(obviousBoxedIn(scan(valid(25),valid(24),valid(18)),
+                         RobotConfig::RECOVERY_BOXED_SIDE_CM));
+  assert(obviousBoxedIn(scan(valid(29),valid(29),valid(29)),
+                         RobotConfig::RECOVERY_BOXED_SIDE_CM));
+  assert(!obviousBoxedIn(scan(valid(30),valid(29),valid(29)),
+                          RobotConfig::RECOVERY_BOXED_SIDE_CM));
   assert(!obviousBoxedIn(scan(valid(45),valid(6),valid(15)),
-                          RobotConfig::AUTO_OBSTACLE_CM,
+                          RobotConfig::RECOVERY_BOXED_SIDE_CM));
+  assert(!obviousBoxedIn(scan(noEcho(),valid(6),valid(15)),
+                          RobotConfig::RECOVERY_BOXED_SIDE_CM));
+  assert(!obviousBoxedIn(scan(valid(10),noEcho(),valid(15)),
+                          RobotConfig::RECOVERY_BOXED_SIDE_CM));
+  assert(!obviousBoxedIn(scan(valid(10),valid(6),noEcho()),
+                          RobotConfig::RECOVERY_BOXED_SIDE_CM));
+  assert(!obviousBoxedIn(scan(invalid(),valid(6),valid(15)),
                           RobotConfig::RECOVERY_BOXED_SIDE_CM));
 
   auto openLeft=scan(noEcho(),valid(8),valid(18));
-  assert(!obviousBoxedIn(openLeft,RobotConfig::AUTO_OBSTACLE_CM,
-                        RobotConfig::RECOVERY_BOXED_SIDE_CM));
+  assert(!obviousBoxedIn(openLeft,RobotConfig::RECOVERY_BOXED_SIDE_CM));
   assert(decideV2Scan(openLeft)==V2ScanAction::TurnLeft);
+  assert(decideV2Scan(scan(valid(150),valid(8),valid(20))) ==
+         V2ScanAction::TurnLeft);
   assert(decideV2Scan(scan(valid(14),valid(7),valid(10)))==
          V2ScanAction::TurnLeft);
   assert(decideV2Scan(scan(valid(8),valid(6),valid(18)))==

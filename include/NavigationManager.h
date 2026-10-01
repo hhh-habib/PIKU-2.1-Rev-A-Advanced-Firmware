@@ -5,6 +5,7 @@
 #include "ImuManager.h"
 #include "MotorController.h"
 #include "RobotConfig.h"
+#include "RecoveryIrBackoffPolicy.h"
 #include "SafetyManager.h"
 #include "SensorManager.h"
 #include "ServoScanner.h"
@@ -35,6 +36,7 @@ enum class NavigationState {
   HazardRecoveryScan,
   StuckSuspected,
   StuckRecovery,
+  RecoveryIrBackoff,
   OperatorAbort,
   CriticalAbort,
   TrappedHold
@@ -90,6 +92,7 @@ private:
     BlockedRetryWait,
     RecoveryFrontSettle,
     RecoveryFrontWait,
+    RecoveryIrBackoff,
     TrappedHold
   };
 
@@ -190,6 +193,7 @@ private:
   String _v2LastReason = "NONE";
   unsigned long _v2PriorForwardMs = 0;
   uint8_t _recoverySideRechecks = 0;
+  RecoveryIrBackoffPolicy _recoveryIrBackoff;
 
   void setState(NavigationState state, const String& decision);
   void setPhase(AutoPhase phase, unsigned long now);
@@ -237,6 +241,8 @@ private:
   void finishRecoverySideCheck(unsigned long now);
   void beginRecoveryFrontCheck(unsigned long now);
   void updateRecoveryFrontCheck(unsigned long now);
+  void beginRecoveryIrBackoff(unsigned long now, bool requireFirstPulse=false);
+  void updateRecoveryIrBackoff(unsigned long now);
   void updateV2RetryCooldown(unsigned long now);
   void beginV2Turn(bool turnLeft, unsigned long now);
   bool v2ImuReady(unsigned long now) const;

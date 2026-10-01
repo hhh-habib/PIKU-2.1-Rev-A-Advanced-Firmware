@@ -28,10 +28,9 @@ inline bool recoveryFrontClear(const RecoveryReading& reading, float exitCm) {
       (reading.state == RecoveryReadingState::DistanceValid &&
        reading.cm >= exitCm);
 }
-inline bool obviousBoxedIn(const V2ScanDecisionInput& in, float obstacleCm,
-                           float boxedSideCm) {
+inline bool obviousBoxedIn(const V2ScanDecisionInput& in, float boxedSideCm) {
   return in.front.state == RecoveryReadingState::DistanceValid &&
-      in.front.cm <= obstacleCm &&
+      in.front.cm < boxedSideCm &&
       in.left.state == RecoveryReadingState::DistanceValid &&
       in.right.state == RecoveryReadingState::DistanceValid &&
       in.left.cm < boxedSideCm && in.right.cm < boxedSideCm;
