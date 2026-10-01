@@ -141,9 +141,7 @@ bool onManualOverrideAction(bool enable) {
   sensors.updateControlSensors();
   safety.update(sensors.snapshot());
   const SensorSnapshot& overrideSnapshot = sensors.snapshot();
-  if (!overrideSnapshot.flameSampleValid ||
-      overrideSnapshot.ultrasonicState == UltrasonicResultState::SensorFault)
-    return false;
+  if (!overrideSnapshot.flameSampleValid) return false;
   const bool accepted = manualOverride.enable(
       dashboard.getControlMode() == "MANUAL",
       safety.isAutoRecoverableEnvironmentalHazard(),
@@ -596,8 +594,7 @@ bool serviceLoop() {
   const bool hadOverride = manualOverride.enabled();
   const bool sessionLive = dashboard.sessionAlive();
   const SensorSnapshot& guardSnapshot = sensors.snapshot();
-  const bool sensorFault = !guardSnapshot.flameSampleValid ||
-      guardSnapshot.ultrasonicState == UltrasonicResultState::SensorFault;
+  const bool sensorFault = !guardSnapshot.flameSampleValid;
   manualOverride.tick(millis(), dashboard.getControlMode() == "MANUAL",
                       safety.isAutoRecoverableEnvironmentalHazard(),
                       safety.hasNonRecoverableCriticalHazard() || sensorFault,
@@ -692,6 +689,24 @@ bool serviceLoop() {
   allowSlowOutputsThisPass = true;
   return safetyChanged;
 }
+void refreshManualForwardSonarGuard(const SensorSnapshot& snapshot,
+                                    unsigned long now) {
+  ManualSonarEvidence evidence = ManualSonarEvidence::Unknown;
+  if (snapshot.distanceFacingFront && snapshot.distanceSampleMs != 0 &&
+      now - snapshot.distanceSampleMs <= RobotConfig::ULTRASONIC_STALE_MS) {
+    if (snapshot.ultrasonicState == UltrasonicResultState::DistanceValid &&
+        snapshot.distanceValid && isfinite(snapshot.distanceCm) &&
+        snapshot.distanceCm > 0.0f) {
+      evidence = ManualSonarEvidence::DistanceValid;
+    } else if (snapshot.ultrasonicState == UltrasonicResultState::ClearNoEcho) {
+      evidence = ManualSonarEvidence::ClearNoEcho;
+    }
+  }
+  manualForwardBlockedByUltrasonic = manualForwardSonarBlocked(
+      manualForwardBlockedByUltrasonic, evidence, snapshot.distanceCm,
+      RobotConfig::MANUAL_FORWARD_STOP_CM,
+      RobotConfig::MANUAL_FORWARD_CLEAR_CM);
+}
 bool handleManualControl() {
   String command = dashboard.getPendingCommand();
   const unsigned long commandSequence = dashboard.pendingCommandSequence();
@@ -744,15 +759,10 @@ bool handleManualControl() {
   gate.overrideEnabled = manualOverride.enabled();
   gate.sessionAlive = dashboard.sessionAlive();
   const SensorSnapshot& gateSnapshot = sensors.snapshot();
-  gate.sensorFault = manualOverride.enabled() &&
-      (!gateSnapshot.flameSampleValid ||
-       gateSnapshot.ultrasonicState == UltrasonicResultState::SensorFault ||
-       gateSnapshot.ultrasonicState == UltrasonicResultState::Stale);
+  gate.sensorFault = manualOverride.enabled() && !gateSnapshot.flameSampleValid;
+  refreshManualForwardSonarGuard(gateSnapshot, millis());
   gate.forwardObstacle = manualForwardBlockedByUltrasonic ||
-      safety.blocksManualForwardMotion(true) ||
-      (manualOverride.enabled() &&
-       (!gateSnapshot.distanceFacingFront || !gateSnapshot.distanceValid ||
-        millis() - gateSnapshot.distanceSampleMs > RobotConfig::ULTRASONIC_STALE_MS));
+      safety.blocksManualForwardMotion(true);
   // Front IR and a fresh side inspection can veto a known obstruction.
   // The operator supervises the remaining unsensed turn sweep.
   const bool freshSideInspection = manualInspectionState.ready &&
@@ -867,38 +877,20 @@ void updateManualMode() {
     sensors.requestDistanceSample(true);
   }
 
+  refreshManualForwardSonarGuard(snapshot, now);
   if (snapshot.distanceSampleSequence != lastManualGuardSequence &&
       snapshot.distanceFacingFront) {
     lastManualGuardSequence = snapshot.distanceSampleSequence;
-    if (snapshot.distanceValid) {
-      lastManualFrontDistance = snapshot.distanceCm;
-      if (snapshot.distanceCm >= RobotConfig::MANUAL_FORWARD_CLEAR_CM) {
-        manualForwardBlockedByUltrasonic = false;
-      }
-      if (motors.getState() == MotorState::Forward &&
-          snapshot.distanceCm <= RobotConfig::MANUAL_FORWARD_STOP_CM) {
-        manualForwardBlockedByUltrasonic = true;
-        stopMotors();
-        manualMotorDisplayState = "STOP";
-        dashboard.setPendingCommand("");
-        dashboardData.navigationDecision = "MANUAL_OBSTACLE_STOP";
-        dashboard.markStopApplied("ULTRASONIC_NEAR");
-        syncDashboardState("MANUAL");
-        Serial.println("Manual fresh HC-SR04 forward stop.");
-      }
-    } else if (snapshot.ultrasonicState == UltrasonicResultState::ClearNoEcho) {
-      manualForwardBlockedByUltrasonic = false;
-    } else if (snapshot.ultrasonicState == UltrasonicResultState::SensorFault ||
-               snapshot.ultrasonicState == UltrasonicResultState::Stale) {
-      manualForwardBlockedByUltrasonic = true;
-      if (motors.getState() == MotorState::Forward) {
-        stopMotors();
-        manualMotorDisplayState = "STOP";
-        dashboard.setPendingCommand("");
-        dashboardData.navigationDecision = "MANUAL_ULTRASONIC_FAULT_STOP";
-        dashboard.markStopApplied("ULTRASONIC_FAULT");
-        syncDashboardState("MANUAL");
-      }
+    if (snapshot.ultrasonicState == UltrasonicResultState::DistanceValid &&
+        snapshot.distanceValid && manualForwardBlockedByUltrasonic &&
+        motors.getState() == MotorState::Forward) {
+      stopMotors();
+      manualMotorDisplayState = "STOP";
+      dashboard.setPendingCommand("");
+      dashboardData.navigationDecision = "MANUAL_OBSTACLE_STOP";
+      dashboard.markStopApplied("ULTRASONIC_NEAR");
+      syncDashboardState("MANUAL");
+      Serial.println("Manual fresh HC-SR04 forward stop.");
     }
   }
 

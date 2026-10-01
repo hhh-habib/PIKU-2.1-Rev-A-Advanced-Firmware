@@ -19,8 +19,8 @@ namespace RobotConfig {
 
   static constexpr float OBSTACLE_CM = 25;
   static constexpr float AUTO_OBSTACLE_CM = 20.0f;
-  static constexpr float MANUAL_FORWARD_STOP_CM = 25.0f;
-  static constexpr float MANUAL_FORWARD_CLEAR_CM = 30.0f;
+  static constexpr float MANUAL_FORWARD_STOP_CM = 20.0f;
+  static constexpr float MANUAL_FORWARD_CLEAR_CM = 25.0f;
   static constexpr float NEAR_OBSTACLE_CM = 7.0f;
   static constexpr float ULTRASONIC_MAX_CM = 350;
   // Retained Stage-2 thresholds require calibration after that hardware is installed.
@@ -74,6 +74,7 @@ namespace RobotConfig {
   static constexpr unsigned long ULTRASONIC_GUARD_INTERVAL_MS = 100;
   static constexpr unsigned long ULTRASONIC_SAMPLE_TIMEOUT_MS = 40;
   static constexpr unsigned long ULTRASONIC_STALE_MS = 500;
+  static constexpr unsigned long SONAR_FAST_REACQUIRE_WINDOW_MS = 1000;
   static constexpr unsigned long NAVIGATION_SCAN_SET_MAX_AGE_MS = 5000;
   static constexpr unsigned long AUTO_FORWARD_STEP_MS = 300;
   static constexpr unsigned long AUTO_STOP_SETTLE_MS = 100;

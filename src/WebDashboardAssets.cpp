@@ -1933,7 +1933,12 @@ function renderTelemetry(d) {
 
   const temperatureText = d.temperature === null ? '-- C' : d.temperature + ' C';
   const humidityText = d.humidity === null ? '-- %' : d.humidity + ' %';
-  const distanceText = d.distanceValid ? d.distance + ' cm' : '-- cm';
+  const distanceText = d.ultrasonicState === 'CLEAR_NO_ECHO' ? 'OPEN' :
+    (d.distanceValid ? d.distance + ' cm' : '-- cm');
+  const distanceBadge = d.ultrasonicState === 'CLEAR_NO_ECHO' ? 'OPEN' :
+    d.ultrasonicState === 'SENSOR_FAULT' ? 'FAULT' :
+    d.ultrasonicState === 'STALE' ? 'STALE' :
+    d.distanceValid ? 'VALID' : 'STALE';
   const flameText = d.flame_sample_valid
     ? (d.flameDetected ? 'FLAME_DETECTED' : 'CLEAR')
     : 'INVALID';
@@ -2083,7 +2088,7 @@ function renderTelemetry(d) {
   setBound('temperature', temperatureText);
   setBound('humidity', humidityText);
   setBound('distance', distanceText);
-  setBound('distanceValidity', d.distanceValid ? 'VALID' : 'NOT VALID');
+  setBound('distanceValidity', distanceBadge);
   setBound('servoAngle', d.servoAngle + ' deg');
   setBound('scanOrientation', d.scanOrientation || '--');
   setBound('ultrasonicState', d.ultrasonicState || '--');

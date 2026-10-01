@@ -111,8 +111,7 @@ bool SafetyManager::blocksForwardMotion() const {
 
 bool SafetyManager::blocksManualForwardMotion(bool allowFlameGas) const {
   // Either low front IR zone can indicate a body-width obstacle.
-  return blocksMotion(allowFlameGas) || _ultrasonicCaution ||
-         _ultrasonicWarning || _leftIrObstacle || _rightIrObstacle;
+  return blocksMotion(allowFlameGas) || _leftIrObstacle || _rightIrObstacle;
 }
 
 bool SafetyManager::stateChanged() {

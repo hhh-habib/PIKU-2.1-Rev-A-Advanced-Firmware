@@ -6,6 +6,7 @@
 #include "MotorController.h"
 #include "RobotConfig.h"
 #include "RecoveryIrBackoffPolicy.h"
+#include "SonarReacquirePolicy.h"
 #include "SafetyManager.h"
 #include "SensorManager.h"
 #include "ServoScanner.h"
@@ -26,6 +27,7 @@ enum class NavigationState {
   SpinLeft,
   SpinRight,
   InvalidStop,
+  SonarReacquire,
   ObstacleRecovery,
   ObstacleScan,
   ObstacleSpin,
@@ -88,6 +90,7 @@ private:
     HazardActive,
     HazardClearWait,
     InvalidStop,
+    SonarReacquire,
     OperatorStop,
     BlockedRetryWait,
     RecoveryFrontSettle,
@@ -194,6 +197,8 @@ private:
   unsigned long _v2PriorForwardMs = 0;
   uint8_t _recoverySideRechecks = 0;
   RecoveryIrBackoffPolicy _recoveryIrBackoff;
+  SonarReacquirePolicy _sonarReacquire;
+  bool _sonarReacquireExtended = false;
 
   void setState(NavigationState state, const String& decision);
   void setPhase(AutoPhase phase, unsigned long now);
@@ -226,6 +231,8 @@ private:
   void completeSpin(const char* reason, unsigned long now);
   void finishRecoveryAfterSettle(unsigned long now);
   void enterInvalidStop(const char* reason);
+  void beginSonarReacquire(unsigned long now);
+  void updateSonarReacquire(unsigned long now);
   void enterEnvironmentalHazard(unsigned long now);
   void updateEnvironmentalRecovery(unsigned long now);
   void completeEnvironmentalRecovery();

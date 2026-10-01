@@ -61,6 +61,18 @@ void NavigationManager::updateAuto() {
     updateDiagnostics(now);
     return;
   }
+  if (_phase == AutoPhase::SonarReacquire) {
+    updateSonarReacquire(now);
+    updateDiagnostics(now);
+    return;
+  }
+  const UltrasonicResultState sonarState = _sensors.snapshot().ultrasonicState;
+  if (sonarState == UltrasonicResultState::SensorFault ||
+      sonarState == UltrasonicResultState::Stale) {
+    beginSonarReacquire(now);
+    updateDiagnostics(now);
+    return;
+  }
   if (RobotConfig::ENABLE_STUCK_RECOVERY_V2 &&
       _v2.state() == StuckV2State::TrappedHold) {
     updateV2RetryCooldown(now);
@@ -243,6 +255,7 @@ const char* NavigationManager::stateName() const {
     case NavigationState::SpinLeft: return "SpinLeft";
     case NavigationState::SpinRight: return "SpinRight";
     case NavigationState::InvalidStop: return "InvalidStop";
+    case NavigationState::SonarReacquire: return "SonarReacquire";
     case NavigationState::ObstacleRecovery: return "ObstacleRecovery";
     case NavigationState::ObstacleScan: return "ObstacleScan";
     case NavigationState::ObstacleSpin: return "ObstacleSpin";
@@ -1011,6 +1024,12 @@ void NavigationManager::finishRecoveryAfterSettle(unsigned long now) {
 }
 
 void NavigationManager::enterInvalidStop(const char* reason) {
+  const UltrasonicResultState sonar = _sensors.snapshot().ultrasonicState;
+  if (sonar == UltrasonicResultState::SensorFault ||
+      sonar == UltrasonicResultState::Stale) {
+    beginSonarReacquire(millis());
+    return;
+  }
   if (RobotConfig::ENABLE_STUCK_RECOVERY_V2 &&
       (_v2.state() == StuckV2State::EscapeScan ||
        _v2.state() == StuckV2State::EscapeTurn ||
@@ -1023,6 +1042,64 @@ void NavigationManager::enterInvalidStop(const char* reason) {
   resetStuckEvidence(false);
   setState(NavigationState::InvalidStop, reason);
   setPhase(AutoPhase::InvalidStop, millis());
+}
+
+void NavigationManager::beginSonarReacquire(unsigned long now) {
+  _motors.stop();
+  _servoScanner.center();
+  _currentServoPosition = "FRONT";
+  _sensors.setDistanceFacingFront(true);
+  _turnUsingGyro = false;
+  _relativeTurnDeg = 0.0f;
+  _turnStartedMs = 0;
+  _lastIntegratedSampleMs = 0;
+  _recoveryIrBackoff.resetMission();
+  _recoverySideRechecks = 0;
+  if (RobotConfig::ENABLE_STUCK_RECOVERY_V2) _v2.abort();
+  _scanPurpose = ScanPurpose::Obstacle;
+  _obstacleRecoveryActive = false;
+  _obstacleReevaluationPending = false;
+  _obstacleForwardClearMs = 0;
+  if (_environmentalRecoveryActive) _environmentalRecoveryCompleted = true;
+  _environmentalRecoveryActive = false;
+  _hazardClearStartedMs = 0;
+  resetStuckEvidence(true);
+  _sonarReacquire.begin(now, _sensors.distanceSampleSequence());
+  _sonarReacquireExtended = false;
+  setState(NavigationState::SonarReacquire, "SONAR_REACQUIRE");
+  setPhase(AutoPhase::SonarReacquire, now);
+}
+
+void NavigationManager::updateSonarReacquire(unsigned long now) {
+  _motors.stop();
+  _sensors.setDistanceFacingFront(true);
+  if (now - _phaseStartedMs < RobotConfig::AUTO_FRONT_CENTER_SETTLE_MS) return;
+  _sonarReacquire.centered(_sensors.distanceSampleSequence());
+  const UltrasonicSample front = _sensors.latestUltrasonicSample();
+  const bool fresh = front.sampleMs != 0 &&
+      now - front.sampleMs <= RobotConfig::ULTRASONIC_STALE_MS;
+  const bool healthy = fresh && front.facingFront &&
+      (front.state == UltrasonicResultState::ClearNoEcho ||
+       (front.state == UltrasonicResultState::DistanceValid && front.valid &&
+        isfinite(front.distanceCm) && front.distanceCm > 0.0f));
+  if (front.state == UltrasonicResultState::SensorFault ||
+      front.state == UltrasonicResultState::Stale) {
+    _sonarReacquire.invalidate();
+  }
+  if (_sonarReacquire.observe(front.sequence, healthy)) {
+    _servoScanner.detach();
+    _sampleTargetSequence = front.sequence;
+    setState(NavigationState::FrontSample, "SONAR_REACQUIRED_FRONT_DECISION");
+    setPhase(AutoPhase::FrontSampleWait, now);
+    updateFrontValidation(now); // fresh normal AUTO decision, never old turn/backoff
+    return;
+  }
+  if (!_sonarReacquireExtended &&
+      _sonarReacquire.windowExpired(
+          now, RobotConfig::SONAR_FAST_REACQUIRE_WINDOW_MS)) {
+    _sonarReacquireExtended = true;
+    setState(NavigationState::SonarReacquire, "SONAR_REACQUIRE_RETRY");
+  }
 }
 
 void NavigationManager::enterEnvironmentalHazard(unsigned long now) {
@@ -1300,7 +1377,7 @@ void NavigationManager::beginRecoveryIrBackoff(unsigned long now,
   const UltrasonicResultState sonar = _sensors.snapshot().ultrasonicState;
   if (sonar == UltrasonicResultState::SensorFault ||
       sonar == UltrasonicResultState::Stale) {
-    enterV2TrappedHold("ESCAPE_BACKOFF_SENSOR_INVALID", now);
+    beginSonarReacquire(now);
     return;
   }
   const RecoveryIrBackoffPolicy::Action action =
@@ -1320,7 +1397,7 @@ void NavigationManager::updateRecoveryIrBackoff(unsigned long now) {
   const UltrasonicResultState sonar = _sensors.snapshot().ultrasonicState;
   if (sonar == UltrasonicResultState::SensorFault ||
       sonar == UltrasonicResultState::Stale) {
-    enterV2TrappedHold("ESCAPE_BACKOFF_SENSOR_INVALID", now);
+    beginSonarReacquire(now);
     return;
   }
   const RecoveryIrBackoffPolicy::Action action =
@@ -1388,6 +1465,12 @@ void NavigationManager::beginV2Turn(bool turnLeft, unsigned long now) {
 }
 
 void NavigationManager::enterV2TrappedHold(const char* reason, unsigned long now) {
+  const UltrasonicResultState sonar = _sensors.snapshot().ultrasonicState;
+  if (sonar == UltrasonicResultState::SensorFault ||
+      sonar == UltrasonicResultState::Stale) {
+    beginSonarReacquire(now);
+    return;
+  }
   _motors.stop();
   _servoScanner.detach();
   _v2.hold(now);
@@ -1463,6 +1546,7 @@ const char* NavigationManager::phaseName() const {
     case AutoPhase::HazardActive: return "HAZARD_ACTIVE";
     case AutoPhase::HazardClearWait: return "HAZARD_CLEAR_WAIT";
     case AutoPhase::InvalidStop: return "INVALID_STOP";
+    case AutoPhase::SonarReacquire: return "SONAR_REACQUIRE";
     case AutoPhase::OperatorStop: return "OPERATOR_STOP";
     case AutoPhase::BlockedRetryWait: return "BLOCKED_RETRY_WAIT";
     case AutoPhase::RecoveryFrontSettle: return "RECOVERY_FRONT_SETTLE";
