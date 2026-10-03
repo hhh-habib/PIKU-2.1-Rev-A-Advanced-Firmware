@@ -1458,8 +1458,8 @@ void NavigationManager::beginRecoveryIrBackoff(unsigned long now,
   }
   setState(NavigationState::RecoveryIrBackoff, "RECOVERY_IR_BACKOFF");
   setPhase(AutoPhase::RecoveryIrBackoff, now);
-  // MotorController uses its current user-selected speed for backward().
-  _motors.backward();
+  // Cap the calibrated user speed only for RecoveryIrBackoff reverse pulses.
+  _motors.backwardWithSpeedCap(RobotConfig::RECOVERY_BACKOFF_MAX_SPEED_PERCENT);
   _recoveryIrBackoff.pulseCommanded(millis());
 }
 
@@ -1476,7 +1476,7 @@ void NavigationManager::updateRecoveryIrBackoff(unsigned long now) {
     case RecoveryIrBackoffPolicy::Action::None:
       return;
     case RecoveryIrBackoffPolicy::Action::Backward:
-      _motors.backward();
+      _motors.backwardWithSpeedCap(RobotConfig::RECOVERY_BACKOFF_MAX_SPEED_PERCENT);
       _recoveryIrBackoff.pulseCommanded(millis());
       return;
     case RecoveryIrBackoffPolicy::Action::Stop:

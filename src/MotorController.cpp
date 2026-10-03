@@ -50,7 +50,9 @@ int MotorController::getSpeedPercent() const {
 }
 
 uint32_t MotorController::selectedDuty() const {
-  if (_speedPercent <= 0) {
+  const int effectivePercent = currentState == MotorState::Backward
+    ? min(_speedPercent, _backwardSpeedCapPercent) : _speedPercent;
+  if (effectivePercent <= 0) {
     return 0;
   }
 
@@ -59,7 +61,7 @@ uint32_t MotorController::selectedDuty() const {
   static constexpr uint32_t PERCENT_SCALE = 100UL;
   const uint32_t calibratedPercentNumerator =
     static_cast<uint32_t>(RobotConfig::MOTOR_DRIVE_MIN_PWM_PERCENT) * USER_SPEED_SPAN +
-    static_cast<uint32_t>(_speedPercent - 1) *
+    static_cast<uint32_t>(effectivePercent - 1) *
       (PERCENT_SCALE - RobotConfig::MOTOR_DRIVE_MIN_PWM_PERCENT);
   const uint32_t denominator = PERCENT_SCALE * USER_SPEED_SPAN;
   return (calibratedPercentNumerator * maxDuty + denominator / 2UL) / denominator;
@@ -186,6 +188,12 @@ void MotorController::forward() {
 }
 
 void MotorController::backward() {
+  backwardWithSpeedCap(100);
+}
+
+void MotorController::backwardWithSpeedCap(int maxPercent) {
+  // Keep the selected preference; repeated pulse refreshes and speed edits use this cap.
+  _backwardSpeedCapPercent = constrain(maxPercent, 0, 100);
   if (currentState == MotorState::Backward) {
     applySelectedSpeed();
     return;

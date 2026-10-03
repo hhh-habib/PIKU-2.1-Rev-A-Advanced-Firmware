@@ -1,3 +1,8 @@
+## V3.3.1 software candidate - 2026-10-04
+
+- Cap RecoveryIrBackoff reverse output at 75 on the calibrated user-speed scale. Preserve selected preference, Manual Backward, forward/turn semantics, five-pulse budget and 200 ms policy.
+- Actual production motor/navigation software regressions added. Physical validation NOT RUN.
+
 # Release history
 
 ## V3.3 software candidate - 2026-10-03

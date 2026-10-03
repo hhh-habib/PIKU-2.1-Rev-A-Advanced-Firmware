@@ -1,3 +1,5 @@
+> Current V3.3.1 changes only RecoveryIrBackoff output: calibrated `min(selected,75%)`, without changing selected speed. [Focused software evidence](docs/V33_1_HARDENING_SOFTWARE_VERIFICATION.md). V3.3 episode, Override and sonar contracts remain. Physical validation NOT RUN.
+
 # How the PIKU 2.1 Rev A firmware works
 
 This guide describes the V3.3 software candidate. The V3.2 physically validated baseline remains historical evidence at `41281d8325d88c70e074e008a2550a1164102132`. See [current verification](docs/RECOVERY_V33_SOFTWARE_VERIFICATION.md) and the [pending owner checklist](docs/PIKU_2.1_REVA_V33_PHYSICAL_VALIDATION.md).

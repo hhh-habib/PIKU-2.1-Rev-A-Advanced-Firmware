@@ -13,6 +13,9 @@ struct Rig {
  void front(float cm){nav.beginRecoveryFrontCheck(testNow);step(120);feed(UltrasonicResultState::DistanceValid,cm);step();}
 };
 int main(){
+ // Every real navigation reverse refresh uses the cap; budgets/duration remain the policy's.
+ {Rig r;r.motors.speed=100;r.recovery();r.safety.left=true;r.step();assert(r.motors.effectiveReverse==75);r.step(50);assert(r.motors.effectiveReverse==75&&r.motors.cappedBackwards==r.motors.backwards);assert(r.motors.speed==100);r.motors.speed=40;r.step(150);assert(r.motors.motion==MotorState::Stopped&&r.motors.speed==40);r.step();assert(r.motors.effectiveReverse==40&&r.motors.cappedBackwards==r.motors.backwards);}
+
  {Rig r;r.recovery();r.safety.left=true;r.step();for(unsigned i=0;i<5;++i){r.feed(UltrasonicResultState::DistanceValid,20);r.step(200);r.step();}assert(r.motors.backwards==5);auto used=r.nav._v2.sideTurns();r.safety.left=false;r.feed(UltrasonicResultState::DistanceValid,20);r.step(2500);r.safety.left=true;r.step();assert(r.motors.backwards==5&&r.nav._recoveryIrBackoff.missionPulses()==5&&r.nav._v2.sideTurns()==used);}
  {Rig r;r.recovery();r.feed(UltrasonicResultState::SensorFault);r.step();r.step(120);r.feed(UltrasonicResultState::DistanceValid,20);r.step();r.feed(UltrasonicResultState::DistanceValid,20);r.step();r.step(120);r.feed(UltrasonicResultState::DistanceValid,20);r.step();r.set(r.nav._leftScan,15);r.nav.finishRecoverySideCheck(testNow);assert(r.motors.motion==MotorState::SpinLeft&&r.nav._v2.sideTurns()==2);}
 

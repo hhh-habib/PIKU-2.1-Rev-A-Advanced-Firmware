@@ -2,9 +2,10 @@
 #include "NativeTypes.h"
 #include "RobotConfig.h"
 class MotorController { public:
- MotorState motion=MotorState::Stopped; unsigned spins=0,backwards=0; int speed=60;
+ MotorState motion=MotorState::Stopped; unsigned spins=0,backwards=0,cappedBackwards=0; int speed=60,effectiveReverse=0;
  void stop(){motion=MotorState::Stopped;} void forward(){motion=MotorState::Forward;}
  void backward(){motion=MotorState::Backward;++backwards;}
+ void backwardWithSpeedCap(int cap){backward();++cappedBackwards;effectiveReverse=speed<cap?speed:cap;}
  void spinLeft(){motion=MotorState::SpinLeft;++spins;} void spinRight(){motion=MotorState::SpinRight;++spins;}
 };
 class SensorManager { public:

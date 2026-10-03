@@ -23,6 +23,7 @@ public:
   void stop();
   void forward();
   void backward();
+  void backwardWithSpeedCap(int maxPercent);
   void leftTurn();
   void rightTurn();
   void spinLeft();
@@ -40,6 +41,7 @@ private:
   int _motorEnablePwm;
 
   int _speedPercent;
+  int _backwardSpeedCapPercent = 100;
   bool _initialized;
   MotorState currentState;
 

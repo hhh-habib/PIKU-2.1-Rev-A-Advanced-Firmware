@@ -72,7 +72,7 @@ backoff_start = body("beginRecoveryIrBackoff(", "updateRecoveryIrBackoff(")
 assert "_motors.stop();" in backoff_start
 assert "_turnUsingGyro = false;" in backoff_start
 assert "_relativeTurnDeg = 0.0f;" in backoff_start
-assert "_motors.backward();" in backoff_start
+assert "_motors.backwardWithSpeedCap(RobotConfig::RECOVERY_BACKOFF_MAX_SPEED_PERCENT);" in backoff_start
 assert "_recoveryIrBackoff.pulseCommanded(millis());" in backoff_start
 backoff_update = body("updateRecoveryIrBackoff(", "v2ImuReady(")
 assert "currentIrZone() != IrZone::Clear" in backoff_update

@@ -41,7 +41,7 @@ public:
     }
     return Action::None;
   }
-  // Called after MotorController::backward() has applied the selected speed.
+  // Called after the capped recovery reverse output has been applied.
   void pulseCommanded(uint32_t now) {
     if (stage_ == Stage::Pulse) pulseStartedMs_=now;
   }

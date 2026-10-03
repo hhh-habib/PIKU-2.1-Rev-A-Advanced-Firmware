@@ -4,9 +4,11 @@ PIKU 2.1 Rev A is a standalone ESP32-S3 mobile environmental-inspection research
 
 ## Current software candidate
 
-**PIKU 2.1 Rev A V3.3 SOFTWARE CANDIDATE ? physical validation NOT RUN.** Standalone remains the Robot-brain authority. The historical physically validated V3.2 baseline is executable `41281d8325d88c70e074e008a2550a1164102132` (owner-reported supervised functional PASS, 2026-10-01), preserved in its [software record](docs/RECOVERY_V32_SOFTWARE_VERIFICATION.md) and [physical record](docs/PIKU_2.1_REVA_V32_PHYSICAL_VALIDATION.md).
+**PIKU 2.1 Rev A V3.3.1 SOFTWARE CANDIDATE - physical validation NOT RUN.** Standalone remains the Robot-brain authority. The historical physically validated V3.2 baseline is executable `41281d8325d88c70e074e008a2550a1164102132` (owner-reported supervised functional PASS, 2026-10-01), preserved in its [software record](docs/RECOVERY_V32_SOFTWARE_VERIFICATION.md) and [physical record](docs/PIKU_2.1_REVA_V32_PHYSICAL_VALIDATION.md).
 
-V3.3 adds deterministic episode budgets, sonar/hazard pause and safe continuation, and persistent Robot-level Manual Override permission. See [V3.3 verification](docs/RECOVERY_V33_SOFTWARE_VERIFICATION.md), [core difference audit](docs/STAGE5D_CORE_DIFFERENCE_AUDIT.md), and the [pending owner checklist](docs/PIKU_2.1_REVA_V33_PHYSICAL_VALIDATION.md).
+V3.3.1 adds only a 75% maximum on the existing calibrated user speed for RecoveryIrBackoff pulses: `min(selected,75)`, preserving selected speed and normal motion. See [focused hardening evidence](docs/V33_1_HARDENING_SOFTWARE_VERIFICATION.md).
+
+The preserved V3.3 baseline adds deterministic episode budgets, sonar/hazard pause and safe continuation, and persistent Robot-level Manual Override permission. See [V3.3 verification](docs/RECOVERY_V33_SOFTWARE_VERIFICATION.md), [core difference audit](docs/STAGE5D_CORE_DIFFERENCE_AUDIT.md), and the [pending owner checklist](docs/PIKU_2.1_REVA_V33_PHYSICAL_VALIDATION.md).
 
 ## Hardware and software at a glance
 
@@ -42,7 +44,7 @@ A trusted complete all-finite L/F/R scan strictly below 30 cm begins one persist
 
 After each turn the motors stop for fresh front/side and IR evidence. FRONT >=30 cm or trusted OPEN permits a handoff candidate, preserving the episode until **5000 ms of continued trusted forward-safe motion** through the existing nonblocking forward steps. A brief clear reading cannot grant a new budget. While active, the episode also owns all body turns; ordinary 35-degree avoidance cannot bypass its accounting.
 
-Either IR input can interrupt motion for selected-speed reverse pulses: at most five approximately 200 ms pulses for the entire episode. Cooldown, scan restarts, hazards and sonar reconnection preserve both budgets. Exhaustion stops the motors in assistance HOLD; cooperative stationary front sensing after the 2500 ms cooldown can find a safe handoff without more turns. A new budget requires genuine stable progress, explicit mode restart/reset, or reboot. STOP terminates motion and latches AUTO stopped until an explicit mode command.
+Either IR input can interrupt motion for reverse pulses at `min(selected speed,75%)` on the calibrated user scale: at most five approximately 200 ms pulses for the entire episode. Cooldown, scan restarts, hazards and sonar reconnection preserve both budgets. Exhaustion stops the motors in assistance HOLD; cooperative stationary front sensing after the 2500 ms cooldown can find a safe handoff without more turns. A new budget requires genuine stable progress, explicit mode restart/reset, or reboot. STOP terminates motion and latches AUTO stopped until an explicit mode command.
 
 ### Sonar fault and reacquisition
 
@@ -84,4 +86,4 @@ The repository includes deployment-specific configuration. Do not disclose crede
 
 ## Next stage
 
-Stage 4 will synchronize this verified candidate core while preserving its CPS wrappers. V3.3 is a software candidate pending owner physical validation.
+Stage 4 will synchronize this verified V3.3.1 cap while preserving its CPS wrappers. Physical validation remains pending.
