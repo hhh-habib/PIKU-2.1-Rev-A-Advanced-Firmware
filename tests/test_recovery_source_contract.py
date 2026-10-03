@@ -23,7 +23,7 @@ assert "recoveryFrontClear(reading, RobotConfig::RECOVERY_FRONT_EXIT_CM)" in fro
 assert "beginRecoverySideCheck(now)" in front
 assert "_scanPurpose = ScanPurpose::Obstacle;" in front
 assert "_motors.forward()" not in front
-assert "beginScan(ScanPurpose::EscapeV2" not in front
+assert "if (!_v2.hasCommittedSide()) { beginScan(ScanPurpose::EscapeV2,now); return; }" in front
 assert "front.state == UltrasonicResultState::ClearNoEcho" in front
 assert "setPhase(AutoPhase::Idle, now);" in front
 normal_front = body("updateFrontValidation(", "updateForward(")
@@ -100,8 +100,8 @@ assert "_recoveryIrBackoff.resetMission();" in mode
 assert "_scanPurpose = ScanPurpose::Obstacle;" in mode
 assert "cancelForModeChange();" in nav.split("bool NavigationManager::handleOperatorInterruption()", 1)[1].split("bool NavigationManager::handleCriticalSafety(", 1)[0]
 assert "beginScan(ScanPurpose::EnvironmentalRecovery, now)" in nav
-assert "_v2.abort(); // preserve ordinary AUTO hazard-clear/rescan behavior" in active
-assert "_recoveryIrBackoff.resetMission();" in active
+assert "_v2.pause(now); // hazard preemption preserves episode budgets" in active
+assert "_recoveryIrBackoff.cancelPulse();" in active
 
 side = body("beginRecoverySideCheck(", "finishRecoverySideCheck(")
 assert "_v2.committedLeft() ? 0 : 2" in side

@@ -11,7 +11,7 @@ static_assert(RobotConfig::RECOVERY_FRONT_EXIT_CM == 30.0f,
               "recovery handoff changed");
 static_assert(RobotConfig::RECOVERY_HARD_VETO_CM == 7.0f,
               "hard collision veto changed");
-static_assert(RobotConfig::RECOVERY_MAX_TURNS == 7,
+static_assert(RobotConfig::RECOVERY_MAX_TURNS == 6,
               "recovery mission limit changed");
 static_assert(RobotConfig::RECOVERY_IR_BACKOFF_PULSE_MS == 200,
               "IR backoff pulse changed");
@@ -104,11 +104,12 @@ int main() {
   assert(mission.retryReady(22500,2500));
   assert(mission.beginRetryRound(22500));
   mission.commitSide(false);
-  assert(!mission.committedLeft()); // new mission may choose right
+  assert(mission.committedLeft() && mission.sideTurns()==6); // same episode retains side and budget
+  assert(!mission.startTurn(6));
   mission.abort(); // STOP / Manual / hazard cancels old direction
   assert(!mission.hasCommittedSide() && mission.state()==StuckV2State::Normal);
   mission.noteBoxedIn(); assert(mission.startEscape(30000));
-  mission.commitSide(true); mission.recovered(); // no second AUTO command
+  mission.commitSide(true); mission.handoffCandidate(); mission.noteSustainedClear(5000); // no second AUTO command
   assert(mission.state()==StuckV2State::Normal);
   assert(decideV2Scan(scan(invalid(),valid(6),valid(18)))==
          V2ScanAction::Hold);

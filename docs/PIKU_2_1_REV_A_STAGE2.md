@@ -1,3 +1,5 @@
+> Historical baseline record. V3.3 current software verification is [RECOVERY_V33_SOFTWARE_VERIFICATION.md](RECOVERY_V33_SOFTWARE_VERIFICATION.md); physical validation remains pending. Original evidence below is preserved.
+
 # PIKU 2.1 Rev A Stage-2
 
 **Status: Historical Stage-2 development record. Its Manual sonar-fault rules and physical-test checklist describe that earlier stage; see [README.md](../README.md) and [V3.2 software verification](RECOVERY_V32_SOFTWARE_VERIFICATION.md) for current behavior.**

@@ -1,6 +1,6 @@
 # How the PIKU 2.1 Rev A firmware works
 
-This is the human-readable guide to the frozen standalone V3.2 source at `41281d8325d88c70e074e008a2550a1164102132`. Start with the [README](README.md) for the release summary. Exact software gates are in [V3.2 software verification](docs/RECOVERY_V32_SOFTWARE_VERIFICATION.md); the owner's supervised functional result is in [V3.2 physical validation](docs/PIKU_2.1_REVA_V32_PHYSICAL_VALIDATION.md).
+This guide describes the V3.3 software candidate. The V3.2 physically validated baseline remains historical evidence at `41281d8325d88c70e074e008a2550a1164102132`. See [current verification](docs/RECOVERY_V33_SOFTWARE_VERIFICATION.md) and the [pending owner checklist](docs/PIKU_2.1_REVA_V33_PHYSICAL_VALIDATION.md).
 
 ## The control path
 
@@ -24,7 +24,7 @@ Sensors -> current evidence -> safety and operator STOP
 
 `SensorManager` schedules ultrasonic, IR, flame, gas, temperature/humidity, and other samples. The HC-SR04 can face front or move with the SG90 head for a left/front/right scan. The ultrasonic state carries meaning separately from the centimetre field:
 
-| State | Meaning in V3.2 |
+| State | Meaning in V3.3 |
 | --- | --- |
 | `DistanceValid` | Fresh trusted finite distance; compare the numeric range |
 | `ClearNoEcho` | No useful echo; operationally OPEN, without inventing a distance |
@@ -41,7 +41,7 @@ The browser offers Forward, Backward, Left, Right, STOP, Pivot/Spin selection, a
 
 The front ultrasonic Forward latch uses a **fresh finite** front result. At **20 cm or less**, Forward blocks or stops; at **25 cm or more**, it clears; between these values it keeps the prior state. Trusted no-echo clears the sonar latch. SensorFault or Stale is unknown and does not, by itself, remove Manual movement authority. The two front IR sensors still block Forward independently, including with unavailable sonar. Known close-obstacle guards and higher-priority safety conditions still apply.
 
-Flame/gas override is an intentional Manual action. It bypasses the local flame/gas motion lock only while its other control conditions hold. Flame/gas evidence remains visible. STOP, dead-man/session rules, critical temperature, known obstacles, and other independent protections remain authoritative. The override never certifies the environment as safe.
+Flame/gas override is an intentional persistent Manual permission. RELEASE/STOP/configuration actions and session loss preserve it, while every hazardous movement still needs a current live session. Explicit disable, AUTO, reboot, stable clear, and non-overridable safety revoke it. It bypasses the local flame/gas motion lock only while its other control conditions hold. Flame/gas evidence remains visible. STOP, dead-man/session rules, critical temperature, known obstacles, and other independent protections remain authoritative. The override never certifies the environment as safe.
 
 ## AUTO: ordinary navigation first
 
@@ -65,11 +65,11 @@ The recovery mission chooses LEFT or RIGHT once and locks it. It does not re-ran
 
 ```text
 Choose and lock side -> ~25-degree turn -> STOP -> front-only check
-    front >=30 cm or ClearNoEcho -> end recovery -> normal AUTO
+    front >=30 cm or ClearNoEcho -> handoff candidate -> stable forward proof
     front still blocked -> inspect locked side only -> next bounded turn if safe
 ```
 
-A selected-side finite range of **7 cm or less** forbids a direct pivot. Recovery permits at most **seven** same-direction increments. A genuinely failed mission stops for about **2,500 ms**, then a fresh complete scan may start a new mission and choose a new side. A clear front heading hands control back immediately; there is no recovery-only forward trial or repeated full scan after each increment.
+A selected-side finite range of 7 cm or less vetoes the pivot. At most six 25-degree turn attempts belong to the entire episode. Interruptions consume an attempt; the 2500 ms cooldown preserves counts and commitment. Fresh stationary front evidence can find a handoff in HOLD without another turn. Handoff alone does not reset the episode: the existing 5000 ms trusted-forward window must complete without IR/sonar re-block. Every body turn during that situation stays inside episode accounting. A fresh complete scan may replace a side only when the old side is proved invalid and another is safe.
 
 ### IR clearance within a recovery mission
 
@@ -82,19 +82,19 @@ IR active -> STOP -> backward pulse, timed 200 ms
 IR clear -> STOP -> fresh front check -> continue same side only if needed
 ```
 
-The software caps commanded reverse at **five pulses per mission**; each pulse uses the current selected motor speed. The robot has no rear sensor, so reverse distance is not verified. STOP, mode change, hazards, and sonar fault preempt backoff.
+The software caps commanded reverse at **five pulses per episode**; each pulse uses the current selected motor speed. The robot has no rear sensor, so reverse distance is not verified. STOP, mode change, hazards, and sonar fault preempt backoff.
 
 ## Sonar fault: stop, reacquire, decide fresh
 
-AUTO is not operator-supervised in the same way as Manual. `SensorFault` or `Stale` in AUTO/recovery therefore stops motors, cancels the current gyro target and IR backoff, discards recovery commitment, centers the sensor, and enters `SONAR_REACQUIRE`. `ClearNoEcho` does not enter this state.
+AUTO is not operator-supervised in the same way as Manual. `SensorFault` or `Stale` in AUTO/recovery therefore stops motors, cancels the current gyro target and IR backoff, preserves recovery commitment and episode budgets, centers the sensor, and enters `SONAR_REACQUIRE`. `ClearNoEcho` does not enter this state.
 
-During reacquisition the robot stays stopped, takes normal-cadence **front-only** samples, and does not spin, reverse, or perform full directional sweeps. The first new trusted front result keeps it stopped. A **second consecutive fresh trusted front result**, finite or no-echo, immediately enters the existing normal front decision. That decision can drive, avoid a newly seen obstacle, or honor current IR evidence. It never replays an interrupted turn.
+During reacquisition the robot stays stopped, takes normal-cadence **front-only** samples, and does not spin, reverse, or perform full directional sweeps. The first new trusted front result keeps it stopped. A **second consecutive fresh trusted front result**, finite or no-echo, enters a fresh recovery checkpoint if an episode is active, otherwise the existing normal front decision. Current Robot safety and remaining episode budget determine whether motion is possible. It never replays an interrupted turn.
 
 The **1,000 ms** fast window changes diagnostic status; it is not a one-second blocking wait or a deadline to drive blind. If the fault persists, front sampling and Wi-Fi/control service continue with motors off. Trusted sensing later resumes AUTO automatically without reboot or another AUTO click.
 
 ## Environmental hazards and priority
 
-Flame and gas can stop local AUTO motion. After a recoverable hazard remains continuously clear for about **two seconds**, AUTO performs its existing fresh environmental-recovery scan and resumes only from current evidence. A recurring hazard resets that clear wait. Critical temperature and other nonrecoverable conditions retain their separate stop/re-arm authority.
+Flame and gas can stop local AUTO motion. After a recoverable hazard remains continuously clear for about two seconds, AUTO resumes at a fresh episode front checkpoint using remaining budgets, or its existing environmental-recovery scan outside an episode. A recurring hazard resets that clear wait. Critical temperature and other nonrecoverable conditions retain their separate stop/re-arm authority.
 
 In practical order, explicit STOP and mode changes, critical safety, and required sensor validity outrank navigation commands. This prevents a stale forward, turn, or backoff command from being replayed after an interruption.
 
@@ -106,6 +106,6 @@ An optional RAM-only navigation trace can be enabled for supervised diagnostic c
 
 ## What validation establishes
 
-The project owner reported a supervised functional physical PASS for final V3.2 behavior on **2026-10-01**. The frozen source also passes the PlatformIO build, ten native tests, three Python tests, and dashboard JavaScript parsing. Earlier dated trials are kept as history in [PIKU_2.1_REV_A_TESTING.md](docs/PIKU_2.1_REV_A_TESTING.md).
+The project owner reported a supervised functional physical PASS for final V3.2 behavior on **2026-10-01**. That baseline software evidence is historical; the V3.3 software candidate is verified separately. Earlier dated trials are kept as history in [PIKU_2.1_REV_A_TESTING.md](docs/PIKU_2.1_REV_A_TESTING.md).
 
 Neither the owner report nor host tests provide a latency distribution, turn-angle error distribution, reverse displacement, RF reliability statistic, or industrial safety certification. The no-rear-sensor, partial IR coverage, HC-SR04 no-return ambiguity, and uncalibrated MQ-2 remain evidence boundaries for this research prototype.

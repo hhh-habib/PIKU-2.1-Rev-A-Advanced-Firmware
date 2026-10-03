@@ -443,7 +443,7 @@ void WebDashboard::handleSession() {
     sendError(409, "application/json", "{\"ok\":false,\"error\":\"manual_required\"}");
     return;
   }
-  if (_overrideActionCallback) _overrideActionCallback(false);
+  applyCommand("RELEASE"); // replace session only after stopping old movement; preserve permission
   _sessionToken = String(esp_random(), HEX) + String(esp_random(), HEX);
   _lastSessionHeartbeatMs = millis();
   _requireFreshSessionAfterOverride = false;
@@ -1230,7 +1230,13 @@ void WebDashboard::sendJson() {
              ",\"right\":{\"state\":\"" + _data.autoScanRightState + "\",\"distance_cm\":" + jsonFloat(_data.autoScanRightDistanceCm, 1) + ",\"trusted\":" + jsonBool(_data.autoScanRightTrusted) + "}}" +
            ",\"hazard\":{\"state\":\"" + _data.autoHazardRecoveryState + "\",\"clear_elapsed_ms\":" + String(_data.autoHazardClearElapsedMs) + ",\"clear_remaining_ms\":" + String(_data.autoHazardClearRemainingMs) + "}" +
            ",\"stuck\":{\"state\":\"" + _data.autoStuckState + "\",\"attempts\":" + String(_data.autoStuckRecoveryAttempts) + ",\"last_reason\":\"" + _data.autoStuckLastReason + "\"}" +
-           ",\"v2\":{\"state\":\"" + _data.autoV2State + "\",\"attempts\":" + String(_data.autoV2Attempts) + ",\"assistance_required\":" + jsonBool(_data.autoAssistanceRequired) + ",\"reason\":\"" + _data.autoV2Reason + "\"}}" +
+           ",\"v2\":{\"state\":\"" + _data.autoV2State + "\",\"attempts\":" + String(_data.autoV2Attempts) + ",\"assistance_required\":" + jsonBool(_data.autoAssistanceRequired) + ",\"reason\":\"" + _data.autoV2Reason + "\"}" +
+           ",\"episode\":{\"active\":" + jsonBool(_data.autoRecoveryEpisodeActive) +
+             ",\"started_ms\":" + String(_data.autoRecoveryEpisodeStartedMs) +
+             ",\"committed_side\":\"" + _data.autoRecoveryCommittedSide + "\",\"turns_used\":" + String(_data.autoRecoveryTurnsUsed) +
+             ",\"turns_max\":" + String(_data.autoRecoveryTurnsMax) + ",\"ir_pulses\":" + String(_data.autoRecoveryIrPulses) +
+             ",\"ir_active\":" + jsonBool(_data.autoRecoveryIrActive) + ",\"sonar_hold\":" + jsonBool(_data.autoSonarHold) +
+             ",\"last_transition\":\"" + _data.autoRecoveryTransition + "\"}}" +
          ",\"commandSequence\":" + String(_lastCommandSequence) +
          ",\"softApIp\":\"" + _data.softApIp + "\"" +
          ",\"localHostname\":\"" + _data.localHostname + "\"" +

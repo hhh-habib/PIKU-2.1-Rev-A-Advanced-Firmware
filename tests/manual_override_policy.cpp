@@ -25,7 +25,8 @@ int main() {
   assert(!p.enabled());
   assert(p.enable(true, true, false, true, true));
   p.tick(5100, true, true, false, false); // actual session timeout
-  assert(!p.enabled());
+  assert(p.enabled());
+  assert(!p.exemptsFlameGas(true, false)); // permission never authorizes dead-link motion
   assert(p.enable(true, true, false, true, true));
   p.tick(5200, true, true, true, true); // temperature/fault
   assert(!p.enabled());
@@ -33,6 +34,6 @@ int main() {
   p.tick(5300, false, true, false, true); // AUTO/IDLE
   assert(!p.enabled());
   assert(p.enable(true, true, false, true, true));
-  p.revoke(); // explicit STOP/E-stop
+  p.revoke(); // explicit Disable Override
   assert(!p.enabled());
 }

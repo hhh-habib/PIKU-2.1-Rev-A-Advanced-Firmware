@@ -1,3 +1,5 @@
+> Historical baseline record. V3.3 current software verification is [RECOVERY_V33_SOFTWARE_VERIFICATION.md](RECOVERY_V33_SOFTWARE_VERIFICATION.md); physical validation remains pending. Original evidence below is preserved.
+
 # PIKU V2.0.1 Advanced Firmware Testing Record
 
 **Status: Historical PIKU V2.0.1 testing record. Its observations are not evidence for the later Rev A V3.2 physical test; see [V3.2 physical validation](PIKU_2.1_REVA_V32_PHYSICAL_VALIDATION.md).**

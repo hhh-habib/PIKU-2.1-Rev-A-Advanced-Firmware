@@ -1,3 +1,5 @@
+> Historical baseline record. V3.3 current software verification is [RECOVERY_V33_SOFTWARE_VERIFICATION.md](RECOVERY_V33_SOFTWARE_VERIFICATION.md); physical validation remains pending. Original evidence below is preserved.
+
 # PIKU V2.0.1 Communication Latency Audit
 
 **Status: Historical PIKU V2.0.1 communication audit. Its quantitative statements are configured values or estimates for that stage, and its reported responsiveness was qualitative. The frozen Rev A V3.2 control path is summarized in [README.md](../README.md).**

@@ -4,7 +4,7 @@
 
 // Decision history only. It makes no claim of measured position or progress.
 enum class StuckV2State {
-  Normal, Suspected, EscapeScan, EscapeTurn, EscapeVerify, TrappedHold
+  Normal, Suspected, EscapeScan, EscapeTurn, EscapeVerify, ForwardTrial, TrappedHold
 };
 class StuckRecoveryV2Policy {
 public:
@@ -18,13 +18,33 @@ public:
   bool committedLeft() const { return committedLeft_; }
   bool previousFailedLeft() const { return hasLastTurn_ && lastTurnLeft_; }
   uint8_t sideTurns() const { return sideTurns_; }
+  bool episodeActive() const { return episodeActive_; }
+  bool handoffPending() const { return handoffPending_; }
+  uint32_t episodeStartedMs() const { return episodeStartedMs_; }
+  void pause(uint32_t now) {
+    if (!episodeActive_) return;
+    handoffPending_=false;
+    escapeStartedMs_=now;
+    state_=committed_ ? StuckV2State::EscapeVerify : StuckV2State::EscapeScan;
+  }
+  void handoffCandidate() {
+    if (!episodeActive_) return;
+    handoffPending_=true;
+    state_=StuckV2State::ForwardTrial;
+  }
+  // Called only after a fresh complete scan proves the old side invalid.
+  void replaceCommittedSide(bool left) {
+    if (state_ != StuckV2State::EscapeScan) return;
+    committed_=true; committedLeft_=left; state_=StuckV2State::EscapeTurn;
+  }
   void commitSide(bool left) {
-    if (state_ != StuckV2State::EscapeScan || committed_) return;
+    if (state_ != StuckV2State::EscapeScan) return;
+    if (committed_) { state_=StuckV2State::EscapeTurn; return; }
     committed_=true; committedLeft_=left; state_=StuckV2State::EscapeTurn;
   }
   bool startTurn(uint8_t maxTurns) {
     if (state_ != StuckV2State::EscapeTurn || !committed_ ||
-        sideTurns_ >= maxTurns) return false;
+        sideTurns_ >= maxTurns || sideTurns_ >= 6) return false;
     ++sideTurns_; return true;
   }
   void continueTurn() {
@@ -34,6 +54,7 @@ public:
   void rearm() { state_=StuckV2State::Normal; attempts_=0; clearHistory(); resetEscape(); cooldownStartedMs_=0; }
   void abort() { state_=StuckV2State::Normal; clearHistory(); resetEscape(); cooldownStartedMs_=0; }
   void noteSustainedClear(uint32_t ms) {
+    if (ms >= SUSTAINED_CLEAR_MS && handoffPending_) { recovered(); return; }
     if (state_ == StuckV2State::Normal && ms >= SUSTAINED_CLEAR_MS) {
       clearHistory();
       attempts_=0;
@@ -83,24 +104,24 @@ public:
     if (state_ != StuckV2State::Suspected) return false;
     if (attempts_ < 255) ++attempts_;
     escapeStartedMs_=now;
-    resetEscape();
+    if (!episodeActive_) { resetEscape(); episodeActive_=true; episodeStartedMs_=now; }
     state_=StuckV2State::EscapeScan;
     return true;
   }
   bool escapeTimedOut(uint32_t now, uint32_t limitMs) const {
-    return state_ != StuckV2State::Normal && state_ != StuckV2State::TrappedHold &&
+    return episodeActive_ && !handoffPending_ && state_ != StuckV2State::TrappedHold &&
            now-escapeStartedMs_ >= limitMs;
   }
   void turnVerified() { if(state_==StuckV2State::EscapeTurn) state_=StuckV2State::EscapeVerify; }
-  void recovered() { state_=StuckV2State::Normal; attempts_=0; clearHistory(); resetEscape(); cooldownStartedMs_=0; }
-  void hold(uint32_t now=0) { state_=StuckV2State::TrappedHold; cooldownStartedMs_=now; }
+  void recovered() { if (!handoffPending_) return; state_=StuckV2State::Normal; attempts_=0; clearHistory(); resetEscape(); cooldownStartedMs_=0; }
+  void hold(uint32_t now=0) { if (!episodeActive_) { episodeActive_=true; episodeStartedMs_=now; } handoffPending_=false; state_=StuckV2State::TrappedHold; cooldownStartedMs_=now; }
   bool retryReady(uint32_t now, uint32_t cooldownMs) const {
     return state_==StuckV2State::TrappedHold &&
            now-cooldownStartedMs_>=cooldownMs;
   }
   bool beginRetryRound(uint32_t now) {
     if (state_!=StuckV2State::TrappedHold) return false;
-    clearHistory(); resetEscape();
+    clearHistory(); handoffPending_=false;
     if (attempts_ < 255) ++attempts_;
     escapeStartedMs_=now; cooldownStartedMs_=0;
     state_=StuckV2State::EscapeScan;
@@ -113,6 +134,7 @@ public:
       case StuckV2State::EscapeScan: return "ESCAPE_SCAN";
       case StuckV2State::EscapeTurn: return "ESCAPE_TURN";
       case StuckV2State::EscapeVerify: return "ESCAPE_VERIFY";
+      case StuckV2State::ForwardTrial: return "FORWARD_VALIDATION";
       case StuckV2State::TrappedHold: return "TRAPPED_HOLD";
     }
     return "UNKNOWN";
@@ -126,8 +148,11 @@ private:
   bool hasLastTurn_=false, lastTurnLeft_=false;
   bool committed_=false, committedLeft_=false;
   uint8_t sideTurns_=0;
+  bool episodeActive_=false, handoffPending_=false;
+  uint32_t episodeStartedMs_=0;
   void resetEscape() {
     committed_=false; committedLeft_=false; sideTurns_=0;
+    episodeActive_=false; handoffPending_=false; episodeStartedMs_=0;
   }
   void clearHistory() {
     windowStartedMs_=0; cycles_=0; reversals_=0; shortFailedSteps_=0;

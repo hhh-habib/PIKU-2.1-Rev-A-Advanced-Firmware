@@ -1,3 +1,5 @@
+> Historical baseline record. V3.3 current software verification is [RECOVERY_V33_SOFTWARE_VERIFICATION.md](RECOVERY_V33_SOFTWARE_VERIFICATION.md); physical validation remains pending. Original evidence below is preserved.
+
 # Approved v2 standalone execution record
 
 **Status: This is a historical V2 development record. The phrase "current source" below describes its original 2026-09-28 stage, not the frozen V3.2 executable. For current behavior, see [README.md](../README.md), [SOFTWARE_EXPLANATION.md](../SOFTWARE_EXPLANATION.md), and [V3.2 software verification](RECOVERY_V32_SOFTWARE_VERIFICATION.md).**

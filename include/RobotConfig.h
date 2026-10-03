@@ -109,7 +109,7 @@ namespace RobotConfig {
   static constexpr float RECOVERY_FRONT_EXIT_CM = 30.0f;
   static constexpr float RECOVERY_HARD_VETO_CM = 7.0f;
   static constexpr float RECOVERY_BOXED_SIDE_CM = 30.0f;
-  static constexpr uint8_t RECOVERY_MAX_TURNS = 7;
+  static constexpr uint8_t RECOVERY_MAX_TURNS = 6;
   static constexpr unsigned long RECOVERY_IR_BACKOFF_PULSE_MS = 200;
   static constexpr uint8_t RECOVERY_IR_BACKOFF_MAX_PULSES = 5;
   static constexpr unsigned long RECOVERY_MISSION_TIMEOUT_MS = 30000;

@@ -1,5 +1,15 @@
 # Release history
 
+## V3.3 software candidate - 2026-10-03
+
+- Persistent six-attempt recovery episode and five bounded IR pulses across cooldown, sonar and hazard pauses.
+- Trusted 30 cm/OPEN handoff retains budgets until the existing 5000 ms forward-validation window completes.
+- Two new trusted sonar samples resume a fresh checkpoint without replaying motor commands.
+- Override survives ordinary RELEASE/STOP/configuration and session loss; live authorization and safety gates still govern movement.
+- Audited gyro/scan cleanup, rich episode diagnostics, pure-policy and production-navigation regressions.
+- Physical validation pending. No release, hardware flash or RF PA/range engineering.
+
+
 ## V3.2 - 2026-10-01
 
 Frozen executable source: `41281d8325d88c70e074e008a2550a1164102132`.

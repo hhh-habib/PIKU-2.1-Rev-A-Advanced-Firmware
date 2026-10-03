@@ -28,3 +28,6 @@ flowchart TD
     lower --> radio["RadioManager / bounded nRF24 work"]
 
     authority["Cooperative priority-aware control / motion authority<br/>not hard real-time scheduling or functional-safety certification"] -.-> cycle
+
+    permission["Persistent Robot Override permission"] --> live["Current live session still required for hazardous Manual movement"]
+    live --> motion["Directional obstacle and critical safety gates"]

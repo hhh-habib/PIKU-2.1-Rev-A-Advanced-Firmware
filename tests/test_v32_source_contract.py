@@ -52,8 +52,8 @@ assert "if (_phase == AutoPhase::SonarReacquire)" in auto
 assert "updateSonarReacquire(now);" in auto
 reacquire_start = section(nav, "void NavigationManager::beginSonarReacquire(", "void NavigationManager::updateSonarReacquire(")
 for required in ("_motors.stop();", "_servoScanner.center();", "_turnUsingGyro = false;",
-                 "_relativeTurnDeg = 0.0f;", "_recoveryIrBackoff.resetMission();",
-                 "_v2.abort();", "_sensors.setDistanceFacingFront(true);"):
+                 "_relativeTurnDeg = 0.0f;", "_recoveryIrBackoff.cancelPulse();",
+                 "_v2.pause(now);", "_sensors.setDistanceFacingFront(true);"):
     assert required in reacquire_start
 reacquire = section(nav, "void NavigationManager::updateSonarReacquire(", "void NavigationManager::enterEnvironmentalHazard(")
 for required in ("_motors.stop();", "front.facingFront",

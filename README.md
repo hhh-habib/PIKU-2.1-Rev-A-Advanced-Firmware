@@ -2,13 +2,11 @@
 
 PIKU 2.1 Rev A is a standalone ESP32-S3 mobile environmental-inspection research robot. This repository contains its firmware, embedded browser dashboard, host tests, and validation records. The later Stage 4 CPS integration is a separate project.
 
-## Current release
+## Current software candidate
 
-**Status:** physically validated standalone research firmware, 2026-10-01, as reported by the project owner.
+**PIKU 2.1 Rev A V3.3 SOFTWARE CANDIDATE ? physical validation NOT RUN.** Standalone remains the Robot-brain authority. The historical physically validated V3.2 baseline is executable `41281d8325d88c70e074e008a2550a1164102132` (owner-reported supervised functional PASS, 2026-10-01), preserved in its [software record](docs/RECOVERY_V32_SOFTWARE_VERIFICATION.md) and [physical record](docs/PIKU_2.1_REVA_V32_PHYSICAL_VALIDATION.md).
 
-**Frozen V3.2 executable source:** `41281d8325d88c70e074e008a2550a1164102132`. The release documentation adds no firmware or test behavior changes. The compiled firmware still reports `2.1.0-revA-stage2` internally; V3.2 identifies this validated source and its recovery behavior, not a change to that frozen version string.
-
-The owner reported a supervised functional physical PASS for normal AUTO, boxed recovery, locked direction, IR-assisted clearance, Manual controls and override, sonar fault recovery, dashboard status, and operator STOP. This was functional validation, not a statistically instrumented benchmark or safety certification. See the [V3.2 physical-validation record](docs/PIKU_2.1_REVA_V32_PHYSICAL_VALIDATION.md) and [software verification](docs/RECOVERY_V32_SOFTWARE_VERIFICATION.md).
+V3.3 adds deterministic episode budgets, sonar/hazard pause and safe continuation, and persistent Robot-level Manual Override permission. See [V3.3 verification](docs/RECOVERY_V33_SOFTWARE_VERIFICATION.md), [core difference audit](docs/STAGE5D_CORE_DIFFERENCE_AUDIT.md), and the [pending owner checklist](docs/PIKU_2.1_REVA_V33_PHYSICAL_VALIDATION.md).
 
 ## Hardware and software at a glance
 
@@ -38,19 +36,21 @@ The intentional Manual hazard override bypasses only the local flame/gas movemen
 
 Normal AUTO reacts to current front sonar and IR evidence. A finite front reading at or below **20 cm** starts ordinary obstacle handling: stop, a short bounded reverse, a fresh left/front/right scan, safe-side selection, an approximately **35-degree** gyro-assisted turn, and fresh re-evaluation. A trusted `CLEAR_NO_ECHO` is operationally open. If no path is safe, AUTO stops and uses its bounded retry behavior; it does not require repeated AUTO button presses for an ordinary recoverable obstacle.
 
-### Boxed-in Recovery V3.2
+### Boxed-in Recovery V3.3
 
-A trusted complete scan enters recovery immediately when **all three finite** left, front, and right distances are **strictly below 30 cm**. Any trusted `CLEAR_NO_ECHO` prevents that boxed-in classification. Recovery reuses the completed scan when possible, chooses LEFT or RIGHT once, and locks that side for the mission.
+A trusted complete all-finite L/F/R scan strictly below 30 cm begins one persistent Recovery Episode. Trusted OPEN prevents false boxed classification. Recovery commits a side and commands approximately 25-degree increments, with at most **six turn attempts per episode** (150-degree target sum). An attempt is consumed when started, including interrupted attempts. The 7 cm selected-side hard veto remains.
 
-Recovery turns about **25 degrees** toward that side, stops, and checks **front only**. A valid front distance of **at least 30 cm**, or trusted `CLEAR_NO_ECHO`, ends recovery immediately and hands control to normal AUTO. If front remains blocked, recovery checks only the locked side before another increment. A selected-side reading of **7 cm or less** vetoes the pivot. There is no repeated full scan after every turn and no recovery-specific forward trial.
+After each turn the motors stop for fresh front/side and IR evidence. FRONT >=30 cm or trusted OPEN permits a handoff candidate, preserving the episode until **5000 ms of continued trusted forward-safe motion** through the existing nonblocking forward steps. A brief clear reading cannot grant a new budget. While active, the episode also owns all body turns; ordinary 35-degree avoidance cannot bypass its accounting.
 
-Either IR sensor can interrupt recovery motion. It stops the robot and starts bounded reverse clearance: up to **five 200 ms pulses per mission**, stopping and checking IR between pulses. IR never changes the locked side. When IR clears, recovery checks front and continues on the same side only if still needed. With no usable heading after at most **seven turns**, the mission stops, waits about **2,500 ms**, then starts a fresh scan and a new mission.
+Either IR input can interrupt motion for selected-speed reverse pulses: at most five approximately 200 ms pulses for the entire episode. Cooldown, scan restarts, hazards and sonar reconnection preserve both budgets. Exhaustion stops the motors in assistance HOLD; cooperative stationary front sensing after the 2500 ms cooldown can find a safe handoff without more turns. A new budget requires genuine stable progress, explicit mode restart/reset, or reboot. STOP terminates motion and latches AUTO stopped until an explicit mode command.
 
 ### Sonar fault and reacquisition
 
-`DistanceValid` is a trusted finite range. `ClearNoEcho` means no useful return and is treated operationally as **OPEN**, not as a fault. `SensorFault` and `Stale` are untrusted.
+DistanceValid is finite trusted range; ClearNoEcho is operational OPEN. SensorFault/Stale in AUTO immediately stop the motors and cancel active turn/pulse execution, center sonar and enter SONAR_REACQUIRE. Episode counts and committed intent survive. Two new consecutive trusted front samples restore a fresh sensing checkpoint for the same episode, or a fresh normal front decision outside recovery. No interrupted turn/reverse command is replayed. The 1000 ms fast window is diagnostic only; the robot remains stopped and keeps sampling if fault persists.
 
-AUTO and recovery stop on SensorFault or Stale, discard an active turn or IR backoff, and enter `SONAR_REACQUIRE`. Motors stay off while normal-cadence **front-only** samples continue. Two consecutive fresh trusted front results (finite or no-echo) trigger a fresh normal AUTO decision automatically. The **1,000 ms** fast observation window does not cause blind motion or a reboot; if sensing remains faulty, the robot stays stopped and keeps sampling until it recovers.
+### Persistent Manual Override
+
+Override is explicit permission to bypass only eligible flame/gas inhibition in MANUAL. A legitimate live session and confirmation are required to enable it; each hazardous movement still needs current live authorization. RELEASE, STOP, speed, turn/head interactions and temporary link/session loss preserve permission. Session replacement stops old movement and requires a fresh direction press. Disable Override, leaving MANUAL, reboot, stable hazard clear, or non-overridable critical safety revoke it. Ordinary hazard-free MANUAL remains usable with Override OFF.
 
 ## Dashboard and communication
 
@@ -60,7 +60,7 @@ The ESP32-S3 supports direct SoftAP access and provisioned STA/Home Wi-Fi with r
 
 ## Validation and evidence boundaries
 
-The frozen source passes `pio run -e esp32-s3-n16r8`, **10/10 native C++ tests**, **3/3 Python tests**, and embedded-dashboard JavaScript parsing. The build uses **58,740 / 327,680 bytes RAM** and **1,038,217 / 6,553,600 bytes flash**. The physical PASS above is the project owner's report for the final supervised test; earlier dated observations remain in the [historical physical testing record](docs/PIKU_2.1_REV_A_TESTING.md).
+V3.3 software checks execute the policies and actual NavigationManager implementation with hardware doubles; they do not measure physical angle, reverse displacement, radio behavior, or reliability. The historical V3.2 build used 58,740 bytes RAM and 1,038,217 bytes flash. Current candidate build/test results are recorded in [V3.3 verification](docs/RECOVERY_V33_SOFTWARE_VERIFICATION.md).
 
 This robot has **no rear obstacle sensor or encoder-confirmed reverse distance**. Automatic IR clearance reverse is time-based. The HC-SR04 cannot perfectly distinguish a disconnected LOW echo line from a true no-return, so operational `CLEAR_NO_ECHO` is not proof of infinite free space. IR observes local obstacles, not the complete swept volume. MQ-2 is not an industrial calibrated gas instrument. Turn-angle error distributions, response-latency distributions, reverse displacement, and RF reliability statistics were not instrumented for V3.2. This is a research prototype, not certified industrial safety equipment.
 
@@ -70,7 +70,7 @@ This robot has **no rear obstacle sensor or encoder-confirmed reverse distance**
 pio run -e esp32-s3-n16r8
 ```
 
-- `src/`, `include/`, `platformio.ini`: frozen executable firmware and embedded dashboard.
+- `src/`, `include/`, `platformio.ini`: current candidate firmware and embedded dashboard.
 - `tests/`: host regression and source-contract tests.
 - `docs/RECOVERY_V32_SOFTWARE_VERIFICATION.md`: reproducible V3.2 software evidence.
 - `docs/PIKU_2.1_REVA_V32_PHYSICAL_VALIDATION.md`: owner-reported supervised physical confirmation.
@@ -78,10 +78,10 @@ pio run -e esp32-s3-n16r8
 - `SOFTWARE_EXPLANATION.md`: plain-language execution and safety walkthrough.
 - `CHANGELOG.md`: concise release history.
 
-Existing `architecture_source/` diagrams and corresponding figures preserve earlier normal AUTO and control-flow views; they do not show every V3.2 locked-recovery or sonar-reacquisition state. Use this README, the software explanation, and the frozen source for current behavior. No figure was altered for this documentation release.
+Current `architecture_source/` diagrams describe V3.3 recovery and permission boundaries. No deterministic tracked-figure regeneration workflow exists here, so rendering remains separate; historical tracked figures and the four pre-existing untracked figure PNGs are preserved.
 
 The repository includes deployment-specific configuration. Do not disclose credentials or copy `include/Secrets.h` into public reports.
 
 ## Next stage
 
-Stage 4 CPS integration can build on this frozen standalone reference in its own repository. This documentation release makes no change to Stage 4 or the validated executable firmware.
+Stage 4 will synchronize this verified candidate core while preserving its CPS wrappers. V3.3 is a software candidate pending owner physical validation.

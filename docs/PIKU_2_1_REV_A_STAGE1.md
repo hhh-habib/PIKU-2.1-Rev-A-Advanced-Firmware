@@ -1,3 +1,5 @@
+> Historical baseline record. V3.3 current software verification is [RECOVERY_V33_SOFTWARE_VERIFICATION.md](RECOVERY_V33_SOFTWARE_VERIFICATION.md); physical validation remains pending. Original evidence below is preserved.
+
 # PIKU 2.1 Rev A Stage-1 Engineering Note
 
 **Status: Historical Stage-1 development record. Its behavior and verification boundary belong to that stage; see [README.md](../README.md) for the frozen V3.2 firmware.**

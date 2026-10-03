@@ -1,3 +1,5 @@
+> Historical baseline record. V3.3 current software verification is [RECOVERY_V33_SOFTWARE_VERIFICATION.md](RECOVERY_V33_SOFTWARE_VERIFICATION.md); physical validation remains pending. Original evidence below is preserved.
+
 # Focused correction pass - source validation
 
 **Status: Historical development record for an earlier V2 correction. For the frozen V3.2 behavior, see [README.md](../README.md) and [V3.2 software verification](RECOVERY_V32_SOFTWARE_VERIFICATION.md).**

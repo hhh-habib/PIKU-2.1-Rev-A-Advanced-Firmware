@@ -2051,8 +2051,9 @@ function renderTelemetry(d) {
   setText('autoHazardRecovery', (hazard.state || 'IDLE') + (hazard.clear_remaining_ms ? ' / ' + hazard.clear_remaining_ms + ' ms remaining' : ''));
   const stuck = autoNav.stuck || {};
   const v2 = autoNav.v2 || {};
+  const episode = (d.autoNavigation || {}).episode || {};
   setText('autoStuckRecovery', (stuck.state || 'MONITORING') + ' / attempt ' + (stuck.attempts ?? 0) +
-    ' / V2 ' + (v2.state || 'OFF') + (v2.assistance_required ? ' / ASSISTANCE REQUIRED' : ''));
+    ' / V3.3 ' + (v2.state || 'OFF') + ' / turns ' + (episode.turns_used ?? 0) + '/' + (episode.turns_max ?? 6) + ' / side ' + (episode.committed_side || 'NONE') + ' / IR pulses ' + (episode.ir_pulses ?? 0) + (v2.assistance_required ? ' / ASSISTANCE REQUIRED' : ''));
   const autoSummary = byId('autoNavigationSummary');
   if (autoSummary) {
     autoSummary.hidden = d.mode !== 'AUTO';
@@ -2148,13 +2149,13 @@ function renderTelemetry(d) {
     overrideButton.hidden = mode !== 'MANUAL' || !hazardActive;
     overrideButton.disabled = !controlSessionToken;
     overrideButton.textContent = d.manualFlameGasOverride
-      ? 'Turn Override Off' : 'Override Hazard & Control';
+      ? 'Disable Override' : 'Enable Override';
   }
   const overrideAlert = byId('overrideAlert');
   if (overrideAlert) {
     overrideAlert.hidden = mode !== 'MANUAL' || !hazardActive;
     overrideAlert.textContent = d.manualFlameGasOverride
-      ? 'HAZARD ACTIVE - OVERRIDE ON' : 'Flame/Gas Hazard Detected';
+      ? 'Manual Override: ENABLED' : 'Flame/Gas Hazard Detected - Override disabled';
   }
 
   updateModeButtons();

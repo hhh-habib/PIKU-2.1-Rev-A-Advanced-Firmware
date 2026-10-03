@@ -199,6 +199,7 @@ private:
   RecoveryIrBackoffPolicy _recoveryIrBackoff;
   SonarReacquirePolicy _sonarReacquire;
   bool _sonarReacquireExtended = false;
+  bool _recoveryHazardPaused = false;
 
   void setState(NavigationState state, const String& decision);
   void setPhase(AutoPhase phase, unsigned long now);

@@ -163,8 +163,7 @@ void onDashboardCommandAccepted(const String& command,
     // MotorController::stop() writes PWM duty zero before changing GPIO state.
     // This callback runs inside /cmd before logging or formatting a response.
     stopMotors();
-    if (command == "STOP") revokeManualOverride("OPERATOR_STOP");
-    else manualOverride.movementStopped();
+    manualOverride.movementStopped();
     manualMotorDisplayState = "STOP";
     dashboardData.motorState = "STOP";
     dashboardData.navigationDecision = command == "STOP" ? "OPERATOR_STOP" : "MANUAL_RELEASE_STOP";
@@ -192,7 +191,7 @@ void onDashboardCommandAccepted(const String& command,
 
 void onDashboardModeAccepted(const String& mode) {
   stopMotors();
-  revokeManualOverride("MODE_CHANGE");
+  if (mode != "MANUAL") revokeManualOverride("MODE_CHANGE");
   navigation.cancelForModeChange();
   manualMotorDisplayState = mode == "MANUAL" ? "STOP" : "";
   dashboardData.motorState = "STOP";

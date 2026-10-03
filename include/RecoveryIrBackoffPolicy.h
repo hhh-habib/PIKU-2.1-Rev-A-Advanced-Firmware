@@ -45,6 +45,7 @@ public:
   void pulseCommanded(uint32_t now) {
     if (stage_ == Stage::Pulse) pulseStartedMs_=now;
   }
+  void cancelPulse() { clearEvent(); } // preserve episode pulse count
   void resetMission() {
     clearEvent();
     missionPulses_=0;

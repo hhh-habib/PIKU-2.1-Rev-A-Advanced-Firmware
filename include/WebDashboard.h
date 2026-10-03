@@ -86,6 +86,11 @@ struct DashboardData {
   uint8_t autoV2Attempts = 0;
   bool autoAssistanceRequired = false;
   String autoV2Reason = "NONE";
+  bool autoRecoveryEpisodeActive = false;
+  unsigned long autoRecoveryEpisodeStartedMs = 0;
+  uint8_t autoRecoveryTurnsUsed = 0, autoRecoveryTurnsMax = 6, autoRecoveryIrPulses = 0;
+  bool autoRecoveryIrActive = false, autoSonarHold = false;
+  String autoRecoveryCommittedSide = "NONE", autoRecoveryTransition = "NONE";
   String gasStatus = "DISABLED";
   String safetyState = "SAFE";
   String alarmReason = "NONE";

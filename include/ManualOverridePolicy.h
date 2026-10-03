@@ -23,7 +23,8 @@ public:
   void tick(uint32_t now, bool manual, bool flameGas,
             bool otherCritical, bool liveSession) {
     if (!enabled_) return;
-    if (!manual || otherCritical || !liveSession) { revoke(); return; }
+    (void)liveSession; // saved permission survives loss; movement still requires a live session
+    if (!manual || otherCritical) { revoke(); return; }
     if (flameGas) { clearSinceMs_ = 0; return; }
     if (clearSinceMs_ == 0) clearSinceMs_ = now ? now : 1;
     if (now - clearSinceMs_ >= CLEAR_MS) revoke();
