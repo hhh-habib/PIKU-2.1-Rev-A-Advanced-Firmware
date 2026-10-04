@@ -10,10 +10,10 @@ int main() {
    p.hold(1000+i); assert(p.beginRetryRound(4000+i)); p.commitSide(false);
    assert(p.committedLeft() && p.sideTurns()==i+1);
  }
- assert(!p.startTurn(6)); p.handoffCandidate();
+ assert(!p.startTurn(6)); p.handoffCandidate(6000);
  p.noteSustainedClear(4999); assert(p.episodeActive() && p.sideTurns()==6);
  p.pause(6000); assert(p.episodeActive() && !p.handoffPending());
- p.handoffCandidate(); p.noteSustainedClear(5000);
+ p.handoffCandidate(6000); p.noteSustainedClear(5000);
  assert(!p.episodeActive() && p.sideTurns()==0);
  for(unsigned i=0;i<5;++i) {
    assert(ir.start(i*500,true)==RecoveryIrBackoffPolicy::Action::Backward);

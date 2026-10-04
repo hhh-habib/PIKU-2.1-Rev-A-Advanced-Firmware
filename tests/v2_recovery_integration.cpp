@@ -109,7 +109,7 @@ int main() {
   mission.abort(); // STOP / Manual / hazard cancels old direction
   assert(!mission.hasCommittedSide() && mission.state()==StuckV2State::Normal);
   mission.noteBoxedIn(); assert(mission.startEscape(30000));
-  mission.commitSide(true); mission.handoffCandidate(); mission.noteSustainedClear(5000); // no second AUTO command
+  mission.commitSide(true); mission.handoffCandidate(35000); mission.noteSustainedClear(5000); // no second AUTO command
   assert(mission.state()==StuckV2State::Normal);
   assert(decideV2Scan(scan(invalid(),valid(6),valid(18)))==
          V2ScanAction::Hold);

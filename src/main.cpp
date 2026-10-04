@@ -100,6 +100,7 @@ bool manualForwardBlockedByUltrasonic = false;
 bool manualMovementActive = false;
 ManualOverridePolicy manualOverride;
 bool allowSlowOutputsThisPass = true;
+bool controlStopThisPass = false; // cleared only at the outer loop boundary
 unsigned long lastServiceLoopStartedMs = 0;
 
 const char* resetReasonName(esp_reset_reason_t reason) {
@@ -159,7 +160,11 @@ void onDashboardCommandAccepted(const String& command,
                                 unsigned long sequence,
                                 unsigned long acceptedMs) {
   (void)acceptedMs;
+  if (controlStopThisPass && command != "STOP" && command != "RELEASE") {
+    dashboard.setPendingCommand(""); return;
+  }
   if (command == "STOP" || command == "RELEASE") {
+    controlStopThisPass = true;
     // MotorController::stop() writes PWM duty zero before changing GPIO state.
     // This callback runs inside /cmd before logging or formatting a response.
     stopMotors();
@@ -190,6 +195,7 @@ void onDashboardCommandAccepted(const String& command,
 }
 
 void onDashboardModeAccepted(const String& mode) {
+  controlStopThisPass = true;
   stopMotors();
   if (mode != "MANUAL") revokeManualOverride("MODE_CHANGE");
   navigation.cancelForModeChange();
@@ -613,6 +619,7 @@ bool serviceLoop() {
   const bool hazardExempt = manualOverride.exemptsFlameGas(
       dashboard.getControlMode() == "MANUAL", sessionLive);
   if (safety.blocksMotion(hazardExempt)) {
+    controlStopThisPass = true;
     if (!criticalStopLatched) {
       criticalStopLatched = true;
       criticalStopModeCommandCounter = dashboard.modeCommandCounter();
@@ -636,6 +643,7 @@ bool serviceLoop() {
       manualMovementActive &&
       motors.getState() != MotorState::Stopped &&
       millis() - dashboard.lastCommandReceivedMs() >= RobotConfig::MANUAL_COMMAND_TIMEOUT_MS) {
+    controlStopThisPass = true;
     stopMotors();
     manualMotorDisplayState = "STOP";
     dashboard.setPendingCommand("");
@@ -712,6 +720,9 @@ bool handleManualControl() {
 
   if (command.length() == 0) {
     return false;
+  }
+  if (controlStopThisPass && command != "STOP" && command != "RELEASE") {
+    dashboard.setPendingCommand(""); return false;
   }
 
   if (command != "STOP" && command != "RELEASE" &&
@@ -974,6 +985,7 @@ void setup() {
 }
 
 void loop() {
+  controlStopThisPass = false;
   serviceLoop();
 
   String controlMode = dashboard.getControlMode();
@@ -1037,6 +1049,8 @@ void loop() {
       return;
     }
   }
+
+  if (controlStopThisPass) { stopMotors(); publishCurrentTelemetry(true); return; }
 
   if (controlMode == "MANUAL") {
     updateManualMode();

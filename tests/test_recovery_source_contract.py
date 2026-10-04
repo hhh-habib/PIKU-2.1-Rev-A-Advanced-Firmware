@@ -48,13 +48,13 @@ active = nav.split("void NavigationManager::updateAuto()", 1)[1].split(
 assert "_v2.hasCommittedSide() && currentIrZone() != IrZone::Clear" in active
 assert "_phase != AutoPhase::RecoveryIrBackoff" in active
 ir_branch = active.split("if (_v2.hasCommittedSide() && currentIrZone()", 1)[1].split(
-    "else if (handleIrArbitration(now))", 1
+    "else if (!_environmentalRecoveryActive && handleIrArbitration(now))", 1
 )[0]
 assert "_motors.stop();" in ir_branch
 assert "beginRecoveryIrBackoff(now);" in ir_branch
 assert "case AutoPhase::RecoveryIrBackoff:" in active
 assert "updateRecoveryIrBackoff(now);" in active
-assert "else if (handleIrArbitration(now))" in active
+assert "else if (!_environmentalRecoveryActive && handleIrArbitration(now))" in active
 assert "case AutoPhase::OperatorStop:" in active
 
 side_result = body("finishRecoverySideCheck(", "beginRecoveryFrontCheck(")

@@ -1,3 +1,5 @@
+> Current state-collision software candidate (2026-10-05): [production regression and system evidence](SYSTEM_STATE_COLLISION_VERIFICATION.md). Physical validation and RF PA/range engineering NOT RUN.
+
 > Historical baseline record. V3.3 current software verification is [RECOVERY_V33_SOFTWARE_VERIFICATION.md](RECOVERY_V33_SOFTWARE_VERIFICATION.md); physical validation remains pending. Original evidence below is preserved.
 
 # PIKU V2.0.1 Advanced Firmware Testing Record

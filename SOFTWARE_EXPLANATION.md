@@ -1,8 +1,8 @@
-> Current V3.3.1 changes only RecoveryIrBackoff output: calibrated `min(selected,75%)`, without changing selected speed. [Focused software evidence](docs/V33_1_HARDENING_SOFTWARE_VERIFICATION.md). V3.3 episode, Override and sonar contracts remain. Physical validation NOT RUN.
+> Current state-collision software candidate (2026-10-05): [production regression and system evidence](docs/SYSTEM_STATE_COLLISION_VERIFICATION.md). Physical validation and RF PA/range engineering NOT RUN.
 
 # How the PIKU 2.1 Rev A firmware works
 
-This guide describes the V3.3 software candidate. The V3.2 physically validated baseline remains historical evidence at `41281d8325d88c70e074e008a2550a1164102132`. See [current verification](docs/RECOVERY_V33_SOFTWARE_VERIFICATION.md) and the [pending owner checklist](docs/PIKU_2.1_REVA_V33_PHYSICAL_VALIDATION.md).
+This guide describes the collision-hardened V3.3.1 software candidate. The V3.2 physically validated baseline remains historical evidence at `41281d8325d88c70e074e008a2550a1164102132`. See [current verification](docs/RECOVERY_V33_SOFTWARE_VERIFICATION.md) and the [pending owner checklist](docs/PIKU_2.1_REVA_V33_PHYSICAL_VALIDATION.md).
 
 ## The control path
 
@@ -84,19 +84,19 @@ IR active -> STOP -> backward pulse, timed 200 ms
 IR clear -> STOP -> fresh front check -> continue same side only if needed
 ```
 
-The software caps commanded reverse at **five pulses per episode**; each pulse uses the current selected motor speed. The robot has no rear sensor, so reverse distance is not verified. STOP, mode change, hazards, and sonar fault preempt backoff.
+The software caps commanded reverse at **five pulses per episode**; each pulse uses min(current selected motor speed,75%). The robot has no rear sensor, so reverse distance is not verified. STOP, mode change, hazards, and sonar fault preempt backoff.
 
 ## Sonar fault: stop, reacquire, decide fresh
 
 AUTO is not operator-supervised in the same way as Manual. `SensorFault` or `Stale` in AUTO/recovery therefore stops motors, cancels the current gyro target and IR backoff, preserves recovery commitment and episode budgets, centers the sensor, and enters `SONAR_REACQUIRE`. `ClearNoEcho` does not enter this state.
 
-During reacquisition the robot stays stopped, takes normal-cadence **front-only** samples, and does not spin, reverse, or perform full directional sweeps. The first new trusted front result keeps it stopped. A **second consecutive fresh trusted front result**, finite or no-echo, enters a fresh recovery checkpoint if an episode is active, otherwise the existing normal front decision. Current Robot safety and remaining episode budget determine whether motion is possible. It never replays an interrupted turn.
+During reacquisition the robot stays stopped, takes normal-cadence **front-only** samples, and does not spin, reverse, or perform full directional sweeps. The first new trusted front result keeps it stopped. A **second consecutive fresh trusted front result**, finite or no-echo, restarts a fresh L/F/R scan when EnvironmentalRecovery is incomplete, retains TrappedHold when applicable, otherwise enters a fresh episode checkpoint or normal front decision. Current Robot safety and remaining episode budget determine whether motion is possible. It never replays an interrupted turn.
 
 The **1,000 ms** fast window changes diagnostic status; it is not a one-second blocking wait or a deadline to drive blind. If the fault persists, front sampling and Wi-Fi/control service continue with motors off. Trusted sensing later resumes AUTO automatically without reboot or another AUTO click.
 
 ## Environmental hazards and priority
 
-Flame and gas can stop local AUTO motion. After a recoverable hazard remains continuously clear for about two seconds, AUTO resumes at a fresh episode front checkpoint using remaining budgets, or its existing environmental-recovery scan outside an episode. A recurring hazard resets that clear wait. Critical temperature and other nonrecoverable conditions retain their separate stop/re-arm authority.
+Flame and gas can stop local AUTO motion. After a recoverable hazard remains continuously clear for about two seconds, AUTO always completes a fresh EnvironmentalRecovery L/F/R scan before returning to the existing episode decision or normal operation. A recurring hazard resets that clear wait. Critical temperature and other nonrecoverable conditions retain their separate stop/re-arm authority.
 
 In practical order, explicit STOP and mode changes, critical safety, and required sensor validity outrank navigation commands. This prevents a stale forward, turn, or backoff command from being replayed after an interruption.
 
@@ -111,3 +111,11 @@ An optional RAM-only navigation trace can be enabled for supervised diagnostic c
 The project owner reported a supervised functional physical PASS for final V3.2 behavior on **2026-10-01**. That baseline software evidence is historical; the V3.3 software candidate is verified separately. Earlier dated trials are kept as history in [PIKU_2.1_REV_A_TESTING.md](docs/PIKU_2.1_REV_A_TESTING.md).
 
 Neither the owner report nor host tests provide a latency distribution, turn-angle error distribution, reverse displacement, RF reliability statistic, or industrial safety certification. The no-rear-sensor, partial IR coverage, HC-SR04 no-return ambiguity, and uncalibrated MQ-2 remain evidence boundaries for this research prototype.
+
+## Current watchdog and interruption contract
+
+Recovery retains six started 25-degree turns, five 200 ms IR backoff pulses at min(selected speed,75%), the committed side, fresh front checks, and the 2500 ms cooldown. Handoff is provisional until 5000 ms of trusted forward progress; it does not grant a new episode budget.
+
+The secondary 30000 ms watchdog accumulates active scanning, deciding, turning, and backoff work. Sonar, hazard/clear-wait, integration holds, and retry cooldown exclude waiting time while preserving spent time. Temporary holds preserve the original TrappedHold deadline. Explicit AUTO STOP terminates the episode and latches AUTO until an explicit mode command; ordinary MANUAL STOP/RELEASE preserve eligible Override permission and require fresh movement authority.
+
+EnvironmentalRecovery stays incomplete across temporary sonar or integration loss. After restoration, it restarts all L/F/R evidence; every decision sample is post-restoration. Two trusted front reacquisition samples permit that fresh scan, not Forward. A trapped episode finishes the environmental scan stationary and retains its cooldown; other active episodes return to their existing bounded decision after the full trusted scan. A watchdog exhausted during that scan enters policy HOLD and cannot start another recovery movement.

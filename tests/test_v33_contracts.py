@@ -16,7 +16,7 @@ class V33Contracts(unittest.TestCase):
   for start,end in [('void NavigationManager::beginSonarReacquire(','void NavigationManager::updateSonarReacquire('),('void NavigationManager::updateV2RetryCooldown(','void NavigationManager::beginV2Escape('),('void NavigationManager::enterV2TrappedHold(','void NavigationManager::beginStuckRecovery(')]:
    checkpoint=body(nav,start,end)
    self.assertNotIn('_v2.abort()',checkpoint);self.assertNotIn('_v2.recovered()',checkpoint);self.assertNotIn('resetMission()',checkpoint)
-  self.assertIn('_v2.handoffCandidate()',nav)
+  self.assertIn('_v2.handoffCandidate(now)',nav)
   self.assertIn('_v2.noteSustainedClear(_obstacleForwardClearMs)',nav)
  def test_diagnostics_are_robot_reported_on_existing_endpoint(self):
   web=src('src/WebDashboard.cpp')

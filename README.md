@@ -1,3 +1,5 @@
+> Current state-collision software candidate (2026-10-05): [production regression and system evidence](docs/SYSTEM_STATE_COLLISION_VERIFICATION.md). Physical validation and RF PA/range engineering NOT RUN.
+
 # PIKU 2.1 Rev A - Advanced Firmware
 
 PIKU 2.1 Rev A is a standalone ESP32-S3 mobile environmental-inspection research robot. This repository contains its firmware, embedded browser dashboard, host tests, and validation records. The later Stage 4 CPS integration is a separate project.
@@ -48,7 +50,7 @@ Either IR input can interrupt motion for reverse pulses at `min(selected speed,7
 
 ### Sonar fault and reacquisition
 
-DistanceValid is finite trusted range; ClearNoEcho is operational OPEN. SensorFault/Stale in AUTO immediately stop the motors and cancel active turn/pulse execution, center sonar and enter SONAR_REACQUIRE. Episode counts and committed intent survive. Two new consecutive trusted front samples restore a fresh sensing checkpoint for the same episode, or a fresh normal front decision outside recovery. No interrupted turn/reverse command is replayed. The 1000 ms fast window is diagnostic only; the robot remains stopped and keeps sampling if fault persists.
+DistanceValid is finite trusted range; ClearNoEcho is operational OPEN. SensorFault/Stale in AUTO immediately stop the motors and cancel active turn/pulse execution, center sonar and enter SONAR_REACQUIRE. Episode counts and committed intent survive. Two new consecutive trusted front samples restart a fresh EnvironmentalRecovery L/F/R scan when that job is incomplete, retain TrappedHold when applicable, otherwise restore a fresh checkpoint for the same episode or a normal front decision. No interrupted turn/reverse command is replayed. The 1000 ms fast window is diagnostic only; the robot remains stopped and keeps sampling if fault persists.
 
 ### Persistent Manual Override
 
@@ -87,3 +89,11 @@ The repository includes deployment-specific configuration. Do not disclose crede
 ## Next stage
 
 Stage 4 will synchronize this verified V3.3.1 cap while preserving its CPS wrappers. Physical validation remains pending.
+
+## Current interruption and time accounting
+
+Recovery retains six started 25-degree turns, five 200 ms IR backoff pulses at min(selected speed,75%), the committed side, fresh front checks, and the 2500 ms cooldown. Handoff is provisional until 5000 ms of trusted forward progress; it does not grant a new episode budget.
+
+The secondary 30000 ms watchdog accumulates active scanning, deciding, turning, and backoff work. Sonar, hazard/clear-wait, integration holds, and retry cooldown exclude waiting time while preserving spent time. Temporary holds preserve the original TrappedHold deadline. Explicit AUTO STOP terminates the episode and latches AUTO until an explicit mode command; ordinary MANUAL STOP/RELEASE preserve eligible Override permission and require fresh movement authority.
+
+EnvironmentalRecovery stays incomplete across temporary sonar or integration loss. After restoration, it restarts all L/F/R evidence; every decision sample is post-restoration. Two trusted front reacquisition samples permit that fresh scan, not Forward. A trapped episode finishes the environmental scan stationary and retains its cooldown; other active episodes return to their existing bounded decision after the full trusted scan. A watchdog exhausted during that scan enters policy HOLD and cannot start another recovery movement.

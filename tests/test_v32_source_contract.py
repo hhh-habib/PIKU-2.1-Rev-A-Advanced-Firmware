@@ -62,7 +62,10 @@ for required in ("_motors.stop();", "front.facingFront",
                  "_sonarReacquire.observe(front.sequence, healthy)",
                  "updateFrontValidation(now);", "SONAR_FAST_REACQUIRE_WINDOW_MS"):
     assert required in reacquire
-for forbidden in ("beginScan(", "_motors.spin", "_motors.backward(", "delay(", "enterV2TrappedHold("):
+assert "if (_environmentalRecoveryActive)" in reacquire
+assert reacquire.count("beginScan(") == 1
+assert "beginScan(ScanPurpose::EnvironmentalRecovery, now)" in reacquire
+for forbidden in ( "_motors.spin", "_motors.backward(", "delay(", "enterV2TrappedHold("):
     assert forbidden not in reacquire_start + reacquire
 assert "lastUltrasonicMs >= RobotConfig::ULTRASONIC_INTERVAL_MS" in sensor
 backoff = section(nav, "void NavigationManager::updateRecoveryIrBackoff(", "bool NavigationManager::v2ImuReady(")

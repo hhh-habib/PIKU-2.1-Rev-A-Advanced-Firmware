@@ -20,6 +20,10 @@ stateDiagram-v2
     SonarReacquire --> EpisodeFront: two new trusted samples and episode retained
     SonarReacquire --> FreshFront: two trusted samples outside episode
     EpisodeTurn --> HazardHold: stop and preserve budgets
-    HazardHold --> EpisodeFront: existing clear policy, fresh evidence
+    HazardHold --> EnvironmentalScan: stable clear, fresh L/F/R
+    EnvironmentalScan --> EpisodeFront: complete trusted scan, remaining budgets
+    EnvironmentalScan --> SonarReacquire: temporary fault, intent retained
+    SonarReacquire --> EnvironmentalScan: incomplete environment job, restart all evidence
+    SonarReacquire --> AssistanceHold: trapped episode retains cooldown
     EpisodeTurn --> OperatorStop: STOP
     OperatorStop --> FreshFront: explicit mode restart resets episode

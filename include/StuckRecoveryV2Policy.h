@@ -24,11 +24,22 @@ public:
   void pause(uint32_t now) {
     if (!episodeActive_) return;
     handoffPending_=false;
-    escapeStartedMs_=now;
+    pauseActiveWork(now);
+    if (state_==StuckV2State::TrappedHold) return;
     state_=committed_ ? StuckV2State::EscapeVerify : StuckV2State::EscapeScan;
   }
-  void handoffCandidate() {
+  // Active work is accumulated across sensing checkpoints and recoverable holds.
+  void resume(uint32_t now) {
+    if (!episodeActive_ || handoffPending_ || state_==StuckV2State::TrappedHold || activeWork_) return;
+    activeStartedMs_=now; activeWork_=true;
+  }
+  uint32_t activeRecoveryMs(uint32_t now) const {
+    const uint32_t delta=activeWork_ ? now-activeStartedMs_ : 0;
+    return delta > UINT32_MAX-activeUsedMs_ ? UINT32_MAX : activeUsedMs_+delta;
+  }
+  void handoffCandidate(uint32_t now) {
     if (!episodeActive_) return;
+    pauseActiveWork(now);
     handoffPending_=true;
     state_=StuckV2State::ForwardTrial;
   }
@@ -103,18 +114,24 @@ public:
   bool startEscape(uint32_t now) {
     if (state_ != StuckV2State::Suspected) return false;
     if (attempts_ < 255) ++attempts_;
-    escapeStartedMs_=now;
     if (!episodeActive_) { resetEscape(); episodeActive_=true; episodeStartedMs_=now; }
     state_=StuckV2State::EscapeScan;
+    resume(now);
     return true;
   }
   bool escapeTimedOut(uint32_t now, uint32_t limitMs) const {
     return episodeActive_ && !handoffPending_ && state_ != StuckV2State::TrappedHold &&
-           now-escapeStartedMs_ >= limitMs;
+           activeRecoveryMs(now) >= limitMs;
   }
   void turnVerified() { if(state_==StuckV2State::EscapeTurn) state_=StuckV2State::EscapeVerify; }
   void recovered() { if (!handoffPending_) return; state_=StuckV2State::Normal; attempts_=0; clearHistory(); resetEscape(); cooldownStartedMs_=0; }
-  void hold(uint32_t now=0) { if (!episodeActive_) { episodeActive_=true; episodeStartedMs_=now; } handoffPending_=false; state_=StuckV2State::TrappedHold; cooldownStartedMs_=now; }
+  void hold(uint32_t now=0) {
+    pauseActiveWork(now);
+    if (!episodeActive_) { episodeActive_=true; episodeStartedMs_=now; }
+    handoffPending_=false;
+    if (state_!=StuckV2State::TrappedHold) cooldownStartedMs_=now;
+    state_=StuckV2State::TrappedHold;
+  }
   bool retryReady(uint32_t now, uint32_t cooldownMs) const {
     return state_==StuckV2State::TrappedHold &&
            now-cooldownStartedMs_>=cooldownMs;
@@ -123,8 +140,9 @@ public:
     if (state_!=StuckV2State::TrappedHold) return false;
     clearHistory(); handoffPending_=false;
     if (attempts_ < 255) ++attempts_;
-    escapeStartedMs_=now; cooldownStartedMs_=0;
+    cooldownStartedMs_=0;
     state_=StuckV2State::EscapeScan;
+    resume(now);
     return true;
   }
   const char* name() const {
@@ -141,7 +159,7 @@ public:
   }
 private:
   StuckV2State state_=StuckV2State::Normal;
-  uint32_t windowStartedMs_=0, escapeStartedMs_=0, cooldownStartedMs_=0;
+  uint32_t windowStartedMs_=0, cooldownStartedMs_=0;
   uint32_t invalidWindowStartedMs_=0;
   uint8_t cycles_=0, reversals_=0, shortFailedSteps_=0;
   uint8_t blockedScans_=0, invalidScans_=0, attempts_=0;
@@ -149,10 +167,15 @@ private:
   bool committed_=false, committedLeft_=false;
   uint8_t sideTurns_=0;
   bool episodeActive_=false, handoffPending_=false;
-  uint32_t episodeStartedMs_=0;
+  uint32_t episodeStartedMs_=0, activeUsedMs_=0, activeStartedMs_=0;
+  bool activeWork_=false;
+  void pauseActiveWork(uint32_t now) {
+    activeUsedMs_=activeRecoveryMs(now); activeWork_=false;
+  }
   void resetEscape() {
     committed_=false; committedLeft_=false; sideTurns_=0;
     episodeActive_=false; handoffPending_=false; episodeStartedMs_=0;
+    activeUsedMs_=activeStartedMs_=0; activeWork_=false;
   }
   void clearHistory() {
     windowStartedMs_=0; cycles_=0; reversals_=0; shortFailedSteps_=0;

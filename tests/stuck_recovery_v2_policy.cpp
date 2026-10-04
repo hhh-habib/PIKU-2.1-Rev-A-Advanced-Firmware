@@ -32,7 +32,7 @@ int main() {
   p.noteBoxedIn();
   assert(p.state()==StuckV2State::Suspected);
   assert(p.startEscape(20000));
-  p.handoffCandidate(); p.noteSustainedClear(5000);
+  p.handoffCandidate(25000); p.noteSustainedClear(5000);
   assert(p.state()==StuckV2State::Normal && p.attempts()==0);
   p.rearm();
   assert(!p.noteInvalidScan(1));
