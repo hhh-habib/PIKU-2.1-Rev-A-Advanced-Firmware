@@ -73,4 +73,5 @@ int main(int argc,char** argv){
 #endif
  else {assert(!"Unknown scenario");}
  std::printf("PASS %s\n",argv[1]);
+ return 0;
 }

@@ -181,6 +181,7 @@ private:
 
   bool _environmentalRecoveryActive;
   bool _environmentalRecoveryCompleted;
+  bool _environmentalIrBlocked = false;
   unsigned long _hazardClearStartedMs;
 
   float _stuckDistanceSamples[RobotConfig::AUTO_STUCK_DISTANCE_SAMPLE_COUNT];

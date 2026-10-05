@@ -1,0 +1,15 @@
+{
+  "baseline": "ce0dbe7546c73353dfd1ba44ca5425d29ab8548b",
+  "reviewed_sha256": {
+    "include/StuckRecoveryV2Policy.h": "f406bc13bb611ba115fc2eb5d5b80ea205344d01ecd40ff9b086337e351b7730",
+    "include/NavigationManager.h": "a35a1f8dcd95db8dfbf026e9e03ccb9ae3b61493fc3e8b343aa91f7830d8d469",
+    "src/NavigationManager.cpp": "95f140492a685227cd45bd7dd2640531f4e5cae4ac96fd3a48c973299e07073e",
+    "src/main.cpp": "6247d23d08e47f519500792d7c6796a768338fc6d5ed0d23cd0c47f66fe4d8fa"
+  },
+  "authorized_findings": [
+    "F3",
+    "SC-01",
+    "F4"
+  ],
+  "wire_schema_changed": false
+}

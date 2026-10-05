@@ -38,7 +38,7 @@ class StateCollisions(unittest.TestCase):
   (work/'NavigationUnderTest.cpp').write_text((ROOT/'src/NavigationManager.cpp').read_text().replace('#include "NavigationManager.h"','#include "NavigationUnderTest.h"'))
   cls.exe=work/'collisions.exe'
   vcvars=Path(os.environ.get('PIKU_VCVARS64',str(Path(ROOT.anchor)/'Development/VisualStudio/2022/BuildTools/VC/Auxiliary/Build/vcvars64.bat')))
-  inputs=[ROOT/'tests/native_state_collisions.cpp',work/'NavigationUnderTest.cpp']
+  inputs=[getattr(cls,'fixture',ROOT/'tests/native_state_collisions.cpp'),work/'NavigationUnderTest.cpp']
   defines=['/DCPS_COLLISION'] if stage4 else []
   if vcvars.is_file():
    args=['cl','/nologo','/std:c++17','/EHsc','/W4',*defines,'/I'+str(work),'/I'+str(ROOT/'include'),*map(str,inputs),'/Fe:'+str(cls.exe)]

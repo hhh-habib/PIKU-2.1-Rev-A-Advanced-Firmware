@@ -1,0 +1,47 @@
+{
+  "comparison": "SHA256 byte comparison against pre-edit snapshot; Secrets hashed only, not copied or printed",
+  "repositories": [
+    {
+      "repository": "PIKU 2.1 Rev A Software Development",
+      "compared_files": 11,
+      "mismatches": [],
+      "starting_branch": "codex/reva-state-collision-20261005",
+      "starting_head": "ce0dbe7546c73353dfd1ba44ca5425d29ab8548b",
+      "starting_status": [
+        "?? figures/Circuit_Diagram.png",
+        "?? figures/PIKU_2.1_Rev_A_Software_Architecture.png",
+        "?? figures/PIKU_2.1_Rev_A_System_Architecture.png",
+        "?? figures/PIKU_2.1_Rev_A_Technical_Blueprint_Black.png"
+      ]
+    },
+    {
+      "repository": "PIKU 2.1 Rev A Stage 4 CPS Integration",
+      "compared_files": 7,
+      "mismatches": [],
+      "starting_branch": "codex/stage4-state-collision-20261005",
+      "starting_head": "7a09d996c9b8586a8854fa613d07a45c120359fd",
+      "starting_status": []
+    },
+    {
+      "repository": "CPS Node V1 Stage 4 Coordinator Integration",
+      "compared_files": 4,
+      "mismatches": [],
+      "starting_branch": "codex/nodev1-state-collision-20261005",
+      "starting_head": "9b070857e9b7b329b7e19f6c69e12b803d73997e",
+      "starting_status": []
+    },
+    {
+      "repository": "Node V1 Software development",
+      "compared_files": 44,
+      "mismatches": [],
+      "starting_branch": "main",
+      "starting_head": "70ef949ce18ab81cbc207fed13bcc320d8b99964",
+      "starting_status": [
+        " M .vscode/extensions.json",
+        "?? AGENTS.md"
+      ]
+    }
+  ],
+  "owner_pngs": "All four remain byte-identical and untracked",
+  "reference": "44 tracked/untracked file hashes plus branch, HEAD and status match; reference remains read-only"
+}

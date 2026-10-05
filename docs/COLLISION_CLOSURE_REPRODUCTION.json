@@ -1,0 +1,74 @@
+{
+  "baseline": "Exact initial production objects; regression histories added before production fixes",
+  "failure_logs": [
+    {
+      "log": "stage4-reproduction-classes.log",
+      "sha256": "40ac025cb257f91cf3a18d342e444ec2a8e10f34073054c2006cfd8753c974bc",
+      "runtime_failure_excerpts": [
+        "FAIL: test_environmental_episode_overlay_ir \n(test_collision_closure.ClosureNavigation.test_environmental_episode_overlay_ir)\n----------------------------------------------------------------------",
+        "AssertionError: 3 != 0 : Assertion failed: r.nav.environmentalRecoveryInProgress(), file \nE:\\Development\\Research\\Meo\\The PIKU\\PIKU 2.1 Rev A\\PIKU 2.1 Rev A Stage 4 CPS \nIntegration\\tests\\native_collision_closure.cpp, line 17",
+        "FAIL: test_environmental_post_turn_ir (test_collision_closure.ClosureNavigation.test_environmental_post_turn_ir)\n----------------------------------------------------------------------\nTraceback (most recent call last):",
+        "AssertionError: 3 != 0 : Assertion failed: r.nav.environmentalRecoveryInProgress(), file \nE:\\Development\\Research\\Meo\\The PIKU\\PIKU 2.1 Rev A\\PIKU 2.1 Rev A Stage 4 CPS \nIntegration\\tests\\native_collision_closure.cpp, line 26",
+        "FAIL: test_persistent_left_full_environmental_history \n(test_collision_closure.ClosureNavigation.test_persistent_left_full_environmental_history)\n----------------------------------------------------------------------",
+        "AssertionError: 3 != 0 : Assertion failed: r.nav.environmentalRecoveryInProgress(), file \nE:\\Development\\Research\\Meo\\The PIKU\\PIKU 2.1 Rev A\\PIKU 2.1 Rev A Stage 4 CPS \nIntegration\\tests\\native_collision_closure.cpp, line 17",
+        "FAIL: test_persistent_right_full_environmental_history \n(test_collision_closure.ClosureNavigation.test_persistent_right_full_environmental_history)\n----------------------------------------------------------------------",
+        "AssertionError: 3 != 0 : Assertion failed: r.nav.environmentalRecoveryInProgress(), file \nE:\\Development\\Research\\Meo\\The PIKU\\PIKU 2.1 Rev A\\PIKU 2.1 Rev A Stage 4 CPS \nIntegration\\tests\\native_collision_closure.cpp, line 17",
+        "FAIL: test_watchdog_reassessment_reachable \n(test_collision_closure.ClosureNavigation.test_watchdog_reassessment_reachable)\n----------------------------------------------------------------------",
+        "AssertionError: 3 != 0 : Assertion failed: r.nav._v2.handoffPending(), file E:\\Development\\Research\\Meo\\The PIKU\\PIKU \n2.1 Rev A\\PIKU 2.1 Rev A Stage 4 CPS Integration\\tests\\native_collision_closure.cpp, line 37",
+        "FAIL: test_command_then_contradictory_first_heartbeat \n(test_collision_closure_rf.ClosureRadio.test_command_then_contradictory_first_heartbeat)\n----------------------------------------------------------------------",
+        "AssertionError: 3 != 0 : Assertion failed: !r.nodeApplicationFresh(), file \nC:\\Users\\User\\AppData\\Local\\Temp\\stage5c-native-tsjvt6zr\\case.cpp, line 13",
+        "FAIL: test_heartbeat_then_contradictory_first_command \n(test_collision_closure_rf.ClosureRadio.test_heartbeat_then_contradictory_first_command)\n----------------------------------------------------------------------",
+        "AssertionError: 3 != 0 : Assertion failed: !r.consumeCommand(e), file \nC:\\Users\\User\\AppData\\Local\\Temp\\stage5c-native-7nnina_p\\case.cpp, line 13",
+        "FAIL: test_override_off_then_direction_handler_visibility \n(test_collision_closure_rf.ClosureRadio.test_override_off_then_direction_handler_visibility)\n----------------------------------------------------------------------",
+        "AssertionError: 3 != 0 : Assertion failed: r.consumeCommand(e)&&e.command==RadioCommand::ManualOverride&&e.value==0, \nfile C:\\Users\\User\\AppData\\Local\\Temp\\stage5c-native-1tnayy2v\\case.cpp, line 13",
+        "FAIL: test_release_then_speed_handler_visibility \n(test_collision_closure_rf.ClosureRadio.test_release_then_speed_handler_visibility)\n----------------------------------------------------------------------",
+        "AssertionError: 3 != 0 : Assertion failed: r.consumeCommand(e)&&e.command==RadioCommand::Release, file \nC:\\Users\\User\\AppData\\Local\\Temp\\stage5c-native-rq4qm8ey\\case.cpp, line 13",
+        "FAILED (failures=9)"
+      ]
+    },
+    {
+      "log": "standalone-reproduction-classes.log",
+      "sha256": "b41d9beaddda219d208b120a40afbc3023349e79d3dc00de44e53f81fa1555c3",
+      "runtime_failure_excerpts": [
+        "FAIL: test_environmental_episode_overlay_ir \n(test_collision_closure.ClosureNavigation.test_environmental_episode_overlay_ir)\n----------------------------------------------------------------------",
+        "AssertionError: 3 != 0 : Assertion failed: r.nav.environmentalRecoveryInProgress(), file \nE:\\Development\\Research\\Meo\\The PIKU\\PIKU 2.1 Rev A\\PIKU 2.1 Rev A Software \nDevelopment\\tests\\native_collision_closure.cpp, line 17",
+        "FAIL: test_environmental_post_turn_ir (test_collision_closure.ClosureNavigation.test_environmental_post_turn_ir)\n----------------------------------------------------------------------\nTraceback (most recent call last):",
+        "AssertionError: 3 != 0 : Assertion failed: r.nav.environmentalRecoveryInProgress(), file \nE:\\Development\\Research\\Meo\\The PIKU\\PIKU 2.1 Rev A\\PIKU 2.1 Rev A Software \nDevelopment\\tests\\native_collision_closure.cpp, line 26",
+        "FAIL: test_persistent_left_full_environmental_history \n(test_collision_closure.ClosureNavigation.test_persistent_left_full_environmental_history)\n----------------------------------------------------------------------",
+        "AssertionError: 3 != 0 : Assertion failed: r.nav.environmentalRecoveryInProgress(), file \nE:\\Development\\Research\\Meo\\The PIKU\\PIKU 2.1 Rev A\\PIKU 2.1 Rev A Software \nDevelopment\\tests\\native_collision_closure.cpp, line 17",
+        "FAIL: test_persistent_right_full_environmental_history \n(test_collision_closure.ClosureNavigation.test_persistent_right_full_environmental_history)\n----------------------------------------------------------------------",
+        "AssertionError: 3 != 0 : Assertion failed: r.nav.environmentalRecoveryInProgress(), file \nE:\\Development\\Research\\Meo\\The PIKU\\PIKU 2.1 Rev A\\PIKU 2.1 Rev A Software \nDevelopment\\tests\\native_collision_closure.cpp, line 17",
+        "FAIL: test_watchdog_reassessment_reachable \n(test_collision_closure.ClosureNavigation.test_watchdog_reassessment_reachable)\n----------------------------------------------------------------------",
+        "AssertionError: 3 != 0 : Assertion failed: r.nav._v2.handoffPending(), file E:\\Development\\Research\\Meo\\The PIKU\\PIKU \n2.1 Rev A\\PIKU 2.1 Rev A Software Development\\tests\\native_collision_closure.cpp, line 37",
+        "FAILED (failures=5)"
+      ]
+    },
+    {
+      "log": "stage4-reproduction-dispatch.log",
+      "sha256": "f886984967e44e0c4c753cfd4b52cf842dd35d0979e748b5708cee66434ebb37",
+      "runtime_failure_excerpts": [
+        "FAIL: test_transient_flame_wholly_inside_nominal_hold \n(test_collision_closure_dispatch.ClosureDispatch.test_transient_flame_wholly_inside_nominal_hold)\n----------------------------------------------------------------------",
+        "AssertionError: 3221226505 != 0 : Assertion failed: navigation.environmentalRecoveryInProgress(), file \nC:\\Users\\User\\AppData\\Local\\Temp\\piku-v32-native-k97xktx_\\closure_dispatch.cpp, line 166",
+        "FAIL: test_web_release_environmental_decision_same_pass \n(test_collision_closure_dispatch.ClosureDispatch.test_web_release_environmental_decision_same_pass)\n----------------------------------------------------------------------",
+        "AssertionError: 3221226505 != 0 : Assertion failed: motors.motion==MotorState::Stopped&&motors.spins==turns, file \nC:\\Users\\User\\AppData\\Local\\Temp\\piku-v32-native-k97xktx_\\closure_dispatch.cpp, line 165",
+        "FAILED (failures=2)"
+      ]
+    },
+    {
+      "log": "standalone-reproduction-dispatch.log",
+      "sha256": "ae85da8644ec44563c504a274ed6d75621433ca5c279e4980eb4516d47f5a725",
+      "runtime_failure_excerpts": [
+        "FAIL: test_web_release_environmental_decision_same_pass \n(test_collision_closure_dispatch.ClosureDispatch.test_web_release_environmental_decision_same_pass)\n----------------------------------------------------------------------",
+        "AssertionError: 3221226505 != 0 : Assertion failed: motors.motion==MotorState::Stopped&&motors.spins==turns, file \nC:\\Users\\User\\AppData\\Local\\Temp\\state-collisions-jbjcf5pq\\dispatch.cpp, line 168",
+        "FAILED (failures=1)"
+      ]
+    }
+  ],
+  "compile_seam_failure": "Earlier renamed main lacked explicit return under MSVC; fixed in harness before reproducing; not a firmware finding",
+  "intermediate_gate_corrections": [
+    "Outdated source-string guards updated only for enumerated approved changes",
+    "RF fixture queue capacity fields updated",
+    "Deferred saturation fixture isolated actual first service pass; MANUAL loop normally services twice",
+    "Restored scan fixture supplies production-requested side/front orientation; assertions retained"
+  ]
+}

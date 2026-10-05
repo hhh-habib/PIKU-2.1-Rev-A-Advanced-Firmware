@@ -1,3 +1,5 @@
+> Historical report for the state-collision starting candidate. Its original evidence and claims below are preserved. Current narrow corrections and residual boundaries are recorded in [collision closure verification](COLLISION_CLOSURE_SOFTWARE_VERIFICATION.md).
+
 # PIKU / CPS system state collision verification
 
 2026-10-05, Asia/Dhaka. Local software handoff. PHYSICAL-PENDING.

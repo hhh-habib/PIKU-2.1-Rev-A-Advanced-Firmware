@@ -1019,6 +1019,9 @@ void loop() {
     return;
   }
 
+  // Accepted pass winners fence all motion-capable environmental dispatch.
+  if (controlStopThisPass) { stopMotors(); publishCurrentTelemetry(true); return; }
+
   if (criticalStopLatched) {
     if (dashboard.modeCommandCounter() != criticalStopModeCommandCounter) {
       criticalStopLatched = false;

@@ -23,7 +23,7 @@ assert "recoveryFrontClear(reading, RobotConfig::RECOVERY_FRONT_EXIT_CM)" in fro
 assert "beginRecoverySideCheck(now)" in front
 assert "_scanPurpose = ScanPurpose::Obstacle;" in front
 assert "_motors.forward()" not in front
-assert "if (!_v2.hasCommittedSide()) { beginScan(ScanPurpose::EscapeV2,now); return; }" in front
+assert "if (_v2.watchdogExhausted() || !_v2.hasCommittedSide()) { beginScan(ScanPurpose::EscapeV2,now); return; }" in front
 assert "front.state == UltrasonicResultState::ClearNoEcho" in front
 assert "setPhase(AutoPhase::Idle, now);" in front
 normal_front = body("updateFrontValidation(", "updateForward(")
@@ -47,7 +47,7 @@ active = nav.split("void NavigationManager::updateAuto()", 1)[1].split(
 )[0]
 assert "_v2.hasCommittedSide() && currentIrZone() != IrZone::Clear" in active
 assert "_phase != AutoPhase::RecoveryIrBackoff" in active
-ir_branch = active.split("if (_v2.hasCommittedSide() && currentIrZone()", 1)[1].split(
+ir_branch = active.split("if (!_v2.watchdogExhausted() && _v2.hasCommittedSide() && currentIrZone()", 1)[1].split(
     "else if (!_environmentalRecoveryActive && handleIrArbitration(now))", 1
 )[0]
 assert "_motors.stop();" in ir_branch

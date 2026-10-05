@@ -20,17 +20,21 @@ public:
   uint8_t sideTurns() const { return sideTurns_; }
   bool episodeActive() const { return episodeActive_; }
   bool handoffPending() const { return handoffPending_; }
+  bool watchdogExhausted() const { return watchdogExhausted_; }
   uint32_t episodeStartedMs() const { return episodeStartedMs_; }
   void pause(uint32_t now) {
     if (!episodeActive_) return;
+    const bool interruptedHandoff = handoffPending_ && watchdogExhausted_;
     handoffPending_=false;
     pauseActiveWork(now);
+    if (interruptedHandoff) { state_=StuckV2State::TrappedHold; return; }
     if (state_==StuckV2State::TrappedHold) return;
+    if (watchdogExhausted_) { state_=StuckV2State::EscapeScan; return; }
     state_=committed_ ? StuckV2State::EscapeVerify : StuckV2State::EscapeScan;
   }
   // Active work is accumulated across sensing checkpoints and recoverable holds.
   void resume(uint32_t now) {
-    if (!episodeActive_ || handoffPending_ || state_==StuckV2State::TrappedHold || activeWork_) return;
+    if (!episodeActive_ || watchdogExhausted_ || handoffPending_ || state_==StuckV2State::TrappedHold || activeWork_) return;
     activeStartedMs_=now; activeWork_=true;
   }
   uint32_t activeRecoveryMs(uint32_t now) const {
@@ -54,7 +58,7 @@ public:
     committed_=true; committedLeft_=left; state_=StuckV2State::EscapeTurn;
   }
   bool startTurn(uint8_t maxTurns) {
-    if (state_ != StuckV2State::EscapeTurn || !committed_ ||
+    if (watchdogExhausted_ || state_ != StuckV2State::EscapeTurn || !committed_ ||
         sideTurns_ >= maxTurns || sideTurns_ >= 6) return false;
     ++sideTurns_; return true;
   }
@@ -120,7 +124,7 @@ public:
     return true;
   }
   bool escapeTimedOut(uint32_t now, uint32_t limitMs) const {
-    return episodeActive_ && !handoffPending_ && state_ != StuckV2State::TrappedHold &&
+    return episodeActive_ && !watchdogExhausted_ && !handoffPending_ && state_ != StuckV2State::TrappedHold &&
            activeRecoveryMs(now) >= limitMs;
   }
   void turnVerified() { if(state_==StuckV2State::EscapeTurn) state_=StuckV2State::EscapeVerify; }
@@ -129,7 +133,7 @@ public:
     pauseActiveWork(now);
     if (!episodeActive_) { episodeActive_=true; episodeStartedMs_=now; }
     handoffPending_=false;
-    if (state_!=StuckV2State::TrappedHold) cooldownStartedMs_=now;
+    if (!watchdogExhausted_ && state_!=StuckV2State::TrappedHold) cooldownStartedMs_=now;
     state_=StuckV2State::TrappedHold;
   }
   bool retryReady(uint32_t now, uint32_t cooldownMs) const {
@@ -137,11 +141,30 @@ public:
            now-cooldownStartedMs_>=cooldownMs;
   }
   bool beginRetryRound(uint32_t now) {
-    if (state_!=StuckV2State::TrappedHold) return false;
+    if (watchdogExhausted_ || state_!=StuckV2State::TrappedHold) return false;
     clearHistory(); handoffPending_=false;
     if (attempts_ < 255) ++attempts_;
     cooldownStartedMs_=0;
     state_=StuckV2State::EscapeScan;
+    resume(now);
+    return true;
+  }
+  void exhaustWatchdog(uint32_t now) {
+    hold(now);
+    watchdogExhausted_=true;
+  }
+  bool beginWatchdogReassessment(uint32_t now, uint32_t cooldownMs) {
+    if (!watchdogExhausted_ || !retryReady(now,cooldownMs)) return false;
+    state_=StuckV2State::EscapeScan;
+    return true; // stationary work never restarts the exhausted clock
+  }
+  // Called only after a complete fresh trusted blocked L/F/R decision and gates.
+  bool renewAfterWatchdog(uint32_t now, uint32_t cooldownMs) {
+    if (!watchdogExhausted_ || handoffPending_ || state_!=StuckV2State::EscapeScan ||
+        now-cooldownStartedMs_<cooldownMs) return false;
+    resetEscape(); clearHistory(); cooldownStartedMs_=0;
+    if (attempts_<255) ++attempts_;
+    episodeActive_=true; episodeStartedMs_=now; state_=StuckV2State::EscapeScan;
     resume(now);
     return true;
   }
@@ -166,7 +189,7 @@ private:
   bool hasLastTurn_=false, lastTurnLeft_=false;
   bool committed_=false, committedLeft_=false;
   uint8_t sideTurns_=0;
-  bool episodeActive_=false, handoffPending_=false;
+  bool episodeActive_=false, handoffPending_=false, watchdogExhausted_=false;
   uint32_t episodeStartedMs_=0, activeUsedMs_=0, activeStartedMs_=0;
   bool activeWork_=false;
   void pauseActiveWork(uint32_t now) {
@@ -174,7 +197,7 @@ private:
   }
   void resetEscape() {
     committed_=false; committedLeft_=false; sideTurns_=0;
-    episodeActive_=false; handoffPending_=false; episodeStartedMs_=0;
+    episodeActive_=false; handoffPending_=false; watchdogExhausted_=false; episodeStartedMs_=0;
     activeUsedMs_=activeStartedMs_=0; activeWork_=false;
   }
   void clearHistory() {
