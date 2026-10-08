@@ -23,6 +23,9 @@ public:
   bool isNearObstacleHazardActive() const;
   bool isUltrasonicWarningActive() const;
   bool blocksMotion(bool allowFlameGas = false) const;
+  bool temperatureUnavailable() const { return _temperatureUnknown; }
+  bool gasUnavailable() const { return _gasUnknown; }
+  bool monitoringUnavailable() const { return _temperatureUnknown || _gasUnknown; }
   bool blocksForwardMotion() const;
   bool blocksManualForwardMotion(bool allowFlameGas = false) const;
   bool stateChanged();
@@ -32,6 +35,7 @@ public:
   String obstacleDecision(const SensorSnapshot& snapshot) const;
 
 private:
+  bool _temperatureUnknown=false, _gasUnknown=false;
   bool _gasCritical;
   bool _gasCaution;
   bool _flameCritical;

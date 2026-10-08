@@ -242,6 +242,9 @@ String getGasStatus(const SensorSnapshot& snapshot) {
   if (!RobotConfig::HAS_MQ2) {
     return "DISABLED";
   }
+  if (!snapshot.gasValid && snapshot.mq2SampleMs==0) return "UNAVAILABLE";
+  if (millis()-snapshot.mq2SampleMs>RobotConfig::MQ2_INTERVAL_MS*2) return "STALE";
+  if (!snapshot.gasValid) return "INVALID";
   if (snapshot.mq2Warmup) {
     return "WARMING";
   }
@@ -255,11 +258,10 @@ String getGasStatus(const SensorSnapshot& snapshot) {
 }
 
 uint8_t currentEnvironmentalAlarmMask() {
-  const SensorSnapshot& snapshot = sensors.snapshot();
-  uint8_t mask = 0;
-  if (snapshot.flameSampleValid && snapshot.flameDetected) mask |= 0x01;
-  if (!snapshot.mq2Warmup && snapshot.gasFiltered >= RobotConfig::GAS_HIGH_RELATIVE_THRESHOLD) mask |= 0x02;
-  if (snapshot.temperatureValid && snapshot.temperature >= RobotConfig::TEMP_CRITICAL_C) mask |= 0x04;
+  uint8_t mask=0;
+  if(safety.isFlameCritical())mask|=0x01;
+  if(safety.isGasCritical())mask|=0x02;
+  if(safety.isTemperatureCritical())mask|=0x04;
   return mask;
 }
 
@@ -575,12 +577,10 @@ bool serviceLoop() {
   if (speedChanged) {
     motors.setSpeedPercent(requestedSpeedPercent);
   }
-  if (allowBackgroundWork) {
-    sensors.update();
-  } else {
-    sensors.updateControlSensors();
-  }
+  // Required cadence-limited MQ2/DHT acquisition is unavoidable under control load.
+  sensors.update();
   safety.update(sensors.snapshot());
+  navigation.observeIrEpisodes();
   if (dashboard.getControlMode() == "MANUAL") {
     const MotorState motion=motors.getState();
     const bool nearFront=manualFrontTurnVeto(sensors.snapshot(), millis());
@@ -620,7 +620,7 @@ bool serviceLoop() {
       dashboard.getControlMode() == "MANUAL", sessionLive);
   if (safety.blocksMotion(hazardExempt)) {
     controlStopThisPass = true;
-    if (!criticalStopLatched) {
+    if (!criticalStopLatched && safety.isCritical()) {
       criticalStopLatched = true;
       criticalStopModeCommandCounter = dashboard.modeCommandCounter();
     }
@@ -634,8 +634,8 @@ bool serviceLoop() {
     dashboard.markStopApplied("CRITICAL_SAFETY");
   }
   dashboard.updateBackground();
+  imu.update();
   if (allowBackgroundWork) {
-    imu.update();
     radio.update(currentEnvironmentalAlarmMask());
   }
   bool manualDeadmanTriggered = false;
@@ -840,6 +840,7 @@ bool handleManualControl() {
 
   if (criticalStopLatched && !safety.isCritical()) {
     criticalStopLatched = false;
+    criticalStopRequiresManualRearm = false;
   }
   manualMotorDisplayState = result.motorDisplayState;
   dashboardData.navigationDecision = result.navigationDecision;
@@ -1022,7 +1023,7 @@ void loop() {
   // Accepted pass winners fence all motion-capable environmental dispatch.
   if (controlStopThisPass) { stopMotors(); publishCurrentTelemetry(true); return; }
 
-  if (criticalStopLatched) {
+  if (criticalStopLatched || criticalStopRequiresManualRearm) {
     if (dashboard.modeCommandCounter() != criticalStopModeCommandCounter) {
       criticalStopLatched = false;
       criticalStopRequiresManualRearm = false;

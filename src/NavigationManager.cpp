@@ -53,21 +53,13 @@ void NavigationManager::updateAuto() {
   }
   if (handleCriticalSafety(now)) {
     if (RobotConfig::ENABLE_STUCK_RECOVERY_V2 &&
-        _v2.state() != StuckV2State::Normal &&
-        (_safety.isCritical() || _phase == AutoPhase::HazardActive ||
-         _phase == AutoPhase::HazardClearWait)) {
-      _v2.pause(now); // hazard preemption preserves episode budgets
-      _recoveryHazardPaused = true;
-      _turnUsingGyro=false; _relativeTurnDeg=0; _turnStartedMs=0; _lastIntegratedSampleMs=0;
+        _v2.state() != StuckV2State::Normal) {
+      _v2.abort(); // preserve ordinary AUTO hazard-clear/rescan behavior
       _recoverySideRechecks = 0;
-      _recoveryIrBackoff.cancelPulse();
+      _recoveryIrBackoff.resetMission();
     }
     updateDiagnostics(now);
     return;
-  }
-  if (_recoveryHazardPaused && !_environmentalRecoveryActive) {
-    _recoveryHazardPaused=false;
-    if (_v2.state() != StuckV2State::TrappedHold) beginRecoveryFrontCheck(now);
   }
   if (_phase == AutoPhase::SonarReacquire) {
     updateSonarReacquire(now);
@@ -82,75 +74,49 @@ void NavigationManager::updateAuto() {
     return;
   }
   if (RobotConfig::ENABLE_STUCK_RECOVERY_V2 &&
-      _v2.state() == StuckV2State::TrappedHold && !_environmentalRecoveryActive) {
+      _v2.state() == StuckV2State::TrappedHold) {
     updateV2RetryCooldown(now);
     updateDiagnostics(now);
     return;
   }
-  const bool v2Active = RobotConfig::ENABLE_STUCK_RECOVERY_V2 &&
-      _v2.episodeActive();
-  if (v2Active && _environmentalRecoveryActive &&
-      _v2.escapeTimedOut(now, RobotConfig::RECOVERY_MISSION_TIMEOUT_MS)) {
-    enterV2TrappedHold("ESCAPE_TOTAL_TIMEOUT", now);
-    updateDiagnostics(now);
-    return; // expiry wins before directional or environmental work
-  }
-  // Environmental recovery owns its fresh scan; IR may veto its turn, never
-  // substitute ordinary reverse/scan for an incomplete environmental job.
-  if (_environmentalRecoveryActive && currentIrZone() != IrZone::Clear) {
-    _motors.stop();
-    _servoScanner.detach();
-    _environmentalIrBlocked = true;
-    _leftScan = _frontScan = _rightScan = NavigationScanSample();
-    _scanAccumulator = ScanAccumulator();
-    setState(NavigationState::InvalidStop, "ENVIRONMENTAL_IR_HOLD");
-    setPhase(AutoPhase::InvalidStop, now);
-    updateDiagnostics(now);
-    return;
-  }
-  if (_environmentalRecoveryActive && _environmentalIrBlocked) {
-    _environmentalIrBlocked = false;
-    beginScan(ScanPurpose::EnvironmentalRecovery, now);
-    updateDiagnostics(now);
-    return;
-  }
-  if (_environmentalRecoveryActive && _v2.watchdogExhausted() &&
-      _phase == AutoPhase::TrappedHold) {
-    beginScan(ScanPurpose::EnvironmentalRecovery, now);
-    updateDiagnostics(now);
-    return;
-  }
-  if (v2Active && !_environmentalRecoveryActive) {
-    if (_v2.watchdogExhausted() && _v2.handoffPending() && currentIrZone() != IrZone::Clear) {
-      _motors.stop(); _obstacleForwardClearMs=0; _v2.pause(now);
-      beginRecoveryFrontCheck(now); updateDiagnostics(now); return;
+  if (_environmentalRecoveryActive) {
+    if (currentIrZone()!=IrZone::Clear) {
+      _motors.stop(); _servoScanner.detach(); _environmentalIrBlocked=true;
+      _leftScan=_frontScan=_rightScan=NavigationScanSample();
+      _scanAccumulator=ScanAccumulator();
+      setState(NavigationState::InvalidStop,"ENVIRONMENTAL_IR_HOLD");
+      setPhase(AutoPhase::InvalidStop,now); updateDiagnostics(now); return;
     }
-    _v2.resume(now);
+    if (_environmentalIrBlocked) {
+      _environmentalIrBlocked=false; beginScan(ScanPurpose::EnvironmentalRecovery,now);
+      updateDiagnostics(now); return;
+    }
+  }
+  const bool v2Active = RobotConfig::ENABLE_STUCK_RECOVERY_V2 &&
+      _v2.state() != StuckV2State::Normal &&
+      _v2.state() != StuckV2State::Suspected;
+  if (v2Active) {
     if (_v2.escapeTimedOut(now, RobotConfig::RECOVERY_MISSION_TIMEOUT_MS)) {
       enterV2TrappedHold("ESCAPE_TOTAL_TIMEOUT", now);
       updateDiagnostics(now);
       return;
     }
     // Either low IR zone is a collision veto, never a new side preference.
-    if (!_v2.watchdogExhausted() && _v2.hasCommittedSide() && currentIrZone() != IrZone::Clear &&
+    if (_v2.hasCommittedSide() && currentIrZone() != IrZone::Clear &&
         _phase != AutoPhase::RecoveryIrBackoff) {
-      if (_v2.sideTurns() >= RobotConfig::RECOVERY_MAX_TURNS) {
-        enterV2TrappedHold("ESCAPE_TURN_LIMIT", now); updateDiagnostics(now); return;
-      }
       _motors.stop();
       _dashboardData.autoTurnCompletionReason = "ESCAPE_IR_INTERRUPT";
       beginRecoveryIrBackoff(now);
       updateDiagnostics(now);
       return;
     }
-  } else if (!_environmentalRecoveryActive && handleIrArbitration(now)) {
+  } else if (handleIrArbitration(now)) {
     updateDiagnostics(now);
     return;
   }
 
   switch (_phase) {
     case AutoPhase::Idle:
-      if (_v2.episodeActive() && !_v2.handoffPending()) { beginRecoveryFrontCheck(now); break; }
       beginFrontValidation(now, "SENSE_FRONT");
       break;
     case AutoPhase::FrontSettle:
@@ -224,6 +190,10 @@ void NavigationManager::updateAuto() {
   updateDiagnostics(now);
 }
 
+void NavigationManager::observeIrEpisodes() {
+  // Retained service-loop interface. V3.2 arbitrates confirmed IR in updateAuto.
+}
+
 void NavigationManager::resetRecoveryLatchIfClear() {
   if (currentIrZone() == IrZone::Clear) {
     _irEscapeSourceZone = IrZone::Clear;
@@ -250,7 +220,7 @@ void NavigationManager::notifyOperatorStop() {
   _relativeTurnDeg = 0.0f;
   _turnStartedMs = 0;
   _lastIntegratedSampleMs = 0;
-  _recoveryHazardPaused = false;
+  _environmentalIrBlocked = false;
   _motors.stop();
   _servoScanner.detach();
   _dashboardData.autoTurnCompletionReason = "OPERATOR_STOP";
@@ -263,7 +233,7 @@ void NavigationManager::cancelForModeChange() {
   _relativeTurnDeg = 0.0f;
   _turnStartedMs = 0;
   _lastIntegratedSampleMs = 0;
-  _recoveryHazardPaused = false;
+  _environmentalIrBlocked = false;
   _motors.stop();
   _servoScanner.detach();
   _environmentalRecoveryActive = false;
@@ -369,6 +339,8 @@ bool NavigationManager::handleOperatorInterruption() {
 
 bool NavigationManager::handleCriticalSafety(unsigned long now) {
   if (_safety.hasNonRecoverableCriticalHazard()) {
+    _turnUsingGyro = false;
+    setPhase(AutoPhase::Idle, now);
     _environmentalRecoveryActive = false;
     _hazardClearStartedMs = 0;
     _motors.stop();
@@ -541,16 +513,16 @@ void NavigationManager::updateFrontValidation(unsigned long now) {
     setPhase(AutoPhase::FrontSampleWait, now);
     return;
   }
-  if (_sensors.distanceSampleSequence() < _sampleTargetSequence) {
+  if (static_cast<int32_t>(static_cast<uint32_t>(_sensors.distanceSampleSequence()-_sampleTargetSequence)) < 0) {
     if (now - _sampleRequestedMs > RobotConfig::ULTRASONIC_SAMPLE_TIMEOUT_MS + 20UL)
       enterInvalidStop("FRONT_SAMPLE_TIMEOUT_STOP");
     return;
   }
   const UltrasonicSample front = _sensors.latestUltrasonicSample();
-  const bool fresh = front.sequence >= _sampleTargetSequence && front.sampleMs != 0 &&
-    now - front.sampleMs <= RobotConfig::ULTRASONIC_STALE_MS;
+  const bool fresh = requestedSample(front, now, true);
   const bool trusted = fresh && front.facingFront &&
-    ((front.state == UltrasonicResultState::DistanceValid && front.valid) ||
+    ((front.state == UltrasonicResultState::DistanceValid && front.valid &&
+      isfinite(front.distanceCm) && front.distanceCm > 0.0f) ||
      front.state == UltrasonicResultState::ClearNoEcho);
   if (!trusted) {
     enterInvalidStop("FRONT_ULTRASONIC_INVALID_STOP");
@@ -560,9 +532,7 @@ void NavigationManager::updateFrontValidation(unsigned long now) {
   if (zone != IrZone::Clear) {
     _obstacleReevaluationPending = false;
     _obstacleRecoveryActive = false;
-    if (_v2.watchdogExhausted()) { _v2.pause(now); beginRecoveryFrontCheck(now); }
-    else if (_v2.episodeActive()) { _v2.pause(now); beginRecoveryIrBackoff(now); }
-    else beginIrRecovery(zone, now);
+    beginIrRecovery(zone, now);
     return;
   }
 
@@ -584,10 +554,6 @@ void NavigationManager::updateFrontValidation(unsigned long now) {
     _obstacleRecoveryActive = false;
     beginObstacleRecovery(now);
   } else {
-    if (_v2.episodeActive() && front.state == UltrasonicResultState::DistanceValid &&
-        front.distanceCm < RobotConfig::RECOVERY_FRONT_EXIT_CM) {
-      _v2.pause(now); _obstacleForwardClearMs=0; beginRecoveryFrontCheck(now); return;
-    }
     _obstacleRecoveryActive = false;
     startForward(now, "FORWARD_STEP");
   }
@@ -610,17 +576,12 @@ void NavigationManager::updateForward(unsigned long now, unsigned long elapsedMs
       now-progress.sampleMs <= RobotConfig::ULTRASONIC_STALE_MS &&
       (progress.state == UltrasonicResultState::ClearNoEcho ||
        (progress.state == UltrasonicResultState::DistanceValid && progress.valid &&
-        isfinite(progress.distanceCm) && progress.distanceCm > RobotConfig::AUTO_OBSTACLE_CM));
+        isfinite(progress.distanceCm) && progress.distanceCm > 0.0f));
   if (!forwardTrusted) { _obstacleForwardClearMs=0; enterInvalidStop("FORWARD_UNTRUSTED_STOP"); return; }
-  if (_v2.episodeActive() && progress.state == UltrasonicResultState::DistanceValid &&
-      progress.distanceCm < RobotConfig::RECOVERY_FRONT_EXIT_CM) {
-    _obstacleForwardClearMs=0; _v2.pause(now); beginRecoveryFrontCheck(now); return;
-  }
   _obstacleForwardClearMs += elapsedMs;
   if (_obstacleForwardClearMs >= RobotConfig::AUTO_OBSTACLE_RETRY_RESET_FORWARD_MS) {
     if (RobotConfig::ENABLE_STUCK_RECOVERY_V2)
       _v2.noteSustainedClear(_obstacleForwardClearMs);
-    if (!_v2.episodeActive()) _recoveryIrBackoff.resetMission();
     _obstacleRecoveryAttempts = 0;
     _blockedRetryCount = 0;
     _obstacleForwardClearMs = 0;
@@ -658,7 +619,6 @@ void NavigationManager::updateForward(unsigned long now, unsigned long elapsedMs
 }
 
 void NavigationManager::beginObstacleRecovery(unsigned long now) {
-  if (_v2.episodeActive()) { _obstacleForwardClearMs=0; _v2.pause(now); beginRecoveryFrontCheck(now); return; }
   beginUnifiedObstacleRecovery(ScanPurpose::Obstacle, IrZone::Clear, now);
 }
 
@@ -683,7 +643,6 @@ void NavigationManager::updateReverseSequence(unsigned long now) {
 }
 
 void NavigationManager::beginScan(ScanPurpose purpose, unsigned long now) {
-  if (purpose == ScanPurpose::EnvironmentalRecovery) _v2.resume(now);
   _scanPurpose = purpose;
   _motors.stop();
   if (purpose == ScanPurpose::EnvironmentalRecovery)
@@ -761,12 +720,10 @@ void NavigationManager::updateScan(unsigned long now) {
 
   UltrasonicSample sample;
   bool finished = false;
-  if (_sensors.distanceSampleSequence() >= _sampleTargetSequence) {
+  if (static_cast<int32_t>(static_cast<uint32_t>(_sensors.distanceSampleSequence()-_sampleTargetSequence)) >= 0) {
     sample = _sensors.latestUltrasonicSample();
     const bool expectedFront = _scanDirectionIndex == 1;
-    if (sample.sequence < _sampleTargetSequence || sample.sampleMs == 0 ||
-        now - sample.sampleMs > RobotConfig::ULTRASONIC_STALE_MS ||
-        sample.facingFront != expectedFront) {
+    if (!requestedSample(sample,now,expectedFront)) {
       sample = UltrasonicSample();
       sample.state = UltrasonicResultState::Stale;
     }
@@ -794,8 +751,7 @@ void NavigationManager::updateScan(unsigned long now) {
 }
 
 void NavigationManager::recordScanReading(const UltrasonicSample& sample) {
-  if (sample.sampleMs > _scanAccumulator.newestSampleMs)
-    _scanAccumulator.newestSampleMs = sample.sampleMs;
+  _scanAccumulator.newestSampleMs = sample.sampleMs; // arrival order, including millis wrap
   if (sample.state == UltrasonicResultState::SensorFault) {
     _scanAccumulator.sensorFaultCount++;
   } else if (sample.state == UltrasonicResultState::ClearNoEcho) {
@@ -885,15 +841,40 @@ void NavigationManager::selectPathAfterScan(unsigned long now) {
     return;
   }
 
-  if (_v2.episodeActive()) {
-    if (_environmentalRecoveryActive) completeEnvironmentalRecovery();
-    if (_v2.state() == StuckV2State::TrappedHold) {
-      setState(NavigationState::TrappedHold, "ENVIRONMENTAL_SCAN_COMPLETE_COOLDOWN");
-      setPhase(AutoPhase::TrappedHold, now); return;
+  if (_environmentalRecoveryActive) {
+    V2ScanDecisionInput input;
+    input.left = recoveryReading(_leftScan);
+    input.front = recoveryReading(_frontScan);
+    input.right = recoveryReading(_rightScan);
+    if (currentIrZone() != IrZone::Clear) {
+      _environmentalIrBlocked = true;
+      enterInvalidStop("ENVIRONMENTAL_IR_HOLD");
+      return;
     }
-    _v2.resume(now);
-    _scanPurpose=ScanPurpose::EscapeV2; selectRecoveryDirection(now); return;
+    if (RobotConfig::ENABLE_STUCK_RECOVERY_V2 &&
+        obviousBoxedIn(input, RobotConfig::RECOVERY_BOXED_SIDE_CM)) {
+      completeEnvironmentalRecovery();
+      _v2.noteBoxedIn();
+      beginV2Escape(now, true);
+      return;
+    }
+    bool turnLeft = false;
+    const float front = scanPathClearance(_frontScan);
+    const float left = scanPathClearance(_leftScan);
+    const float right = scanPathClearance(_rightScan);
+    if (front > RobotConfig::AUTO_OBSTACLE_CM && front >= left && front >= right) {
+      completeEnvironmentalRecovery();
+      beginFrontValidation(now, "ENVIRONMENTAL_FRONT_VALIDATION");
+      return;
+    }
+    if (selectClearestSide(turnLeft)) {
+      beginSpinTurn(turnLeft, ScanPurpose::EnvironmentalRecovery, now);
+      return;
+    }
+    enterInvalidStop("HAZARD_RECOVERY_NO_SAFE_PATH_STOP");
+    return;
   }
+
   const float left = scanPathClearance(_leftScan);
   const float front = scanPathClearance(_frontScan);
   const float right = scanPathClearance(_rightScan);
@@ -984,7 +965,6 @@ bool NavigationManager::selectClearestSide(bool& turnLeft) const {
 }
 
 void NavigationManager::beginSpinTurn(bool turnLeft, ScanPurpose purpose, unsigned long now) {
-  if (_v2.episodeActive()) { beginRecoveryFrontCheck(now); return; }
   if (RobotConfig::ENABLE_STUCK_RECOVERY_V2 &&
       purpose != ScanPurpose::EnvironmentalRecovery &&
       purpose != ScanPurpose::StuckRecovery &&
@@ -1116,9 +1096,6 @@ void NavigationManager::finishRecoveryAfterSettle(unsigned long now) {
 }
 
 void NavigationManager::enterInvalidStop(const char* reason) {
-  if (_v2.watchdogExhausted() && _v2.handoffPending()) {
-    _v2.pause(millis()); _obstacleForwardClearMs=0;
-  }
   const UltrasonicResultState sonar = _sensors.snapshot().ultrasonicState;
   if (sonar == UltrasonicResultState::SensorFault ||
       sonar == UltrasonicResultState::Stale) {
@@ -1148,9 +1125,9 @@ void NavigationManager::beginSonarReacquire(unsigned long now) {
   _relativeTurnDeg = 0.0f;
   _turnStartedMs = 0;
   _lastIntegratedSampleMs = 0;
-  _recoveryIrBackoff.cancelPulse();
+  _recoveryIrBackoff.resetMission();
   _recoverySideRechecks = 0;
-  if (RobotConfig::ENABLE_STUCK_RECOVERY_V2) _v2.pause(now);
+  if (RobotConfig::ENABLE_STUCK_RECOVERY_V2) _v2.abort();
   _scanPurpose = ScanPurpose::Obstacle;
   _sampleTargetSequence = _sampleRequestedMs = 0;
   _scanDirectionIndex = _scanReadingIndex = 0;
@@ -1190,15 +1167,7 @@ void NavigationManager::updateSonarReacquire(unsigned long now) {
     if (_environmentalRecoveryActive) {
       beginScan(ScanPurpose::EnvironmentalRecovery, now); return;
     }
-    if (_v2.state() == StuckV2State::TrappedHold) {
-      setState(NavigationState::TrappedHold, "SONAR_RESTORED_COOLDOWN");
-      setPhase(AutoPhase::TrappedHold, now); return;
-    }
-    if (_v2.episodeActive()) {
-      _v2.pause(now); _v2LastReason="SONAR_RESTORED";
-      beginRecoveryFrontCheck(now); return;
-    }
-    _sampleTargetSequence = front.sequence;
+    _sampleTargetSequence = front.sequence;_sampleRequestedMs=front.sampleMs;
     setState(NavigationState::FrontSample, "SONAR_REACQUIRED_FRONT_DECISION");
     setPhase(AutoPhase::FrontSampleWait, now);
     updateFrontValidation(now); // fresh normal AUTO decision, never old turn/backoff
@@ -1263,7 +1232,6 @@ void NavigationManager::completeEnvironmentalRecovery() {
   _environmentalRecoveryActive = false;
   _environmentalRecoveryCompleted = true;
   _environmentalIrBlocked = false;
-  _recoveryHazardPaused = false;
   _hazardClearStartedMs = 0;
   _dashboardData.autoHazardRecoveryState = "RESUME_READY";
 }
@@ -1333,16 +1301,14 @@ void NavigationManager::updateV2RetryCooldown(unsigned long now) {
   // serviceLoop continues sensors, Wi-Fi and operator STOP while we wait.
   // A fresh scan, with motors OFF, rechecks sonar before any new turn.
   if (!_v2.retryReady(now, RobotConfig::RECOVERY_COOLDOWN_MS)) return;
-  if (_v2.watchdogExhausted()) {
-    if (!_v2.beginWatchdogReassessment(now, RobotConfig::RECOVERY_COOLDOWN_MS)) return;
-  } else if (!_v2.beginRetryRound(now)) return;
-  _recoveryIrBackoff.cancelPulse();
+  if (!_v2.beginRetryRound(now)) return;
+  _recoveryIrBackoff.resetMission();
   _recoverySideRechecks=0;
   _relativeTurnDeg=0.0f;
   _dashboardData.autoSelectedPath="NONE";
   _v2LastReason="RETRY_FRESH_SCAN";
   setState(NavigationState::StuckSuspected, "V2_RETRY_FRESH_SCAN");
-  beginRecoveryFrontCheck(now); // stationary evidence can release HOLD without another turn
+  beginScan(ScanPurpose::EscapeV2, now);
 }
 
 void NavigationManager::beginV2Escape(unsigned long now, bool reuseScan) {
@@ -1367,14 +1333,6 @@ void NavigationManager::beginV2Escape(unsigned long now, bool reuseScan) {
 }
 
 void NavigationManager::selectRecoveryDirection(unsigned long now) {
-  if (scanSampleTrusted(_frontScan) && currentIrZone()==IrZone::Clear &&
-      recoveryFrontClear(recoveryReading(_frontScan), RobotConfig::RECOVERY_FRONT_EXIT_CM)) {
-    _v2.handoffCandidate(now); _obstacleForwardClearMs=0;
-    beginFrontValidation(now,"RECOVERY_HANDOFF_FORWARD_VALIDATION"); return;
-  }
-  if (!_v2.watchdogExhausted() && _v2.sideTurns() >= RobotConfig::RECOVERY_MAX_TURNS) {
-    enterV2TrappedHold("ESCAPE_TURN_LIMIT",now); return;
-  }
   V2ScanDecisionInput input;
   input.left = recoveryReading(_leftScan);
   input.front = recoveryReading(_frontScan);
@@ -1384,31 +1342,11 @@ void NavigationManager::selectRecoveryDirection(unsigned long now) {
   input.hardCollisionCm = RobotConfig::RECOVERY_HARD_VETO_CM;
   input.tieToleranceCm = RobotConfig::AUTO_PATH_TIE_TOLERANCE_CM;
   const V2ScanAction action = decideV2Scan(input);
-  if (_v2.watchdogExhausted()) {
-    if (!scanSampleTrusted(_leftScan) || !scanSampleTrusted(_frontScan) ||
-        !scanSampleTrusted(_rightScan) || action == V2ScanAction::Hold ||
-        !_v2.renewAfterWatchdog(now, RobotConfig::RECOVERY_COOLDOWN_MS)) {
-      enterV2TrappedHold("WATCHDOG_REASSESSMENT_BLOCKED", now);
-      return;
-    }
-    _recoveryIrBackoff.resetMission();
-    _recoverySideRechecks = 0;
-    _obstacleForwardClearMs = 0;
-    _turnUsingGyro=false; _relativeTurnDeg=0; _turnStartedMs=0; _lastIntegratedSampleMs=0;
-    _v2LastReason = "WATCHDOG_FRESH_NEW_EPISODE";
-  }
   if (action == V2ScanAction::Hold) {
     enterV2TrappedHold("ESCAPE_INITIAL_SCAN_UNSAFE", now);
     return;
   }
-  bool turnLeft = action == V2ScanAction::TurnLeft;
-  if (_v2.hasCommittedSide()) {
-    const bool oldLeft=_v2.committedLeft();
-    const bool oldSafe=recoveryPathSafe(oldLeft ? input.left : input.right,input.hardCollisionCm) &&
-        (oldLeft ? !_safety.isLeftIrObstacleActive() : !_safety.isRightIrObstacleActive());
-    if (oldSafe) turnLeft=oldLeft;
-    else _v2.replaceCommittedSide(turnLeft); // this complete fresh scan proves replacement
-  }
+  const bool turnLeft = action == V2ScanAction::TurnLeft;
   _v2.commitSide(turnLeft);
   beginV2Turn(turnLeft, now);
 }
@@ -1452,8 +1390,6 @@ void NavigationManager::finishRecoverySideCheck(unsigned long now) {
 }
 
 void NavigationManager::beginRecoveryFrontCheck(unsigned long now) {
-  _v2.pause(now);
-  _v2.resume(now); // a sensing checkpoint is active recovery work
   _motors.stop();
   _currentServoPosition = "FRONT";
   _sensors.setDistanceFacingFront(true);
@@ -1471,14 +1407,13 @@ void NavigationManager::updateRecoveryFrontCheck(unsigned long now) {
     setPhase(AutoPhase::RecoveryFrontWait, now);
     return;
   }
-  if (_sensors.distanceSampleSequence() < _sampleTargetSequence) {
+  if (static_cast<int32_t>(static_cast<uint32_t>(_sensors.distanceSampleSequence()-_sampleTargetSequence)) < 0) {
     if (now - _sampleRequestedMs > RobotConfig::ULTRASONIC_SAMPLE_TIMEOUT_MS + 20UL)
       enterV2TrappedHold("ESCAPE_FRONT_TIMEOUT", now);
     return;
   }
   const UltrasonicSample front = _sensors.latestUltrasonicSample();
-  if (front.sequence < _sampleTargetSequence || !front.facingFront ||
-      front.sampleMs == 0 || now - front.sampleMs > RobotConfig::ULTRASONIC_STALE_MS ||
+  if (!requestedSample(front, now, true) || front.sampleMs == 0 ||
       (front.state != UltrasonicResultState::ClearNoEcho &&
        (front.state != UltrasonicResultState::DistanceValid || !front.valid ||
         !isfinite(front.distanceCm) || front.distanceCm <= 0.0f))) {
@@ -1489,10 +1424,11 @@ void NavigationManager::updateRecoveryFrontCheck(unsigned long now) {
   reading.state = front.state == UltrasonicResultState::ClearNoEcho
       ? RecoveryReadingState::ClearNoEcho : RecoveryReadingState::DistanceValid;
   reading.cm = front.distanceCm;
-  if (recoveryFrontClear(reading, RobotConfig::RECOVERY_FRONT_EXIT_CM) && currentIrZone()==IrZone::Clear) {
+  if (recoveryFrontClear(reading, RobotConfig::RECOVERY_FRONT_EXIT_CM)) {
     _motors.stop();
     _servoScanner.detach();
-    _v2.handoffCandidate(now); // preserve both budgets until sustained forward proof
+    _v2.recovered();
+    _recoveryIrBackoff.resetMission();
     _scanPurpose = ScanPurpose::Obstacle;
     _recoverySideRechecks = 0;
     _obstacleRecoveryAttempts = 0;
@@ -1502,11 +1438,10 @@ void NavigationManager::updateRecoveryFrontCheck(unsigned long now) {
     setPhase(AutoPhase::Idle, now);
     return;
   }
-  if (!_v2.watchdogExhausted() && _v2.sideTurns() >= RobotConfig::RECOVERY_MAX_TURNS) {
+  if (_v2.sideTurns() >= RobotConfig::RECOVERY_MAX_TURNS) {
     enterV2TrappedHold("ESCAPE_TURN_LIMIT", now);
     return;
   }
-  if (_v2.watchdogExhausted() || !_v2.hasCommittedSide()) { beginScan(ScanPurpose::EscapeV2,now); return; }
   _recoverySideRechecks = 0;
   beginRecoverySideCheck(now);
 }
@@ -1533,8 +1468,8 @@ void NavigationManager::beginRecoveryIrBackoff(unsigned long now,
   }
   setState(NavigationState::RecoveryIrBackoff, "RECOVERY_IR_BACKOFF");
   setPhase(AutoPhase::RecoveryIrBackoff, now);
-  // Cap the calibrated user speed only for RecoveryIrBackoff reverse pulses.
-  _motors.backwardWithSpeedCap(RobotConfig::RECOVERY_BACKOFF_MAX_SPEED_PERCENT);
+  // MotorController uses its current user-selected speed for backward().
+  _motors.backward();
   _recoveryIrBackoff.pulseCommanded(millis());
 }
 
@@ -1551,7 +1486,7 @@ void NavigationManager::updateRecoveryIrBackoff(unsigned long now) {
     case RecoveryIrBackoffPolicy::Action::None:
       return;
     case RecoveryIrBackoffPolicy::Action::Backward:
-      _motors.backwardWithSpeedCap(RobotConfig::RECOVERY_BACKOFF_MAX_SPEED_PERCENT);
+      _motors.backward();
       _recoveryIrBackoff.pulseCommanded(millis());
       return;
     case RecoveryIrBackoffPolicy::Action::Stop:
@@ -1618,11 +1553,9 @@ void NavigationManager::enterV2TrappedHold(const char* reason, unsigned long now
   }
   _motors.stop();
   _servoScanner.detach();
-  _turnUsingGyro=false; _relativeTurnDeg=0; _turnStartedMs=0; _lastIntegratedSampleMs=0;
   _v2.hold(now);
-  if (strcmp(reason, "ESCAPE_TOTAL_TIMEOUT") == 0) _v2.exhaustWatchdog(now);
   _recoverySideRechecks = 0;
-  _recoveryIrBackoff.cancelPulse();
+  _recoveryIrBackoff.resetMission();
   _v2LastReason = reason;
   _obstacleRecoveryActive = false;
   _obstacleReevaluationPending = false;
@@ -1790,4 +1723,11 @@ void NavigationManager::updateDiagnostics(unsigned long now) {
   _dashboardData.autoRecoveryIrActive = _recoveryIrBackoff.active();
   _dashboardData.autoSonarHold = _phase == AutoPhase::SonarReacquire;
   _dashboardData.autoRecoveryTransition = _dashboardData.navigationDecision;
+}
+
+
+bool NavigationManager::requestedSample(const UltrasonicSample& sample,unsigned long now,bool front) const {
+  return static_cast<int32_t>(static_cast<uint32_t>(sample.sequence-_sampleTargetSequence))>=0 &&
+      static_cast<int32_t>(static_cast<uint32_t>(sample.sampleMs-_sampleRequestedMs))>=0 &&
+      now-sample.sampleMs<=RobotConfig::ULTRASONIC_STALE_MS && sample.facingFront==front;
 }

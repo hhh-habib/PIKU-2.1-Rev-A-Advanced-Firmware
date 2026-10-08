@@ -1,0 +1,51 @@
+Standalone freeze software verification extract (2026-10-08 Asia/Dhaka)
+Evidence from the completed read-only freeze preparation; validated source is unchanged.
+Host runner: existing tests/run_host_checks.py invoked in memory; only trace-summary output redirected into .pio. Assertions unchanged.
+Initial null-device wrapper restriction was corrected without source/test changes; final rerun passed.
+12 native C++ policy executables passed; 172 Python tests ran: 168 passed, 4 explicit CPS-only skips, 0 failures/errors.
+34 exact reference/current chronological traces matched; nine preserved scenarios include 54 state/event combinations.
+Actual backend/Chromium STOP and mode ordering plus embedded JavaScript parse passed.
+Configured incremental PlatformIO build: esp32-s3-n16r8 PASS, RAM 58908 bytes, flash 1042541 bytes.
+No physical measurements or independent flashed-image hash verification are asserted.
+Owner separately confirms fresh build/upload of restored project and qualitative physical PASS.
+Full prior raw verification logs remain local ignored .pio artifacts:
+.pio/FREEZE_REVIEW_HOST_CHECKS_FINAL.log raw SHA256 50e42217a3b17c3b4d75786810faf0b21619be571baeccb2e5c280acaa039a46
+.pio/FREEZE_REVIEW_BUILD.log raw SHA256 59ad0cea0b65d32c234d1234d5aff7fa3391792ea258fe6173ea77baca4085dd
+
+Executed native policies:
+PASS control_origin_policy.cpp
+PASS manual_motion_gate.cpp
+PASS manual_override_policy.cpp
+PASS recovery_active_time.cpp
+PASS recovery_episode_v33.cpp
+PASS recovery_ir_backoff_policy.cpp
+PASS sonar_reacquire_policy.cpp
+PASS sta_reconnect_policy.cpp
+PASS stuck_recovery_v2_policy.cpp
+PASS trace_checksum.cpp
+PASS trace_ring.cpp
+PASS v2_recovery_integration.cpp
+
+Final suite excerpts:
+Ran 172 tests in 56.823s
+OK (skipped=4)
+READ_ONLY_REVIEW_RESULT tests=172 skipped=4 failures=0 errors=0
+Embedded dashboard JavaScript parse PASS
+
+Build/platform excerpts:
+PLATFORM: Espressif 32 (7.0.1) > Espressif ESP32-S3-DevKitC-1-N8 (8 MB QD, No PSRAM)
+ - framework-arduinoespressif32 @ 3.20017.241212+sha.dcc1105b
+ - tool-esptoolpy @ 2.41100.0 (4.11.0)
+ - toolchain-riscv32-esp @ 8.4.0+2021r2-patch5
+ - toolchain-xtensa-esp32s3 @ 8.4.0+2021r2-patch5
+RAM:   [==        ]  18.0% (used 58908 bytes from 327680 bytes)
+Flash: [==        ]  15.9% (used 1042541 bytes from 6553600 bytes)
+========================= [SUCCESS] Took 7.79 seconds =========================
+
+Freeze staging preserves existing CRLF/LF/mixed bytes. Git index entries were refreshed under -text attributes; no source files were rewritten.
+CRLF-aware staged whitespace review retains two pre-existing blank EOF lines in tests/native_v46_backend.cpp and tests/test_v46_backend.py. These owner test bytes are frozen unchanged; no cleanup was performed.
+
+Post-stage verification after private-index exclusion and exact-byte attributes: PASS.
+12 native policies passed; 172 Python tests ran in 62.195 s: 168 passed, 4 CPS-only skips, 0 failures/errors.
+34 trace summaries equal the existing restoration summary; actual backend/browser ordering and JS parse passed.
+.pio/FREEZE_EXECUTION_HOST_CHECKS.log raw SHA256 50d089f5084202167fc0d4fc798751d1e8a798137597cdf043b291b09ffe1893

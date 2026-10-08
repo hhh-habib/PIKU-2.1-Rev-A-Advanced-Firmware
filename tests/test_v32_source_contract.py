@@ -1,12 +1,14 @@
+"""Historical V3 static contracts projected from the reviewed V4.5 delta; current runtime has separate gates."""
+from v45_approved_delta import before_v45
 from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
-main = (root / "src/main.cpp").read_text()
-safety = (root / "src/SafetyManager.cpp").read_text()
-nav = (root / "src/NavigationManager.cpp").read_text()
-sensor = (root / "src/SensorManager.cpp").read_text()
-html = (root / "src/WebDashboardAssets.cpp").read_text()
-config = (root / "include/RobotConfig.h").read_text()
+main = before_v45("src/main.cpp",(root / "src/main.cpp").read_text())
+safety = before_v45("src/SafetyManager.cpp",(root / "src/SafetyManager.cpp").read_text())
+nav = before_v45("src/NavigationManager.cpp",(root / "src/NavigationManager.cpp").read_text())
+sensor = before_v45("src/SensorManager.cpp",(root / "src/SensorManager.cpp").read_text())
+html = before_v45("src/WebDashboardAssets.cpp",(root / "src/WebDashboardAssets.cpp").read_text())
+config = before_v45("include/RobotConfig.h",(root / "include/RobotConfig.h").read_text())
 
 def section(text, start, end):
     return text.split(start, 1)[1].split(end, 1)[0]

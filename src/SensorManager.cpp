@@ -42,6 +42,7 @@ void SensorManager::begin() {
   analogSetPinAttenuation(PinConfig::MQ2_ANALOG, ADC_11db);
   dht.begin();
   startedMs = millis();
+  current.environmentStartedMs=startedMs;
   current.mq2Warmup = true;
   activeInstance = this;
   attachInterrupt(digitalPinToInterrupt(PinConfig::ECHO_PIN), SensorManager::handleEchoInterrupt, CHANGE);
@@ -60,6 +61,9 @@ void SensorManager::updateControlSensors() {
   unsigned long now = millis();
   unsigned long nowUs = micros();
   advanceDistanceSample(nowUs);
+  // Failed reads retain values and success stamps; stale values are not fresh monitoring.
+  if (now-current.temperatureLastSuccessMs>RobotConfig::DHT22_INTERVAL_MS*2) current.temperatureValid=false;
+  if (now-current.mq2SampleMs>RobotConfig::MQ2_INTERVAL_MS*2) current.gasValid=false;
   if (lastFastSensorMs == 0 || now - lastFastSensorMs >= RobotConfig::FAST_SENSOR_INTERVAL_MS) {
     updateFastSensors(now);
   }
@@ -201,7 +205,7 @@ void SensorManager::updateDht(unsigned long now) {
   current.environmentSampleMs = now;
   current.temperatureValid = isfinite(temperature);
   current.humidityValid = isfinite(humidity);
-  if (current.temperatureValid) current.temperature = temperature;
+  if (current.temperatureValid) {current.temperature = temperature;current.temperatureLastSuccessMs=now;}
   if (current.humidityValid) current.humidity = humidity;
   if (current.temperatureValid && current.humidityValid) {
     current.environmentLastSuccessMs = now;
@@ -212,7 +216,11 @@ void SensorManager::updateDht(unsigned long now) {
 
 void SensorManager::updateMq2(unsigned long now) {
   lastMq2Ms = now;
+  current.mq2Warmup = now - startedMs < RobotConfig::MQ2_WARMUP_MS;
+  current.mq2WarmupAgeMs = now - startedMs;
   const int sample = analogRead(PinConfig::MQ2_ANALOG);
+  current.gasValid=sample>=0 && sample<=4095;
+  if(!current.gasValid)return;
   current.gasRaw = sample;
   if (mq2SampleCount < RobotConfig::MQ2_FILTER_SAMPLES) {
     mq2Samples[mq2SampleIndex] = sample;

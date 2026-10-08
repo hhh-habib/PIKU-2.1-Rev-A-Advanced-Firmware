@@ -530,6 +530,10 @@ void WebDashboard::handleCommand() {
     sendError(409, "text/plain", "SESSION_REJECTED");
     return;
   }
+  // This is MANUAL retirement, not a new explicit AUTO operator STOP.
+  // Untagged STOP retains its all-mode, fail-safe sequence semantics.
+  if (command == "STOP" && _server.arg("retire") == "manual" &&
+      _data.controlMode != "MANUAL") { sendOk(); return; }
   if (applyCommand(command, sequence, sequenced)) {
     sendOk();
   } else {

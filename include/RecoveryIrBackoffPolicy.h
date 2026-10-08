@@ -41,11 +41,11 @@ public:
     }
     return Action::None;
   }
-  // Called after the capped recovery reverse output has been applied.
+  // Called after MotorController::backward() has applied the selected speed.
   void pulseCommanded(uint32_t now) {
     if (stage_ == Stage::Pulse) pulseStartedMs_=now;
   }
-  void cancelPulse() { clearEvent(); } // preserve episode pulse count
+  void cancelPulse() { clearEvent(); } // retained actuator cancellation interface
   void resetMission() {
     clearEvent();
     missionPulses_=0;

@@ -1,0 +1,899 @@
+{
+  "schema": "piku-standalone-freeze-v1",
+  "date_client": "2026-10-08",
+  "timezone": "Asia/Dhaka",
+  "project_development_relative": "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development",
+  "reviewed_parent": "cbbf3599d0a6192976f40d991250cd38a02c7abb",
+  "branch": "codex/reva-collision-closure-20261005",
+  "annotated_tag": "revA-standalone-v32-restored-physical-validated-20261008",
+  "commit_identity": "Creating commit resolved by annotated tag; actual SHA also recorded in tag annotation and post-commit local receipt.",
+  "source_fingerprint": "3c27ffb727cd1577ca9ba70ae01f20762bd094c88df7753cdb9c1cb5f49aeef3",
+  "fingerprint_definition": "SHA256 of UTF-8 JSON mapping the 48 non-secret src/include/platformio paths to raw SHA256 values, with sorted keys and compact separators.",
+  "production_configuration_files": {
+    "include/BuzzerManager.h": {
+      "raw_sha256": "e2e5ffe0539d1e2800dd6f7e0d0189f43c281f4f5c5c6da04b1d612e2fa978fc",
+      "normalized_lf_sha256": "e2e5ffe0539d1e2800dd6f7e0d0189f43c281f4f5c5c6da04b1d612e2fa978fc",
+      "eol": "LF",
+      "git_snapshot_eligible": true
+    },
+    "include/ControlOriginPolicy.h": {
+      "raw_sha256": "13cb24744beb746c3eb1a53335c3611928715a060e0c438d3c0a5a9ad605d4bb",
+      "normalized_lf_sha256": "0bf670f934340c0f4c999ff942f61ade8b23466a9202b86b0481e3a141cc378a",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "include/DashboardPublisher.h": {
+      "raw_sha256": "c05fbc1a03892dde4bdcc9b120c51a70d4f8d39c1895e72343cbb65b3491ec15",
+      "normalized_lf_sha256": "4e8a3c61f53838fe980d144eabb3878bed44766ddbaa7a145ba5f01986163130",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "include/DisplayManager.h": {
+      "raw_sha256": "e2e71a5375779a899376c7fdf31278d27dfbb26ef79ea12f67cc595ed31036a4",
+      "normalized_lf_sha256": "e2e71a5375779a899376c7fdf31278d27dfbb26ef79ea12f67cc595ed31036a4",
+      "eol": "LF",
+      "git_snapshot_eligible": true
+    },
+    "include/DriveCommandHandler.h": {
+      "raw_sha256": "7a0fd330b6ac5181f16ae4979dc76fd563d5829ce182f179c8a82f72f4a230d1",
+      "normalized_lf_sha256": "7a0fd330b6ac5181f16ae4979dc76fd563d5829ce182f179c8a82f72f4a230d1",
+      "eol": "LF",
+      "git_snapshot_eligible": true
+    },
+    "include/ImuManager.h": {
+      "raw_sha256": "113324981ff1414bf87ccc92aa0380bc2adac4e4f8a948de6722b73d82b6cdfe",
+      "normalized_lf_sha256": "8f212280f74ab4aae93d4d828e29ba6efd52208e2abb4835d3d373d24f848d83",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "include/ManualMotionGate.h": {
+      "raw_sha256": "36b1732aa05fd8dde3caa059db366b37cb21aaa1e1b758224d28683edc4ae9c6",
+      "normalized_lf_sha256": "57db60bcbc8344b07eb280042312353331b6a90f28798c6d5e454167e73064ba",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "include/ManualOverridePolicy.h": {
+      "raw_sha256": "44ea8b2d4b1108586e1f082eceedb4c82187e6daa1a7d1f99973df2d5fa42e44",
+      "normalized_lf_sha256": "c6a571a6645a28caf4bb3f1ecc9ed115576d7325a7935c126af14da400243444",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "include/MotorController.h": {
+      "raw_sha256": "5c6a55bd219d799f47f7fe9f132be4931bd0575e35d924afdac80e93ee932d55",
+      "normalized_lf_sha256": "bd31e58c10b9634be04b143d51ccbced2979466498a0a3eacc9656dcc299d0e6",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "include/NavigationManager.h": {
+      "raw_sha256": "69166475e2c3ed8718ce8e91ca779a5c8caaa840993abf66a6e8a26e1e7b8d00",
+      "normalized_lf_sha256": "eaa4b79751a2a41b0729637787d0b64541408e323719828f29ce9ce963a05117",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "include/NavigationTrace.h": {
+      "raw_sha256": "03cca4d7af60e4a4060affb544070e44f81cc791a7edb1f2988421099fe5444a",
+      "normalized_lf_sha256": "6561393e8ca5a87826e6050d5610a8a682704028212a87a9636d0cfd6e1bf747",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "include/PinConfig.h": {
+      "raw_sha256": "e8fd5c4ea23cfd02505b4a53599c96d7aba21db62059dd1b176d625d4492813b",
+      "normalized_lf_sha256": "4f67bc218fb7b970adef5265184ef6fd72442c523c87f3fd60ff904707f5c606",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "include/PriorityWebServer.h": {
+      "raw_sha256": "5327ac35cdcfa457c4e241c67e1b25dd01e583ffca0eba44e7bb0537e3a630e2",
+      "normalized_lf_sha256": "397a7f132faa8e29ae3e33fa675893a3c3fcae5af700eca0df26baa3f084712b",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "include/RadioManager.h": {
+      "raw_sha256": "9cf5537511fcf31741bd7b0d5442006f11199ab4f8af20e72c47a528e2ccf485",
+      "normalized_lf_sha256": "9cf5537511fcf31741bd7b0d5442006f11199ab4f8af20e72c47a528e2ccf485",
+      "eol": "LF",
+      "git_snapshot_eligible": true
+    },
+    "include/RadioTypes.h": {
+      "raw_sha256": "25f732a5ffa5444b94a0f23932df1eedadfb8db1a9913e8bf63826db8a401fc9",
+      "normalized_lf_sha256": "75b6ac4565473c3cafe63220c8bb2c2ecda7b97f23197bdcbda364f2dbe743eb",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "include/RecoveryIrBackoffPolicy.h": {
+      "raw_sha256": "f7a8e2dde5636755f42cf86359ed7ba98d66c20e5878795161292525018b145b",
+      "normalized_lf_sha256": "68d670f13114016d364ae3970e1b36db19ac9994b4f9bf10fa646b15d8a8403d",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "include/RobotConfig.h": {
+      "raw_sha256": "82516f5e104547869e9c4fd68a22c5b3efac0eea5d79197792095924ad4b9bab",
+      "normalized_lf_sha256": "ace0c0a09989c0690522d72b9be93016b8a5ecea837443059f3f8a5c7ee5dbaa",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "include/SafetyManager.h": {
+      "raw_sha256": "31dccf5507da476cdc9afd495008e4e0418b4feb1ccf85eb414108066ac1e520",
+      "normalized_lf_sha256": "810e03d567f49cc0bcaeca6db064a7fc5048b9a3f3f81116b23e4711fccf6ef8",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "include/Secrets.example.h": {
+      "raw_sha256": "ba2b9b257c118bd184c60cb55aac87764ec20a1756b8a1943f1aa5f549a04b7c",
+      "normalized_lf_sha256": "ba2b9b257c118bd184c60cb55aac87764ec20a1756b8a1943f1aa5f549a04b7c",
+      "eol": "LF",
+      "git_snapshot_eligible": true
+    },
+    "include/SensorManager.h": {
+      "raw_sha256": "4a78f9c0025a7334a0fbc09868de704cc110d43503bd8e63497044d592756123",
+      "normalized_lf_sha256": "8604c10d2b7c5345bdee4d7741865d053ef70d084b7d58e1383e78e7eedac2bd",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "include/ServoScanner.h": {
+      "raw_sha256": "795f8b702f35a1b8c39f974884afe0ac020ac3b606579ded1568f0200c42402c",
+      "normalized_lf_sha256": "795f8b702f35a1b8c39f974884afe0ac020ac3b606579ded1568f0200c42402c",
+      "eol": "LF",
+      "git_snapshot_eligible": true
+    },
+    "include/SonarReacquirePolicy.h": {
+      "raw_sha256": "fb47102714e92fff75557ea2e47d97b1676e58fa852a6427090e460026c7f83f",
+      "normalized_lf_sha256": "b8ae374fe91543eafa2bec7e781e419ab9f9153d8c9fee713d1687a467be9d99",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "include/StaReconnectPolicy.h": {
+      "raw_sha256": "76aa6b9812b3f627a9d91eb4982f19bdfcae8b497af596f86c8c3eb10b46a9a8",
+      "normalized_lf_sha256": "2ab25a1ee69ab52c137079da350e681be86726693faeee303673def1bc097636",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "include/StuckRecoveryV2Policy.h": {
+      "raw_sha256": "03661c3b6ced509cba96d1c32bf1786f39ee481697168c1d6be71396ec440dc0",
+      "normalized_lf_sha256": "d57f9436b860ce2d0ec0ae4cdb6096963f2c28a1967a1b655a525b52dbf3e977",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "include/TraceChecksum.h": {
+      "raw_sha256": "d4066db75d6cc97cb662383895f2bc9168202712a9d07e024bc7ef760fe73de8",
+      "normalized_lf_sha256": "25b371dae85e12771007be62ac5273e8bc86edae5f5d80331619faf3740422b0",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "include/TraceRing.h": {
+      "raw_sha256": "d2283dff56b3cfde2522704bd8140709acefa32513e6e07c036be1577ba3290b",
+      "normalized_lf_sha256": "4c8d246f967940505374239086dc731a42c30c58cdd091b83f1c320684922223",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "include/V2EscapeDecision.h": {
+      "raw_sha256": "703abf41698d7df00ddbf568ff1d524fa85c77ccf3bf34665a44e9c336a01a0c",
+      "normalized_lf_sha256": "b099c4530bf29261fa5dfb35ed2503e54287545356818ddef06dc9543de802b0",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "include/WebDashboard.h": {
+      "raw_sha256": "6006cc1161949f3ffc67afd4fbb0b901bdb7bce25c29e345e233a7a11704097d",
+      "normalized_lf_sha256": "882d8b608eb62f96047cc46f32c335155abd3e4aa8e6d33f12b8ca8e78b9ce0c",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "include/WebDashboardAssets.h": {
+      "raw_sha256": "a4d20e00ed80e2a55b1ded391e1fe91c8b0f3390aa2a4ac3f7ea92773b26d3ca",
+      "normalized_lf_sha256": "a4d20e00ed80e2a55b1ded391e1fe91c8b0f3390aa2a4ac3f7ea92773b26d3ca",
+      "eol": "LF",
+      "git_snapshot_eligible": true
+    },
+    "include/WebServerLimits.h": {
+      "raw_sha256": "eab67210a606d6bf95f912a1c4d9fe7fdad4d34fb116c389c093bbc167fa48df",
+      "normalized_lf_sha256": "5b5d8923f85f5f790afbd5f4e93d564ea1e36da64fe253769689e6ddbc36ccdc",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "include/WiFiConfig.h": {
+      "raw_sha256": "13befde27c685da56907b632bba1b1610190058ec188ddab2ca3940e910c42e6",
+      "normalized_lf_sha256": "ceb69cb049450a0fecd9daff359eae2bf3a49c6f2d237e087311202582fa4a8e",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "platformio.ini": {
+      "raw_sha256": "d751a9ce012767687145796a5e7ab493d8afc2c7fb390ed239f2dfaed739056b",
+      "normalized_lf_sha256": "ec1fe722e6148ae65b23eecf4d46eb2e7210da44fb246e921be50313222d17bd",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "src/BuzzerManager.cpp": {
+      "raw_sha256": "dd22d3eb3e231af621827ee761775c3e7b9cb33dc13393e0cacd16e8d16e171b",
+      "normalized_lf_sha256": "dd22d3eb3e231af621827ee761775c3e7b9cb33dc13393e0cacd16e8d16e171b",
+      "eol": "LF",
+      "git_snapshot_eligible": true
+    },
+    "src/DashboardPublisher.cpp": {
+      "raw_sha256": "c57bdbb3894af95167e4d8bf89fcfdb58e2696aea67100f01b48cdd4826250ee",
+      "normalized_lf_sha256": "986bed8ba792bee0fbe840e6f72579be6455d11b3c2ba03158a1510f06036f11",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "src/DisplayManager.cpp": {
+      "raw_sha256": "f369e7859db50f78f6dae65dced9240b791b1850474668678a21193bd2c6a37d",
+      "normalized_lf_sha256": "abded9e42a73b7fc880dc4b1a73f27df35b8d050dc15c666b969aa83d39656cc",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "src/DriveCommandHandler.cpp": {
+      "raw_sha256": "1dcac4705c8a8a87a250ed2486c27a34a5edd2c5b35d53e6c1655783a4c6dabc",
+      "normalized_lf_sha256": "1dcac4705c8a8a87a250ed2486c27a34a5edd2c5b35d53e6c1655783a4c6dabc",
+      "eol": "LF",
+      "git_snapshot_eligible": true
+    },
+    "src/ImuManager.cpp": {
+      "raw_sha256": "65740f5f2904a165f67c76f1ea8f3565a2c9864827ddb8854360859ca626a14e",
+      "normalized_lf_sha256": "a661efc86dbd52cba49475284660621dc4b9b558968c1b16e77fb94b280abd68",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "src/MotorController.cpp": {
+      "raw_sha256": "13a70f2817c93a7b08b88cfe0016674fb4b003d60eb57c3018591c9a741c2971",
+      "normalized_lf_sha256": "63d15702086ef5789012eeef12461e16ca82ffd1b7f80bd6c8e4dedb4b3d86b0",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "src/NavigationManager.cpp": {
+      "raw_sha256": "31a1350be59bc2b742de50dac07926a45dd21c4dddcc91606518aaeabbafb75a",
+      "normalized_lf_sha256": "e7548d0c1d3438c4f430bcb6dac445b41d15fd92d1a3362f6a8ae77cb740d87a",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "src/NavigationTrace.cpp": {
+      "raw_sha256": "f24064ff13c184e05ef646fb9bb58bc5a79b538a3cb55df89160350a32dff29f",
+      "normalized_lf_sha256": "82269699c06b7de31775da1af86ebadfee24aa0d0fcfb4357353162be19794bd",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "src/PriorityWebServer.cpp": {
+      "raw_sha256": "3f3e5039d795bc745cb40a172d57e71191c764032c68d230c6868f686527b420",
+      "normalized_lf_sha256": "eeed404492a8434df0c2ea88258d3de7901012a4100d47c9e61cde4c7d43d414",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "src/RadioManager.cpp": {
+      "raw_sha256": "c7d417a30f68fd63b96177ede04ed24a0a2bd1d18b353c21c75b3976ad2e265f",
+      "normalized_lf_sha256": "89861be827b349754eac29c1ddfa0e4bd3b2a33d367995cbd7867388ac96eaae",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "src/SafetyManager.cpp": {
+      "raw_sha256": "b88b30cec93d3cc6ffe8d1cfe3face08ccfc39da695a7e4ebd17fdce720b7444",
+      "normalized_lf_sha256": "9834923c79d0e9eeb7903398434fdddffa9aba9cdf1898f060761b3b2cbc3009",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "src/SensorManager.cpp": {
+      "raw_sha256": "9c152c356e76b493c445d35bf5acffaef0aefecdd4ed9af668f456877194fdda",
+      "normalized_lf_sha256": "5b54b6ba2ff144fa139d4df8dbc78dd61b1ae2f879da67ac398d2ec0b7599041",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "src/ServoScanner.cpp": {
+      "raw_sha256": "7e5d1fc4bc5a7f6763043e7a130dd5a1e7349221ec58bbdf476fd0b0bae68cf5",
+      "normalized_lf_sha256": "7e5d1fc4bc5a7f6763043e7a130dd5a1e7349221ec58bbdf476fd0b0bae68cf5",
+      "eol": "LF",
+      "git_snapshot_eligible": true
+    },
+    "src/WebDashboard.cpp": {
+      "raw_sha256": "c95f247f8a0149bdc12c99935169fbb0d2991cea63ace83f359362464dbb9244",
+      "normalized_lf_sha256": "23be7374320be94401645b5442bbcc8cabeae86581a44877cfbc33aaac495edc",
+      "eol": "MIXED",
+      "git_snapshot_eligible": true
+    },
+    "src/WebDashboardAssets.cpp": {
+      "raw_sha256": "27bb90f04d3b49d0b17a7ebbeaa07ed54ea3c5d3df24733ca831ca4a19db70ae",
+      "normalized_lf_sha256": "264098e52a7d5a68df8e7486cbdd90775c5721203120d9eef6900e966c06afc4",
+      "eol": "MIXED",
+      "git_snapshot_eligible": true
+    },
+    "src/main.cpp": {
+      "raw_sha256": "88eefbc30f0f6ba7fa597e5aaae8d719736402dd319fa2f7054370449aaeda3e",
+      "normalized_lf_sha256": "acc2521f1f3cb337947cd66ed136df0b9d6c5a18f797203003bbff9adbb1fc94",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    }
+  },
+  "active_test_support_files": {
+    "tests/collision_closure_reviewed_delta.json": {
+      "raw_sha256": "058ed4da12b1c4a97b9d75e077630f6660881939ab6897f0063f0e1aee856e1c",
+      "normalized_lf_sha256": "a253234f6e091db839414295f2b907f7a58b390f275c30fc8e7ebca129ec6b87",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/control_origin_policy.cpp": {
+      "raw_sha256": "03c001d9721c3204ccfbc039383aa3cd0af44a78e1f406c481a2c640be727680",
+      "normalized_lf_sha256": "512be77eb3dbff2a070139c09a355de55ddbeb4dbd640b435fa7027d739a02d6",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/dashboard_browser_check.js": {
+      "raw_sha256": "74d277fc33b5ee8df5a4e8eb6648945cbd88ecf4e7f7b9184ad6406d2052e58b",
+      "normalized_lf_sha256": "3c113e5486be7d50c20d359afce30c6254f8d461f9912289699c61c9ee68378b",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/manual_motion_gate.cpp": {
+      "raw_sha256": "dfa1d280eabff6926d88714db1352c4bf82b083541bb3490ba95ac889dce0b67",
+      "normalized_lf_sha256": "0042826fb400ce9e52f38782cdd7859f3a8de565a4879261053087ce6e4408c4",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/manual_override_policy.cpp": {
+      "raw_sha256": "490ed7bfcc7ee2d948e3fdf3449195825a878f7c278907cc70f3778fd5773529",
+      "normalized_lf_sha256": "be79dde5ca042c2d16a99ef12667dae7387571c550911fce22f8121a76acf846",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/native_collision_closure.cpp": {
+      "raw_sha256": "8e674d0080de59c9106bf707e0121b22f36dd4dfd8c90be352160c71a808ffac",
+      "normalized_lf_sha256": "d76882b16a53f5df32ab73c1d401cfd8b835d7be723bbe9df5994497d0cadf8c",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/native_motor_backoff.cpp": {
+      "raw_sha256": "a00d95c0dfc0fe402dd567b188a7b742ab43426af78cd6f23a6d44bb6df6e3dc",
+      "normalized_lf_sha256": "cc3913a78a887744b2a4d9b53c2decd9a8061f870df2fc80dd682d2207d22b17",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/native_navigation_v33.cpp": {
+      "raw_sha256": "fcd14cc0079a710f1371ba0c7fd0a2de0346e1ff3f60eb19b7107ae0e00354e2",
+      "normalized_lf_sha256": "836d55f3d142ff1deafbaf0cfd850ed05ce687c6a57d54cb6acd2fb0ab791a05",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/native_state_collisions.cpp": {
+      "raw_sha256": "9d153775d260ef3293dbf2f35515220c2e03b5bf2c4f270390e4bc24527184f2",
+      "normalized_lf_sha256": "1f4c01bc7c9ba94e49a04c0556cdc8f45e994e734145368fe0ed3704c4aae53d",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/native_v32_restoration.cpp": {
+      "raw_sha256": "8140ae36ab68c58cf8089e494a2a90c47a0ad8a08b4a522bf28fb4639bc197fb",
+      "normalized_lf_sha256": "b83ec8606a3edba77a1a5b0ce9c48ad45493802da274b10c03596d0ec7a23cf5",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/native_v45_availability.cpp": {
+      "raw_sha256": "d86d36df48353289b5ae7891672804003863786f45ed188f40d45a56a93c916b",
+      "normalized_lf_sha256": "bbbdcd77f6b5f79697e90a0fd69c54e292bdb84d83bbf09c0996ae8efbd02705",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/native_v45_navigation.cpp": {
+      "raw_sha256": "ae09b369697d472deb2cc54f999fa524567114c7d4f6f9dde6dba0cbb2b6dae9",
+      "normalized_lf_sha256": "164e805dd7096dea0c90fce0330ac4175631e267ac1b972232b5beab79a88ec4",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/native_v45_producers.cpp": {
+      "raw_sha256": "d6540d75b93cb5c894f8708d90c80159ed2e2326730f9d0da53ef268f3f7016e",
+      "normalized_lf_sha256": "3611c0db0c505be8ca28a9c037d4dd90c78a014bb52b64caf489fbd2a5fca470",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/native_v45_standalone_dispatch.cpp": {
+      "raw_sha256": "f97547f3995e34133b96f13a28a744bea29dceed90945502a93a1a6f347a6c98",
+      "normalized_lf_sha256": "3fac556ae2d12320bb8c5c5e300283c53761abd89aeca6c1d8ea484f85badd39",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/native_v46_backend.cpp": {
+      "raw_sha256": "41caacc884535b2c0a492c6cd5334ef4ffe307026e9a8c422574f545f84bf1ec",
+      "normalized_lf_sha256": "08188aeb46e7191be2a799b0351d679e0dd9de37132c291421d983fcfc220e93",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/native_v46_normal.cpp": {
+      "raw_sha256": "146752aa7ebcaa819b78f9c92ff83aa26d6fa3d19fc55ad30571507f02f02b91",
+      "normalized_lf_sha256": "703dcefa98be78b09076c0c3a807e6458c792e539f7559dacfdf6ce619c2c43c",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/recovery_active_time.cpp": {
+      "raw_sha256": "2643c45a27666663374c57aada3bb2ddf88e8c74959e8495e9415f16046fa25b",
+      "normalized_lf_sha256": "89fd5ea8e3a581b70259d41e6a78aa26857398c667cbe8a9a9cae3317b895fdb",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/recovery_episode_v33.cpp": {
+      "raw_sha256": "ff61998a0bd159d0ad17aba2aee8e6cb6880fe884c587b53b4ddb0517ebfe8c4",
+      "normalized_lf_sha256": "bee93ee4515036651458f56301da72a1cfe38a8c148c3f56b3101f938e6b2b1d",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/recovery_ir_backoff_policy.cpp": {
+      "raw_sha256": "aadf823990ad63e72335350c5e2e323827146959714b7b752f88761bac658e3a",
+      "normalized_lf_sha256": "d73bf92e3ac56765d006b97031b9d60700236ced2167ff06141ddb4e61500a33",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/run_host_checks.py": {
+      "raw_sha256": "fa33ffc8ba5757d698b7a86d56b386e7a8d37aba234a8b57e5ce98189442d138",
+      "normalized_lf_sha256": "6b437df4951b70da9e2f8488b91608549c3263efc132b292e2be27e28f3b6031",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/sonar_reacquire_policy.cpp": {
+      "raw_sha256": "1d3769f65f6856c4b6ccec4d83f89635481ff63e5f40e961bdb240d6eb91a39e",
+      "normalized_lf_sha256": "98951d3b2e0568dd7c719b52ccbd73e26c368602f4804dfcc063eb24ac6c7b74",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/sta_reconnect_policy.cpp": {
+      "raw_sha256": "076fb1e57b1937735eb573930fedf42490b1d18e308e2de0305ad6374ab14e90",
+      "normalized_lf_sha256": "ef8c02d51773574644e461b668885ddfce788c19461c596ce7ded9770a808f9f",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/stubs/Arduino.h": {
+      "raw_sha256": "9ca4000bed5ee89b315b57be8b9c94bb0a9d114dd2d9e06a3a0a023495051de0",
+      "normalized_lf_sha256": "14cb481f736c0587a0bc5c194ef8101acbc61a8d74b11706a66eafb47e7e986d",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/stuck_recovery_v2_policy.cpp": {
+      "raw_sha256": "9cfeeaf20dcca6758322e12f976dea4ce197fe89891e507b73702c7747461580",
+      "normalized_lf_sha256": "5dd0dcf827d01d6af9c5c3facf4deee7ece7e7c7ff5a81e2a1fe6871e5c6adba",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/test_capture_nav_trace.py": {
+      "raw_sha256": "6fc5f7ccbcc4ec851b70614d67149bc7b07fb00be1926f1572869be9f281bfa7",
+      "normalized_lf_sha256": "0438de78dae766921f58acad5647191f047366c86b4fc3e6897914d07fa4a9c3",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/test_collision_closure.py": {
+      "raw_sha256": "03dc59da4f16b57b8bca6d471ac050c662bcaa6a3b932c5f8901f8f7225e2fb4",
+      "normalized_lf_sha256": "a1e91704a0cb3e6db015a5f143cb0f7ac73f21f1da99a5bf7680e3fc2ebef05a",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/test_collision_closure_dispatch.py": {
+      "raw_sha256": "bdbe4ec87a52155c30ae0da78494bcea6e7bf86d73de87dd554f0b494e711548",
+      "normalized_lf_sha256": "c0a2c49c840e3fae50b6e669760e3f3a09ff302dbf1551fbca12296e5afb04be",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/test_collision_closure_inventory.py": {
+      "raw_sha256": "3873d386f301922d49f0b22635e00929686c04231b465ecdeddb2ed5bf7caf85",
+      "normalized_lf_sha256": "ab08f21c7c5cfa971aaaadd5168a49edf22c49b762376bdf0a2865d863c5d4e2",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/test_control_pass_collisions.py": {
+      "raw_sha256": "2a81022035081c0c07bc6d73c3127dc8a80e9ba55271c1f56915e9f7aaae1eda",
+      "normalized_lf_sha256": "2a81022035081c0c07bc6d73c3127dc8a80e9ba55271c1f56915e9f7aaae1eda",
+      "eol": "LF",
+      "git_snapshot_eligible": true
+    },
+    "tests/test_recovery_source_contract.py": {
+      "raw_sha256": "ae97ff8a80c4a00a55774eb66392f6c08ab6437c0395089c5ab68c1e81e8a77c",
+      "normalized_lf_sha256": "f0a04ff9ce9b7acdf4fbb092cbdd966b1cc3c63264617e1dd25f4b101c4b8144",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/test_state_collision_browser.py": {
+      "raw_sha256": "2084adabda7802e1e6a4a4897b92c462ad763e567717c9eecbed8374bfff1942",
+      "normalized_lf_sha256": "6563af68a78cc475680f15b67653f77a300b4e742f88f71222305361c08fb057",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/test_state_collisions.py": {
+      "raw_sha256": "5ee18807deffdeebb4e7cc8088278ee00d5da89d26a7593a13706aea75a6bf60",
+      "normalized_lf_sha256": "3e6af24585f07a24400ec20b4c3050e9c187cfc05c4c99203131a7e07d3e5d23",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/test_v32_restoration.py": {
+      "raw_sha256": "e6f3e8b2a0235021a13e8f99e3be62fe3301a0e82b71463ce043e747b3d66d5c",
+      "normalized_lf_sha256": "fabaf6389b517480bcb9bd0f3b611f9f0ee9143cd6c575f9a722226ef6732e09",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/test_v32_source_contract.py": {
+      "raw_sha256": "dd2d23bd28a98f4118b992969695abed2b9b84d7357997769140031f308cfe24",
+      "normalized_lf_sha256": "e803c81ec0c6abb80ab242cbf48f452732d32cd86c3101e7c888e9c04b84f228",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/test_v331_motor.py": {
+      "raw_sha256": "0872f566a413f532f640e8cd88efe37b00451785615405b9e1c4d4cdf0307ec8",
+      "normalized_lf_sha256": "2a934391789f22229e26aa83e20257f11dbe5bd47bc82d724768ba31593bf0ab",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/test_v33_contracts.py": {
+      "raw_sha256": "a99c21b626b5f4343f5e25b4aaca7fa8e3f84587c5fd0683b1ad7433cab16fd1",
+      "normalized_lf_sha256": "97eac9f0c8232551dd3ca24f8412b7c8c271cec19d1fafae13c09151a8dc041e",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/test_v33_native.py": {
+      "raw_sha256": "5cf563e8bd48effb4e42135370270dd67abfb127534625545d3e9d8644dc58b8",
+      "normalized_lf_sha256": "8fdd3928247b1af2c5e19e76a2c0411b2944dec0a66f60856607b8699b294cd0",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/test_v45_audit_dispatch.py": {
+      "raw_sha256": "834242e4fd9f1ed0cfeb7bd3144055d903ea567b7fc693c1fc7720b6f6404333",
+      "normalized_lf_sha256": "1de85a4aea028e1177b308ff4549418e54d122b161bfb5bdf29c27e5a0fe3d7c",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/test_v45_availability.py": {
+      "raw_sha256": "b9610d4d00bc9a7804bc7c1ba13013e01b03ca2f7113df35f4025a6cadb31734",
+      "normalized_lf_sha256": "f89eeab89113715d25ba63b451e1df8496c78a43296a73d4a1d5b8b916896444",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/test_v45_inventory.py": {
+      "raw_sha256": "15592415c66e6a26e018cf8254880d7dd0f400fdae5a5b29cb19ec33186b480c",
+      "normalized_lf_sha256": "119a22b879bfc8901656b0c4f8227cc4fca70272021ae49e1e07da11a6c67b68",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/test_v45_navigation.py": {
+      "raw_sha256": "75ea1ad9ada659224573f5f6fe45d7de39c233dcb1b701a55bdec24bbf340f3b",
+      "normalized_lf_sha256": "7f9651aefef237edb6edf26837067f0f951daf8eef29c458461558cd39820e43",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/test_v45_producers.py": {
+      "raw_sha256": "72b9ac595c63afcb81e0614940dbc10628fbe1e0a3751a3bc05ce5083477a35f",
+      "normalized_lf_sha256": "dfbc4a59788fcc59db3ac84c6b23b4bfa440e15bfaa2a6912c7c4848cca4dfc9",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/test_v46_backend.py": {
+      "raw_sha256": "61e8b97b2a54c3d1b5ed7142cae6c5c7f39bb33c6c7474c64ee2856b7a1d4895",
+      "normalized_lf_sha256": "61e8b97b2a54c3d1b5ed7142cae6c5c7f39bb33c6c7474c64ee2856b7a1d4895",
+      "eol": "LF",
+      "git_snapshot_eligible": true
+    },
+    "tests/test_v46_browser.py": {
+      "raw_sha256": "4d2518ce1c0a5fec41e72e0d4949540354f8ce45e4281aa7637ad6d0ebb08675",
+      "normalized_lf_sha256": "4d2518ce1c0a5fec41e72e0d4949540354f8ce45e4281aa7637ad6d0ebb08675",
+      "eol": "LF",
+      "git_snapshot_eligible": true
+    },
+    "tests/test_v46_inventory.py": {
+      "raw_sha256": "f81c6e3ebc4303cec6628bddd1e888e10c540011e48d1e60336238244d867eae",
+      "normalized_lf_sha256": "c987d2525d1fc8401e22bf0346d6cb1ed9bf2e76c794c60a1569d3563b3df9d1",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/test_v46_normal.py": {
+      "raw_sha256": "e7372bd0edd19539f66f3a2f4eb1b6d7e66ba7afff184f47758c8afe1ce19e67",
+      "normalized_lf_sha256": "491917567a162336219b03f85c6dc9a0cdfa35abfc37a15270113856be99aff6",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/trace_checksum.cpp": {
+      "raw_sha256": "97a68cbd89e35fce5aa3a139103d1b80790968b07bd730f3b5eab5392008dbe9",
+      "normalized_lf_sha256": "187461d8ddb5c4f357d753a354f6c3ddd1e1a939a7065fceed6c57c36cc830a0",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/trace_ring.cpp": {
+      "raw_sha256": "7393c2d4e1849882f0820222d26b041d5874d4302c9e171e42add4c72494fc01",
+      "normalized_lf_sha256": "7bc097eabbcb8000caea601587ef3b2438131867f779f626f105a8b463c3bba8",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/v2_recovery_integration.cpp": {
+      "raw_sha256": "daabc9cb0a0b702bdadfdf947e93ed8dbecb9c3443600c60e9e9558cc057b921",
+      "normalized_lf_sha256": "fb241a2d38a1919e73b7f307f601ef09d9a8f82f680d3e2afd1a4f3e92f351fa",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/v32_restoration_approved_delta.py": {
+      "raw_sha256": "7804e50324b9044197a1701897c5ebdf4b797dd6ff6ef7a4da178596a20b2b48",
+      "normalized_lf_sha256": "d5b4443c2afdb9190544e44ad28a521cc2c3b17d656e36adf6c6242c2cc46774",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/v32_restoration_reviewed_delta.json": {
+      "raw_sha256": "7d15d9ba918052e41ff8683733674975a296b16545c112b719aae373396c0227",
+      "normalized_lf_sha256": "0ccabddaecff8476c6eaa989025127537ec34d2cb9856972bf603cb76ff5e208",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/v33_doubles.h": {
+      "raw_sha256": "7be7ee498b8a83612ecdbf96eed378b4ebcd57af29c69a09dfe31d24cc16186d",
+      "normalized_lf_sha256": "793c4757910d660e5cc8e00b24d17a2f0c885afaf6385e9a581d4ecf5b99d649",
+      "eol": "MIXED",
+      "git_snapshot_eligible": true
+    },
+    "tests/v45_approved_delta.py": {
+      "raw_sha256": "ab9b1b30760e568d9232c88bae4a9034fe2a15103cda91f2947c1e8e06a541c3",
+      "normalized_lf_sha256": "bdc45a97a671e1cf85d1bff0e55242d7802499b07d385779c5bbf107b2f4bf44",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/v45_reviewed_delta.json": {
+      "raw_sha256": "810554c3ccefa2bd52f9a54beecbc345888ad64d5253d471272accc96ed9cce1",
+      "normalized_lf_sha256": "af2c49e1a3c02b83cfe822350cb84f86dc46e4f2079ddf2fa7f344ed460aad20",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/v46_approved_delta.py": {
+      "raw_sha256": "6c9ccb8be42e0919973cb96d0687b930d0461289ac645d823484e842628a4f66",
+      "normalized_lf_sha256": "07303dbc96af994fc8440b97e9847e2eecc32220f175e7ef2a742cdb1ac5f628",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/v46_browser_race.js": {
+      "raw_sha256": "cabe8c82ae559ce777b757280ed41b88eb8594f8141db9e5cf57002699660a7d",
+      "normalized_lf_sha256": "cabe8c82ae559ce777b757280ed41b88eb8594f8141db9e5cf57002699660a7d",
+      "eol": "LF",
+      "git_snapshot_eligible": true
+    },
+    "tests/v46_reviewed_delta.json": {
+      "raw_sha256": "6acd5058d55a66e7e201df49d7cb24a4a48da3404d7b554b4e402bbfd7cd9180",
+      "normalized_lf_sha256": "78d154f311e3b8459f73a484c3260753eaf7a0f32c11362eca5810263a59ac92",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    },
+    "tests/v46_starting_source.json": {
+      "raw_sha256": "657393856d013177b53d5bf3d2c780ffb2708d82280d571dc1045fd28c20cc16",
+      "normalized_lf_sha256": "fcf6f5cbcf3959ca42c867ab0c8b4c7fea3c299318be5c381568478703fcde0c",
+      "eol": "CRLF",
+      "git_snapshot_eligible": true
+    }
+  },
+  "auxiliary_reviewed_files": {
+    "tools/capture_nav_trace.py": {
+      "raw_sha256": "136919b68075b1750f58fea6186c3e35026565e8994a8fa2a6e213576976f449"
+    },
+    "README.md": {
+      "raw_sha256": "f7b7cc79ccf6e1912b507ed2c2dca4f747bf0647379d21be00a792eb50896fbf"
+    },
+    "docs/V32_RESTORATION_SOFTWARE_VERIFICATION.md": {
+      "raw_sha256": "071f979ec411414ce5732cfad7388e44cc066a35b29f80e7f98bf1e0861ddb3f"
+    },
+    "docs/V32_RESTORATION_SOURCE_AUDIT.json": {
+      "raw_sha256": "402d70764746bdecf658dc4c09d2081cee5b8401dfe33029a3b84a04eab0b1ed"
+    },
+    "docs/V32_RESTORATION_TRACE_SUMMARY.json": {
+      "raw_sha256": "4a73ad897239e5783d827ff7ad2d78f1788d8b5540f2000d32c82049b68d88b4"
+    },
+    "docs/V32_RESTORATION_PREFLIGHT_BASELINE.json": {
+      "raw_sha256": "758662855ea96ca658375ef0780343ff1211a67ffdd5c592dd5d99b8bd705d77"
+    }
+  },
+  "new_metadata_file_hashes": {
+    ".gitignore": "6afb7a0655a0db565642c950f658a7fb82d005cbcaf896b06a985502b4d93d3a",
+    ".gitattributes": "ae768cb3f11df5bf925e358722397ca1cfdab29c652ae60e79b6ccd7de57875b",
+    "docs/STANDALONE_FREEZE_20261008.md": "5c8c0e70f53798d6ffa00c76a2222611ec14e3685432bb8ac07abaf1c97c76e1",
+    "docs/STANDALONE_FREEZE_20261008_VERIFICATION.txt": "a45fc689ebf7f4e883666b566d6386ec4e46b93e0f6c971d354a53d5c5e0169d"
+  },
+  "stage_allowlist": [
+    ".gitattributes",
+    ".gitignore",
+    "README.md",
+    "docs/STANDALONE_FREEZE_20261008.md",
+    "docs/STANDALONE_FREEZE_20261008_MANIFEST.json",
+    "docs/STANDALONE_FREEZE_20261008_VERIFICATION.txt",
+    "docs/V32_RESTORATION_PREFLIGHT_BASELINE.json",
+    "docs/V32_RESTORATION_SOFTWARE_VERIFICATION.md",
+    "docs/V32_RESTORATION_SOURCE_AUDIT.json",
+    "docs/V32_RESTORATION_TRACE_SUMMARY.json",
+    "include/BuzzerManager.h",
+    "include/ControlOriginPolicy.h",
+    "include/DashboardPublisher.h",
+    "include/DisplayManager.h",
+    "include/DriveCommandHandler.h",
+    "include/ImuManager.h",
+    "include/ManualMotionGate.h",
+    "include/ManualOverridePolicy.h",
+    "include/MotorController.h",
+    "include/NavigationManager.h",
+    "include/NavigationTrace.h",
+    "include/PinConfig.h",
+    "include/PriorityWebServer.h",
+    "include/RadioManager.h",
+    "include/RadioTypes.h",
+    "include/RecoveryIrBackoffPolicy.h",
+    "include/RobotConfig.h",
+    "include/SafetyManager.h",
+    "include/Secrets.example.h",
+    "include/SensorManager.h",
+    "include/ServoScanner.h",
+    "include/SonarReacquirePolicy.h",
+    "include/StaReconnectPolicy.h",
+    "include/StuckRecoveryV2Policy.h",
+    "include/TraceChecksum.h",
+    "include/TraceRing.h",
+    "include/V2EscapeDecision.h",
+    "include/WebDashboard.h",
+    "include/WebDashboardAssets.h",
+    "include/WebServerLimits.h",
+    "include/WiFiConfig.h",
+    "platformio.ini",
+    "src/BuzzerManager.cpp",
+    "src/DashboardPublisher.cpp",
+    "src/DisplayManager.cpp",
+    "src/DriveCommandHandler.cpp",
+    "src/ImuManager.cpp",
+    "src/MotorController.cpp",
+    "src/NavigationManager.cpp",
+    "src/NavigationTrace.cpp",
+    "src/PriorityWebServer.cpp",
+    "src/RadioManager.cpp",
+    "src/SafetyManager.cpp",
+    "src/SensorManager.cpp",
+    "src/ServoScanner.cpp",
+    "src/WebDashboard.cpp",
+    "src/WebDashboardAssets.cpp",
+    "src/main.cpp",
+    "tests/collision_closure_reviewed_delta.json",
+    "tests/control_origin_policy.cpp",
+    "tests/dashboard_browser_check.js",
+    "tests/manual_motion_gate.cpp",
+    "tests/manual_override_policy.cpp",
+    "tests/native_collision_closure.cpp",
+    "tests/native_motor_backoff.cpp",
+    "tests/native_navigation_v33.cpp",
+    "tests/native_state_collisions.cpp",
+    "tests/native_v32_restoration.cpp",
+    "tests/native_v45_availability.cpp",
+    "tests/native_v45_navigation.cpp",
+    "tests/native_v45_producers.cpp",
+    "tests/native_v45_standalone_dispatch.cpp",
+    "tests/native_v46_backend.cpp",
+    "tests/native_v46_normal.cpp",
+    "tests/recovery_active_time.cpp",
+    "tests/recovery_episode_v33.cpp",
+    "tests/recovery_ir_backoff_policy.cpp",
+    "tests/run_host_checks.py",
+    "tests/sonar_reacquire_policy.cpp",
+    "tests/sta_reconnect_policy.cpp",
+    "tests/stubs/Arduino.h",
+    "tests/stuck_recovery_v2_policy.cpp",
+    "tests/test_capture_nav_trace.py",
+    "tests/test_collision_closure.py",
+    "tests/test_collision_closure_dispatch.py",
+    "tests/test_collision_closure_inventory.py",
+    "tests/test_control_pass_collisions.py",
+    "tests/test_recovery_source_contract.py",
+    "tests/test_state_collision_browser.py",
+    "tests/test_state_collisions.py",
+    "tests/test_v32_restoration.py",
+    "tests/test_v32_source_contract.py",
+    "tests/test_v331_motor.py",
+    "tests/test_v33_contracts.py",
+    "tests/test_v33_native.py",
+    "tests/test_v45_audit_dispatch.py",
+    "tests/test_v45_availability.py",
+    "tests/test_v45_inventory.py",
+    "tests/test_v45_navigation.py",
+    "tests/test_v45_producers.py",
+    "tests/test_v46_backend.py",
+    "tests/test_v46_browser.py",
+    "tests/test_v46_inventory.py",
+    "tests/test_v46_normal.py",
+    "tests/trace_checksum.cpp",
+    "tests/trace_ring.cpp",
+    "tests/v2_recovery_integration.cpp",
+    "tests/v32_restoration_approved_delta.py",
+    "tests/v32_restoration_reviewed_delta.json",
+    "tests/v33_doubles.h",
+    "tests/v45_approved_delta.py",
+    "tests/v45_reviewed_delta.json",
+    "tests/v46_approved_delta.py",
+    "tests/v46_browser_race.js",
+    "tests/v46_reviewed_delta.json",
+    "tests/v46_starting_source.json",
+    "tools/capture_nav_trace.py"
+  ],
+  "index_removal_only": [
+    "include/Secrets.h"
+  ],
+  "manifest_self_hash": "Excluded from internal map to avoid self-reference; verified from staged blob and recorded in post-commit receipt.",
+  "private_configuration": "Unchanged private header remains local and is excluded from new snapshot; its contents are never copied to evidence. Historical contents may remain in ancestors.",
+  "physical_status": "OWNER-REPORTED PHYSICAL PASS",
+  "physical_provenance": "Owner confirms fresh build/upload from this existing restored project after October 8 restoration, followed by successful extensive real-world obstacle/stuck/boxed recovery tests.",
+  "flashed_binary_identity": "FLASHED BINARY HASH NOT INDEPENDENTLY VERIFIED",
+  "build_artifact": {
+    "file": ".pio/build/esp32-s3-n16r8/firmware.bin",
+    "sha256": "1663c9a7395e8256533c503fd51d7e3aeef39b9de8d6be84d9b29c9f462aaa62",
+    "bytes": 1042912,
+    "claim": "On-disk build artifact only; not proof of flashed image."
+  },
+  "verification": {
+    "native_policies_passed": 12,
+    "python_tests_run": 172,
+    "python_tests_passed": 168,
+    "python_tests_skipped": 4,
+    "failures": 0,
+    "errors": 0,
+    "parity_traces_matched": 34,
+    "preserved_scenarios": 9,
+    "state_event_combinations": 54,
+    "build": "PASS",
+    "ram_bytes": 58908,
+    "flash_bytes": 1042541,
+    "nonbuild_project_files_byte_preserved": 192,
+    "reference_files_byte_preserved": 90,
+    "git_index_status_branch_head": "unchanged",
+    "run_notes": "Unchanged test bodies; runner invoked in memory to redirect trace summary into ignored .pio; initial wrapper null-device restriction corrected without test/source edits."
+  },
+  "platform_versions": {
+    "platformio_core": "6.2.0",
+    "git": "2.54.0.windows.1",
+    "platform_espressif32": "7.0.1",
+    "framework_arduinoespressif32": "3.20017.241212+sha.dcc1105b",
+    "tool_esptoolpy": "2.41100.0 (4.11.0)",
+    "toolchain_xtensa_esp32s3": "8.4.0+2021r2-patch5",
+    "toolchain_riscv32_esp": "8.4.0+2021r2-patch5",
+    "native_mingw_gcc": "5.1.0 i686-posix-dwarf-rev0",
+    "msvc_toolset": "14.44.35207",
+    "python": "3.11.7",
+    "deno": "2.9.6",
+    "browser": "Existing Chromium/Edge used by fixtures; exact browser version not separately recorded."
+  },
+  "library_requirements": [
+    "madhephaestus/ESP32Servo@3.2.1",
+    "adafruit/DHT sensor library@1.4.7",
+    "adafruit/Adafruit Unified Sensor@1.1.15",
+    "adafruit/Adafruit BusIO@1.17.4",
+    "adafruit/Adafruit GFX Library@1.12.6",
+    "adafruit/Adafruit SH110X@2.1.14",
+    "adafruit/Adafruit MPU6050@2.2.6",
+    "nrf24/RF24@1.6.1"
+  ],
+  "reproduction_prerequisites": [
+    "Same recorded Espressif platform/framework/toolchain and pinned library versions; platformio.ini platform version is not pinned.",
+    "Unchanged private local include/Secrets.h supplied outside the proposed Git snapshot; current preservation tests intentionally pin its hash.",
+    "Read-only V3.2 reference at the absolute path encoded in tests/test_v32_restoration.py, matching frozen source 41281d8325d88c70e074e008a2550a1164102132.",
+    "Existing Git history objects used by historical static/browser guards: cbbf3599d0a6192976f40d991250cd38a02c7abb, ce0dbe7546c73353dfd1ba44ca5425d29ab8548b, 8f294741cb736fa77274250007f77429570ab978.",
+    "Existing MSVC/native compiler, Python, Deno and Chromium toolchain."
+  ],
+  "reference_provenance": {
+    "frozen_source_commit": "41281d8325d88c70e074e008a2550a1164102132",
+    "normalized_nonsecret_matches": 61,
+    "reference_inventory_unchanged": 90
+  },
+  "approved_environmental_decisions": [
+    "Restore V3.2 hazard abort and mission reset.",
+    "Preserve V4.6 environmental job and fresh scan after sonar reacquisition."
+  ],
+  "excluded_preserved": [
+    "include/Secrets.h",
+    ".pio build artifacts and raw logs",
+    "Python caches",
+    "Unrelated untracked PNG owner assets",
+    "Untracked historical reports/preflight/status/diff/continuity drafts outside stage allowlist"
+  ],
+  "git_attributes_policy": "Exact allowlisted paths -text; retain raw bytes, no source rewrites.",
+  "staged_whitespace_review": {
+    "policy": "CRLF-aware command-local review; preserve raw bytes, no source cleanup",
+    "existing_unchanged_blank_eof": [
+      "tests/native_v46_backend.cpp",
+      "tests/test_v46_backend.py"
+    ],
+    "new_documentation_trailing_space": "removed only from newly created freeze verification extract"
+  },
+  "post_stage_verification": {
+    "native_policies_passed": 12,
+    "python_tests_run": 172,
+    "passed": 168,
+    "skipped_cps_only": 4,
+    "failures": 0,
+    "errors": 0,
+    "elapsed_seconds_reported_by_runner": 62.195,
+    "exact_trace_matches": 34,
+    "trace_summary_equal_existing_restoration": true,
+    "backend_browser_and_js": "PASS",
+    "log_raw_sha256": "50d089f5084202167fc0d4fc798751d1e8a798137597cdf043b291b09ffe1893",
+    "index_blob_count_verified": 117
+  }
+}

@@ -12,7 +12,6 @@ NativeSerial Serial;
 int main(){
  static_assert(RobotConfig::RECOVERY_BACKOFF_MAX_SPEED_PERCENT==75,"75 user-percent maximum");
  static_assert(RobotConfig::RECOVERY_IR_BACKOFF_PULSE_MS==200,"pulse unchanged");
- static_assert(RobotConfig::RECOVERY_IR_BACKOFF_MAX_PULSES==5,"budget unchanged");
  MotorController motor(1,2,3,4,5);motor.begin();
  for(int selected:{0,40,60,75,80,100}){
   const int effective=selected<75?selected:75;

@@ -1085,6 +1085,8 @@ const TELEMETRY_STALE_MS = 3000;
 let commandSequence = 0;
 let moveRequestInFlight = false;
 let stopRequestsInFlight = 0;
+const stopRequestPromises = new Set();
+let modeRequestGeneration = 0;
 let pendingMove = null;
 let activePointerId = null;
 let moveAbortController = null;
@@ -1156,14 +1158,21 @@ function previewSpeed(value) {
   }, 180);
 }
 function setMode(nextMode) {
-  explicitStop();
-  mode = nextMode;
-  updateModeButtons();
-  fetch('/mode?set=' + encodeURIComponent(nextMode), { cache:'no-store' })
-    .then(response => {
-      if (!response.ok) throw new Error('Mode request rejected');
-      controlSessionToken = null;
-      return loadData();
+  explicitStop(mode === 'MANUAL');
+  const generation = modeRequestGeneration;
+  // Backend mode acceptance retires old motors atomically. Never let an
+  // already-issued retirement/lifecycle STOP arrive after that admission.
+  return Promise.all(Array.from(stopRequestPromises))
+    .then(() => {
+      if (generation !== modeRequestGeneration) return;
+      mode = nextMode;
+      updateModeButtons();
+      return fetch('/mode?set=' + encodeURIComponent(nextMode), { cache:'no-store' })
+        .then(response => {
+          if (!response.ok) throw new Error('Mode request rejected');
+          controlSessionToken = null;
+          return loadData();
+        });
     })
     .catch(() => loadData());
 }
@@ -1177,7 +1186,7 @@ function toggleTurnMode() {
   setTurnMode(turnMode === 'PIVOT' ? 'SPIN' : 'PIVOT');
 }
 
-function sendCmd(move) {
+function sendCmd(move, retirement = false) {
   if (move === 'STOP' || move === 'RELEASE') {
     // STOP bypasses a slow direction request. The higher sequence makes any
     // older direction harmless if it reaches the ESP32 afterward.
@@ -1187,12 +1196,15 @@ function sendCmd(move) {
     if (dataAbortController) dataAbortController.abort();
     if (pingAbortController) pingAbortController.abort();
     stopRequestsInFlight += 1;
-    return issueCmd(move)
-      .catch(() => {})
-      .then(() => {
-        stopRequestsInFlight -= 1;
-        flushMoveCommand();
-      });
+    const request = issueCmd(move, retirement);
+    stopRequestPromises.add(request);
+    const retireRequest = () => {
+      stopRequestPromises.delete(request);
+      stopRequestsInFlight -= 1;
+      flushMoveCommand();
+    };
+    request.then(retireRequest, retireRequest);
+    return request.catch(() => {});
   }
 
   // Keep only the newest unsent direction/heartbeat and never build a queue.
@@ -1201,11 +1213,12 @@ function sendCmd(move) {
   return Promise.resolve();
 }
 
-function issueCmd(move) {
+function issueCmd(move, retirement = false) {
   commandSequence += 1;
   const issuedSequence = commandSequence;
   const query = '/cmd?move=' + encodeURIComponent(move) +
     '&seq=' + encodeURIComponent(issuedSequence) +
+    (move === 'STOP' && retirement === true ? '&retire=manual' : '') +
     (controlSessionToken ? '&token=' + encodeURIComponent(controlSessionToken) : '');
   const controller = new AbortController();
   if (move !== 'STOP' && move !== 'RELEASE') moveAbortController = controller;
@@ -1290,11 +1303,17 @@ function stopMove() {
   sendCmd('RELEASE');
 }
 
-function explicitStop() {
+function explicitStop(retirement = false) {
+  modeRequestGeneration += 1; // newer genuine/lifecycle STOP cancels waiting AUTO
   activePress = false;
   activePointerId = null;
   clearMoveRefresh();
-  sendCmd('STOP');
+  return sendCmd('STOP', retirement === true);
+}
+
+function lifecycleStop() {
+  // MANUAL teardown must not become a late explicit AUTO STOP after a mode click.
+  return explicitStop(mode === 'MANUAL');
 }
 
 function updateModeButtons() {
@@ -2327,8 +2346,8 @@ function initializeControls() {
       explicitStop();
     });
   }
-  window.addEventListener('pagehide', explicitStop);
-  window.addEventListener('beforeunload', explicitStop);
+  window.addEventListener('pagehide', lifecycleStop);
+  window.addEventListener('beforeunload', lifecycleStop);
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
       if (telemetryTimer) clearTimeout(telemetryTimer);
@@ -2337,7 +2356,7 @@ function initializeControls() {
       if (pingTimer) clearTimeout(pingTimer);
       pingTimer = null;
       if (pingAbortController) pingAbortController.abort();
-      explicitStop();
+      lifecycleStop();
     } else {
       pollPing();
       loadData();

@@ -1,0 +1,17 @@
+{
+  "baseline": "cbbf3599d0a6192976f40d991250cd38a02c7abb",
+  "scope": "owner V4.5 with 2026-10-06 monitoring-only DHT/MQ-2 correction; historical static projection only; current behavioral tests use live source",
+  "reviewed_sha256": {
+    "include/NavigationManager.h": "1fe72dfe8065d92a884fc6c6786eb26b4ed5fb30fcac8c345515778ab98a5c5c",
+    "include/RecoveryIrBackoffPolicy.h": "3fa87f858c0fe939168e055c47ac82c0c3c65c741fd8526df18ce03022e7779d",
+    "include/RobotConfig.h": "b22b23fbda84dacf5a6674405835f6e718286e3820f1c62c4ed69dac7b6f4738",
+    "include/SafetyManager.h": "810e03d567f49cc0bcaeca6db064a7fc5048b9a3f3f81116b23e4711fccf6ef8",
+    "include/SensorManager.h": "8604c10d2b7c5345bdee4d7741865d053ef70d084b7d58e1383e78e7eedac2bd",
+    "include/StuckRecoveryV2Policy.h": "a544b84324febd8d96385fad3ce64567e5d771a31704af578b2a106bde261d74",
+    "include/V2EscapeDecision.h": "e024507ef69c762058a521ba551b5eef24c238d4c6f378b023bab5d2c8ae720c",
+    "src/NavigationManager.cpp": "faa68f190f98d626a120089b3bfdbce21f470f8649960124e41fa012a66bd2fe",
+    "src/SafetyManager.cpp": "9834923c79d0e9eeb7903398434fdddffa9aba9cdf1898f060761b3b2cbc3009",
+    "src/SensorManager.cpp": "5b54b6ba2ff144fa139d4df8dbc78dd61b1ae2f879da67ac398d2ec0b7599041",
+    "src/main.cpp": "acc2521f1f3cb337947cd66ed136df0b9d6c5a18f797203003bbff9adbb1fc94"
+  }
+}

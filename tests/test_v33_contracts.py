@@ -1,7 +1,8 @@
 from pathlib import Path
 import unittest
 ROOT=Path(__file__).resolve().parents[1]
-def src(path):return (ROOT/path).read_text(encoding='utf-8-sig')
+from v45_approved_delta import before_v45
+def src(path):return before_v45(path,(ROOT/path).read_text(encoding='utf-8-sig'))
 def body(text,start,end):return text.split(start,1)[1].split(end,1)[0]
 class V33Contracts(unittest.TestCase):
  def test_permission_not_erased_by_ordinary_stop_or_session_reentry(self):

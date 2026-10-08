@@ -50,3 +50,6 @@ credentials.*
 *.key
 *.p12
 *.pfx
+
+# Approved standalone freeze: keep private configuration local.
+/include/Secrets.h

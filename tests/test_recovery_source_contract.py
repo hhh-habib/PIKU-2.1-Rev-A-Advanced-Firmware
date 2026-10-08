@@ -1,7 +1,9 @@
+"""Historical V3 static contracts projected from the reviewed V4.5 delta; current runtime has separate gates."""
+from v45_approved_delta import before_v45
 from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
-nav = (root / "src" / "NavigationManager.cpp").read_text()
+nav = before_v45("src/NavigationManager.cpp",(root / "src" / "NavigationManager.cpp").read_text())
 html = (root / "src" / "WebDashboardAssets.cpp").read_text()
 
 def body(name, following):

@@ -1,6 +1,7 @@
 #ifndef V2_ESCAPE_DECISION_H
 #define V2_ESCAPE_DECISION_H
 #include <stdint.h>
+#include <math.h>
 
 // Pure recovery decisions. A clear no-echo is open; fault/stale is untrusted.
 enum class RecoveryReadingState { DistanceValid, ClearNoEcho, Invalid };
@@ -21,7 +22,7 @@ inline bool recoveryReadingTrusted(const RecoveryReading& reading) {
 inline bool recoveryPathSafe(const RecoveryReading& reading, float hardCollisionCm) {
   return reading.state == RecoveryReadingState::ClearNoEcho ||
       (reading.state == RecoveryReadingState::DistanceValid &&
-       reading.cm > hardCollisionCm);
+       isfinite(reading.cm) && reading.cm > hardCollisionCm);
 }
 inline bool recoveryFrontClear(const RecoveryReading& reading, float exitCm) {
   return reading.state == RecoveryReadingState::ClearNoEcho ||
@@ -30,9 +31,10 @@ inline bool recoveryFrontClear(const RecoveryReading& reading, float exitCm) {
 }
 inline bool obviousBoxedIn(const V2ScanDecisionInput& in, float boxedSideCm) {
   return in.front.state == RecoveryReadingState::DistanceValid &&
-      in.front.cm < boxedSideCm &&
+      isfinite(in.front.cm) && in.front.cm > 0 && in.front.cm < boxedSideCm &&
       in.left.state == RecoveryReadingState::DistanceValid &&
       in.right.state == RecoveryReadingState::DistanceValid &&
+      isfinite(in.left.cm) && isfinite(in.right.cm) && in.left.cm > 0 && in.right.cm > 0 &&
       in.left.cm < boxedSideCm && in.right.cm < boxedSideCm;
 }
 inline V2ScanAction decideV2Scan(const V2ScanDecisionInput& in) {

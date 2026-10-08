@@ -42,6 +42,13 @@ void SafetyManager::begin() {
 
 void SafetyManager::update(const SensorSnapshot& snapshot) {
   unsigned long now = millis();
+  const bool temperatureFresh=snapshot.temperatureValid&&isfinite(snapshot.temperature)&&
+      now-snapshot.temperatureLastSuccessMs<=RobotConfig::DHT22_INTERVAL_MS*2;
+  // Availability is diagnostic only. Confirmed hazards retain their own gates.
+  _temperatureUnknown=RobotConfig::HAS_DHT22&&!temperatureFresh;
+  _gasUnknown=RobotConfig::HAS_MQ2&&
+      (!snapshot.gasValid||now-snapshot.mq2SampleMs>RobotConfig::MQ2_INTERVAL_MS*2);
+
   if (RobotConfig::HAS_MQ2) {
     updateGas(snapshot, now);
   } else {
@@ -55,7 +62,7 @@ void SafetyManager::update(const SensorSnapshot& snapshot) {
   }
   updateIr(snapshot.leftObstacleDetected, snapshot.rightObstacleDetected, now);
   if (RobotConfig::HAS_DHT22) {
-    updateTemperature(snapshot.temperature, snapshot.temperatureValid, now);
+    updateTemperature(snapshot.temperature, temperatureFresh, now);
   } else {
     _tempCritical = false;
     _tempWarning = false;
@@ -127,6 +134,7 @@ String SafetyManager::stateName() const {
   if (isCaution()) {
     return "CAUTION";
   }
+  if (monitoringUnavailable()) return "MONITORING_UNAVAILABLE";
   return "SAFE";
 }
 
@@ -134,6 +142,8 @@ String SafetyManager::alarmReason() const {
   if (_flameCritical) return "FLAME";
   if (_gasCritical) return "GAS_HIGH_RELATIVE";
   if (_tempCritical) return "TEMP_HIGH";
+  if (_temperatureUnknown) return "TEMPERATURE_UNAVAILABLE";
+  if (_gasUnknown) return "GAS_UNAVAILABLE";
   if (_nearObstacleHazard) return "NEAR_OBSTACLE";
   if (_leftIrObstacle && _rightIrObstacle) return "BOTH_IR_OBSTACLES";
   if (_leftIrObstacle) return "LEFT_IR_OBSTACLE";
@@ -168,9 +178,10 @@ String SafetyManager::obstacleDecision(const SensorSnapshot& snapshot) const {
   return "CLEAR";
 }
 void SafetyManager::updateGas(const SensorSnapshot& snapshot, unsigned long now) {
+  if (!snapshot.gasValid || now-snapshot.mq2SampleMs>RobotConfig::MQ2_INTERVAL_MS*2) {
+    _gasCriticalSince=_gasCriticalClearSince=_gasCautionSince=_gasCautionClearSince=0;return;
+  }
   if (snapshot.mq2Warmup) {
-    _gasCritical = false;
-    _gasCaution = false;
     _gasCriticalSince = _gasCriticalClearSince = 0;
     _gasCautionSince = _gasCautionClearSince = 0;
     return;
@@ -200,7 +211,8 @@ void SafetyManager::updateGas(const SensorSnapshot& snapshot, unsigned long now)
 }
 
 void SafetyManager::updateFlame(const SensorSnapshot& snapshot, unsigned long now) {
-  const bool detected = snapshot.flameSampleValid && snapshot.flameDetected;
+  if (!snapshot.flameSampleValid) { _flameSince=_flameClearSince=0;return; }
+  const bool detected = snapshot.flameDetected;
   if (detected) {
     _flameClearSince = 0;
     if (_flameSince == 0) _flameSince = now;
@@ -241,7 +253,6 @@ void SafetyManager::updateIr(bool leftDetected, bool rightDetected, unsigned lon
 
 void SafetyManager::updateTemperature(float temperature, bool valid, unsigned long now) {
   if (!valid || !isfinite(temperature)) {
-    _tempWarning = false;
     _tempCriticalSince = 0;
     _tempCriticalClearSince = 0;
     return;

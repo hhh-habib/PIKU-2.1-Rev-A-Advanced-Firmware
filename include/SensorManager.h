@@ -39,11 +39,14 @@ struct SensorSnapshot {
   unsigned long ultrasonicFaultCount = 0;
   float temperature = NAN;
   bool temperatureValid = false;
+  unsigned long temperatureLastSuccessMs = 0;
+  unsigned long environmentStartedMs = 0;
   float humidity = NAN;
   bool humidityValid = false;
   unsigned long environmentSampleMs = 0;
   unsigned long environmentLastSuccessMs = 0;
   unsigned long dhtErrorCount = 0;
+  bool gasValid = false;
   int gasRaw = 0;
   int gasFiltered = 0;
   bool mq2Warmup = false;
