@@ -1,0 +1,32 @@
+# Section-by-section correction plan — not yet applied
+
+Target: latest Nov 9 team-based manuscript. This is a tracked decision list, not Word Track Changes or a rewritten paper. Original/source files remain untouched.
+
+| ID | Location | Finding | Proposed correction | Basis / disposition |
+|---|---|---|---|---|
+| R01 | Abstract; VI-A; Fig. 6; Table VI; references | Each impact was counted; existing binomial percentages/Wilson intervals are inapplicable | Preserve 38/10/17/17/19. Replace Fig. 6 with raw contact-event bars per 100 encounters, without invented uncertainty. Remove percentage-probability interpretation and Wilson-only reference [16] if unused | Essential: new owner clarification. Keeping this graph in the previous edit was a statistical mistake |
+| R02 | V Methods; Table IV note | 500 encounters are owner-confirmed, but trial/build identities and setup are not linked | Add available truthful shared-layout conditions, outcome definitions and supplementary provenance pointer. Do not imply independently recovered raw logs | Essential methods/provenance gap; no automatic new 500-trial campaign |
+| R03 | V; VI-A recovery | Original draft used 0.55 m / 20 s / 40 s; actual tests used clear-and-continue without measured time | Keep actual qualitative definition. Do not restore old thresholds. Pocket non-escape concerns the observed encounters, without an invented timed window | Resolved by owner. Current simplified recovery definition is consistent with this clarification |
+| R04 | VI-C/D; Table V caption | Protractor/ruler measurement now confirmed | State manual measurement method; preserve all reported readings. Add reference points, stimulus/link-loss method, operating mode and instrument resolution only if known | Owner-reported physical measurement; detailed protocol partly unresolved |
+| R05 | IV-C; VI-C | Intentional Manual flame/gas override is an exception to broad hazard-stop language | Scope hazard interruption to AUTO/default protected operation. Retain intentional Manual exception and non-exempt thermal/STOP/guards | Source-supported; IV-C already covers much of this correctly |
+| R06 | V software checks; source identity | Nov 7 and Oct 18 are separate revisions; current paper already separates software from physical results | Keep dated Nov 7 values. Add source/record identity in supplementary matrix. Never substitute old 207-pass counts or call a source hash a flashed binary hash | Mostly addressed; improve traceability, no new run claimed |
+| R07 | III; IV-D; Fig. 3 | Nominal divider arithmetic is qualified; tolerance/ADC headroom can be clearer | Add a concise conditional sensitivity statement and retain simplified circuit-overview caption. No measured-safe GPIO or physical damage claim | Verified calculation; board measurements remain unavailable |
+| R08 | Table III; cost prose | Rounded estimate already stated; historical total is 5,005 | Keep approximately BDT 5,000; optional footnote that grouped estimates are rounded. Preserve original cost records | Already substantially addressed; no new exact purchase bill |
+| R09 | VI-A interpretation | B1 leads B4 on contact/recovery totals; corner contributes 20 of the 28 fewer B0-to-B1 contacts | Retain trade-offs and angle/gyro confounding. Add condition-dependence sentence if space permits | Unchanged counts; most cautions already present |
+| R10 | Pocket result; limitations | B4 has two contacts, no escape and no intervention. Final physical state/window unresolved | Distinguish continuing bounded attempts from escape. Do not claim a proven safe eventual stop or permanent self-recovery | Mostly addressed; no invented final observation |
+| R11 | Fig. 5; VI-B | Cropping removed full dashboard context; authentic screens include internal ms and older firmware label | Restore full original Control/Sensors/System captures at readable sizes after review. Label illustrative session diagnostics; do not erase readings or call internal timing physical stop latency | Owner objected to crop; layout proposal below |
+| R12 | Fig. 4; Tables II/VI | Rich architecture and duplicated summary consume needed space | Propose compact source-derived state/authority diagram, shorter hardware repetition and removal/reduction of duplicate summary Table VI | Proposed editorial trade-off for owner review; no figure changed now |
+| R13 | Title; Abstract; II; VII | Contribution is implemented systems integration; inspection need not imply mapping | Retain Autonomous. Explicitly scope environmental hazard monitoring; no first-ever algorithm/AI/SLAM claims. Title change optional | No AI development proposed; acceptance not guaranteed |
+| R14 | II Related Work | Existing foundations/prototype references lack close comparison on freshness/recovery authority | Add a short comparison with a few verified primary close baselines; avoid citation padding | Proposed research editing after owner review; no new paper invented here |
+| R15 | Reference [12] | V2 camera-ready/copyright workflow exists; owner-reported acceptance; final metadata unresolved | Distinguish V2 from rejected RevA paper. Verify final proceedings/DOI if available; otherwise use neutral author-manuscript citation | Do not automatically label it rejected, published or in press |
+| R16 | Acknowledgment; final format | AI label-edit disclosure exists; target conference unspecified | Follow selected venue disclosure/template rules and re-render every page after approved edits | Submission-stage check; new layout not yet verified |
+
+## Order after review
+
+1. Correct the contact-event statistics and add confirmed measurement/outcome methods without changing physical numbers.
+2. Add available comparator method/version limits. Any retrospective recollection must be identified as such; no invented trial rows or trial dates.
+3. Apply an approved screenshot/diagram/table layout, then verify readability in native Word renders.
+4. Reconcile citation and scope wording; check a few relevant primary close baselines if approved.
+5. Verify every number, unit, figure, reference and original/source hash again.
+
+A full 500-encounter rerun is not automatically necessary. First use existing records and honest method descriptions. If new physical claims specifically concern the latest IMU/OLED changes, a separately authorized supervised check of changed paths may be useful. No robot operation, build or new AI layer is authorized by this read-only review. Supplementary repository publication/push would need its own authorization.

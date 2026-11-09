@@ -1,0 +1,9 @@
+{
+  "confirmation_date": "2026-11-09 Asia/Dhaka; clarification date, not experiment date",
+  "five_configurations": "Owner confirms B0-B4 physically run and counted",
+  "collision_unit": "Every impact/contact separately counted; multiple contacts possible within an encounter",
+  "hazard_measurement_method": "Ruler/protractor; resolution and detailed reading protocol not supplied",
+  "recovery_definition": "Cleared obstacle and could continue moving; recovery time not measured",
+  "old_recovery_limits": "0.55m/20s/40s from original draft are not confirmed actual physical protocol",
+  "statistical_consequence": "Binomial Wilson collision intervals and collision-positive encounter percentages are inapplicable to these impact-event totals"
+}
