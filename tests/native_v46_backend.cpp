@@ -3,6 +3,7 @@
 #include <cctype>
 #include <cstdlib>
 #include <map>
+#include "ModeTransitionFence.h"
 struct ControlString:std::string {using std::string::string;ControlString(const std::string& s):std::string(s){}void toUpperCase(){for(auto& c:*this)c=static_cast<char>(std::toupper(static_cast<unsigned char>(c)));}char charAt(unsigned i)const{return at(i);}};
 inline bool isDigit(char c){return c>='0'&&c<='9';}
 enum class BackendHead {None};enum class BackendSource {None,Dashboard,Radio};
@@ -16,10 +17,11 @@ struct BackendHarness {
  void fresh(){sensors.feed(UltrasonicResultState::DistanceValid,80);imu.data.initialized=imu.data.healthy=true;imu.data.sampleMs=imu.data.lastSuccessMs=testNow;}
 } robot;
 class BackendWeb {public:
+ ModeTransitionFence _modeFence; bool _modeFenceResponsePending=false;
  struct Data{ControlString controlMode="MANUAL";bool manualFlameGasOverride=false;}_data;
  struct Server{std::map<std::string,ControlString> args;bool hasArg(const char* k)const{return args.count(k)!=0;}ControlString arg(const char* k)const{auto i=args.find(k);return i==args.end()?ControlString(""):i->second;}}_server;
  ControlString _pendingCommand="",_lastAcceptedCommand="";BackendHead _pendingManualSensorHeadCommand=BackendHead::None;BackendSource _pendingCommandSource=BackendSource::None;
- unsigned long _modeCommandCounter=0,_lastCommandSequence=0,_pendingCommandSequence=0,_lastCommandReceivedMs=0,_lastCommandAcceptedMs=0;
+ unsigned long _modeCommandCounter=0,_lastCommandSequence=0,_pendingCommandSequence=0,_lastCommandReceivedMs=0,_lastCommandAcceptedMs=0,_lastSessionHeartbeatMs=0;
  bool _controlActivity=false,_requireFreshSessionAfterOverride=false,_overrideCommandAuthorized=false;int reply=0;bool origin=true;unsigned callbacks=0;
  void (*_modeAcceptedCallback)(const ControlString&)=nullptr;
  void (*_commandAcceptedCallback)(const ControlString&,unsigned long,unsigned long)=nullptr;

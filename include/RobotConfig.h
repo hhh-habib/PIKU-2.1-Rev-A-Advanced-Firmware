@@ -56,7 +56,7 @@ namespace RobotConfig {
   static constexpr int MOTOR_PWM_CHANNEL = 4;
 
   static constexpr unsigned long MANUAL_SENSOR_INTERVAL_MS = 500;
-  static constexpr unsigned long SERIAL_LOG_INTERVAL_MS = 1000;
+  static constexpr unsigned long SERIAL_LOG_INTERVAL_MS = 2000;
   static constexpr unsigned long FAST_SENSOR_INTERVAL_MS = 50;
   static constexpr unsigned long FLAME_SAMPLE_INTERVAL_MS = 50;
   static constexpr unsigned long MQ2_INTERVAL_MS = 150;
@@ -65,7 +65,7 @@ namespace RobotConfig {
   static constexpr size_t MQ2_FILTER_SAMPLES = 16;
   static constexpr unsigned long IMU_INTERVAL_MS = 25;
   static constexpr unsigned long IMU_STALE_MS = 250;
-  static constexpr unsigned long OLED_REFRESH_INTERVAL_MS = 250;
+  static constexpr unsigned long OLED_REFRESH_INTERVAL_MS = 500;
   static constexpr unsigned long OLED_PAGE_INTERVAL_MS = 2500;
   static constexpr unsigned long NRF_HEARTBEAT_INTERVAL_MS = 750;
   static constexpr unsigned long NRF_OFFLINE_HEARTBEAT_INTERVAL_MS = 3000;
@@ -87,10 +87,15 @@ namespace RobotConfig {
   static constexpr unsigned long WIFI_STATUS_INTERVAL_MS = 1000;
   static constexpr unsigned long WIFI_STA_INITIAL_RETRY_MS = 1500;
   static constexpr unsigned long WIFI_STA_MAX_RETRY_MS = 8000;
+  static constexpr unsigned long WIFI_STA_CONNECT_WINDOW_MS = 15000;
   // WiFiClient::setTimeout uses seconds in this Arduino-ESP32 release.
   static constexpr unsigned long HTTP_CLIENT_TIMEOUT_SECONDS = 1;
   static constexpr unsigned long HTTP_REQUEST_PARSE_TIMEOUT_MS = 250;
   static constexpr unsigned long HTTP_TELEMETRY_SEND_BUDGET_MS = 125;
+  static constexpr unsigned long HTTP_CONTROL_SEND_BUDGET_MS = 25;
+  static constexpr unsigned long HTTP_ASSET_SEND_BUDGET_MS = 250;
+  static constexpr size_t HTTP_MAX_HEADER_BYTES = 2048;
+  static constexpr size_t HTTP_MAX_BODY_BYTES = 1024;
   static constexpr unsigned long AUTO_OBSTACLE_REVERSE_MS = 220;
   static constexpr unsigned long AUTO_REVERSE_PREPARE_MS = 50;
   static constexpr unsigned long AUTO_REVERSE_SETTLE_MS = 150;

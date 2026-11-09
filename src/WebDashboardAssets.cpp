@@ -218,6 +218,7 @@ const char DASHBOARD_HTML[] PROGMEM = R"html(
                   </div>
                 </div>
                 <p class="control-note" id="controlAvailability">AUTO mode active.</p>
+                <p class="control-note" id="modeTransitionStatus" role="status" aria-live="polite" hidden></p>
                 <p id="overrideAlert" class="control-note" role="alert" hidden>Flame/Gas Hazard Detected</p>
                 <button class="mode-btn" id="overrideBtn" type="button" hidden disabled>Override Hazard &amp; Control</button>
                 <div class="alarm-bar control-alarm-bar" aria-label="Alarm controls">
@@ -539,6 +540,8 @@ const char DASHBOARD_HTML[] PROGMEM = R"html(
                 <div class="detail-item"><span>HTTP errors</span><strong id="systemHttpErrors">--</strong></div>
                 <div class="detail-item"><span>HTTP client timeouts</span><strong id="systemHttpTimeouts">--</strong></div>
                 <div class="detail-item"><span>Browser telemetry timeouts</span><strong id="systemTelemetryTimeouts">0</strong></div>
+                <div class="detail-item full"><span>Browser requests: completed / failed / last RTT</span><strong id="browserRequestDiagnostics">--</strong></div>
+                <div class="detail-item full"><span>Heartbeat and telemetry evidence</span><strong id="browserConnectionEvidence">No successful heartbeat yet</strong></div>
                 <div class="detail-item"><span>Wi-Fi reconnects</span><strong id="systemWifiReconnects">--</strong></div>
                 <div class="detail-item"><span>Last accepted command</span><strong id="systemLastAccepted">--</strong></div>
                 <div class="detail-item"><span>Last applied command</span><strong id="systemLastApplied">--</strong></div>
@@ -554,6 +557,8 @@ const char DASHBOARD_HTML[] PROGMEM = R"html(
               <div class="detail-grid">
                 <div class="detail-item"><span>DHT errors</span><strong id="systemDhtErrors">--</strong></div>
                 <div class="detail-item"><span>Ultrasonic faults</span><strong id="systemUltrasonicFaults">--</strong></div>
+                <div class="detail-item full"><span>Scans / timeouts / rejected samples</span><strong id="systemScanDiagnostics">--</strong></div>
+                <div class="detail-item full"><span>Forward trust holds / sonar reacquisitions</span><strong id="systemNavigationHolds">--</strong></div>
                 <div class="detail-item"><span>IMU errors</span><strong id="systemImuErrors">--</strong></div>
                 <div class="detail-item"><span>nRF TX failures</span><strong id="systemRadioFailures">--</strong></div>
               </div>
@@ -577,7 +582,7 @@ const char DASHBOARD_CSS[] PROGMEM = R"css(
   --line:#20364d;
   --line-soft:#172b40;
   --text:#edf7ff;
-  --muted:#91a7bb;
+  --muted:#b7c8d8;
   --cyan:#36d8ff;
   --cyan-soft:#a8efff;
   --blue:#1f78ff;
@@ -597,9 +602,9 @@ body {
     radial-gradient(circle at 15% 0%, rgba(31,120,255,.12), transparent 34rem),
     linear-gradient(180deg, var(--bg-deep), var(--bg));
   color:var(--text);
-  font-family:Inter, "Segoe UI", Arial, sans-serif;
-  line-height:1.45;
-  overflow-x:hidden;
+  font-family:system-ui, "Segoe UI", Arial, sans-serif;
+  font-size:clamp(1rem, .9vw + .625rem, 1.125rem);
+  line-height:1.5;
 }
 button, input, select { font:inherit; }
 button { color:inherit; }
@@ -627,6 +632,7 @@ button:focus-visible, input:focus-visible, select:focus-visible {
   background:rgba(13,27,43,.94);
 }
 .brand { display:flex; align-items:center; gap:12px; min-width:0; }
+.brand > div { min-width:0; overflow-wrap:anywhere; }
 .brand-mark {
   display:grid;
   place-items:center;
@@ -640,8 +646,8 @@ button:focus-visible, input:focus-visible, select:focus-visible {
   font-weight:900;
 }
 h1, h2, h3, p { margin-top:0; }
-h1 { margin-bottom:1px; font-size:20px; letter-spacing:.025em; }
-.brand p { margin:0; color:var(--muted); font-size:12px; }
+h1 { margin-bottom:1px; font-size:1.375rem; letter-spacing:.015em; }
+.brand p { margin:0; color:var(--muted); font-size:.875rem; }
 .header-status { display:flex; align-items:center; justify-content:flex-end; gap:8px; flex-wrap:wrap; }
 .status-badge, .panel-badge, .section-status, .product-chip {
   display:inline-flex;
@@ -652,9 +658,11 @@ h1 { margin-bottom:1px; font-size:20px; letter-spacing:.025em; }
   border-radius:999px;
   background:#0a1726;
   color:var(--muted);
-  font-size:12px;
+  font-size:.9375rem;
   font-weight:700;
-  white-space:nowrap;
+  white-space:normal;
+  overflow-wrap:anywhere;
+  max-width:100%;
 }
 .mode-badge strong { margin-left:5px; color:var(--cyan-soft); }
 .connection-badge { gap:7px; }
@@ -677,8 +685,8 @@ h1 { margin-bottom:1px; font-size:20px; letter-spacing:.025em; }
   background:linear-gradient(90deg, rgba(12,90,66,.92), rgba(11,64,56,.9));
   box-shadow:var(--shadow);
 }
-.alarm-label { flex:0 0 auto; font-size:13px; font-weight:900; letter-spacing:.055em; }
-.alarm-detail { min-width:0; color:#d8fff0; font-size:13px; overflow-wrap:anywhere; }
+.alarm-label { flex:0 1 auto; font-size:1.0625rem; font-weight:800; letter-spacing:.025em; }
+.alarm-detail { min-width:0; color:#d8fff0; font-size:1rem; overflow-wrap:anywhere; }
 .alarm-indicator.caution {
   border-color:rgba(245,185,66,.55);
   background:linear-gradient(90deg, rgba(128,82,15,.95), rgba(86,58,18,.93));
@@ -693,7 +701,7 @@ h1 { margin-bottom:1px; font-size:20px; letter-spacing:.025em; }
 }
 .section-nav {
   position:sticky;
-  top:128px;
+  top:10rem;
   z-index:15;
   display:grid;
   grid-template-columns:repeat(5, minmax(0,1fr));
@@ -706,7 +714,11 @@ h1 { margin-bottom:1px; font-size:20px; letter-spacing:.025em; }
   backdrop-filter:blur(12px);
 }
 .nav-btn {
-  min-height:42px;
+  min-width:0;
+  min-height:48px;
+  font-size:.9375rem;
+  line-height:1.25;
+  overflow-wrap:anywhere;
   border:1px solid transparent;
   border-radius:8px;
   background:transparent;
@@ -735,9 +747,9 @@ h1 { margin-bottom:1px; font-size:20px; letter-spacing:.025em; }
 .eyebrow {
   margin-bottom:4px;
   color:var(--cyan);
-  font-size:11px;
-  font-weight:900;
-  letter-spacing:.13em;
+  font-size:.875rem;
+  font-weight:700;
+  letter-spacing:.06em;
   text-transform:uppercase;
 }
 .section-status, .product-chip { color:var(--cyan-soft); }
@@ -755,14 +767,14 @@ h1 { margin-bottom:1px; font-size:20px; letter-spacing:.025em; }
   gap:12px;
   margin-bottom:14px;
 }
-.panel-heading h3 { margin:0; font-size:17px; }
+.panel-heading h3 { margin:0; font-size:1.1875rem; }
 .panel-badge { min-height:29px; padding:5px 9px; color:var(--cyan-soft); }
 .summary-grid { display:grid; gap:12px; }
 .summary-grid-primary { grid-template-columns:repeat(4, minmax(0,1fr)); }
 .metric-card { min-height:142px; padding:16px; display:flex; flex-direction:column; }
-.metric-label { color:var(--muted); font-size:12px; font-weight:700; }
-.metric-value { margin:14px 0 8px; color:var(--text); font-size:25px; line-height:1.05; overflow-wrap:anywhere; }
-.metric-note { margin-top:auto; color:var(--cyan-soft); font-size:12px; overflow-wrap:anywhere; }
+.metric-label { color:var(--muted); font-size:.9375rem; font-weight:600; }
+.metric-value { margin:14px 0 8px; color:var(--text); font-size:clamp(1.625rem, 1.2vw + 1.2rem, 2.125rem); line-height:1.4; overflow-wrap:anywhere; font-variant-numeric:tabular-nums; }
+.metric-note { margin-top:auto; color:var(--cyan-soft); font-size:.9375rem; overflow-wrap:anywhere; }
 .safety-card { border-color:rgba(34,201,131,.34); }
 .overview-layout { display:grid; grid-template-columns:1.35fr .85fr; gap:14px; margin-top:14px; }
 .mini-metric-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:9px; }
@@ -777,13 +789,16 @@ h1 { margin-bottom:1px; font-size:20px; letter-spacing:.025em; }
   display:block;
   margin-bottom:5px;
   color:var(--muted);
-  font-size:11px;
-  font-weight:700;
+  font-size:.875rem;
+  font-weight:600;
+  overflow-wrap:anywhere;
 }
 .mini-metric strong, .system-summary strong, .detail-item strong, .control-readouts strong {
   display:block;
   color:var(--text);
-  font-size:14px;
+  font-size:1.125rem;
+  line-height:1.4;
+  font-variant-numeric:tabular-nums;
   overflow-wrap:anywhere;
 }
 .system-summary { display:grid; gap:9px; }
@@ -801,7 +816,7 @@ h1 { margin-bottom:1px; font-size:20px; letter-spacing:.025em; }
 .quick-link:hover { border-color:rgba(54,216,255,.46); background:#0d2034; }
 .quick-link strong, .quick-link span { display:block; }
 .quick-link strong { margin-bottom:5px; color:var(--cyan-soft); }
-.quick-link span { color:var(--muted); font-size:12px; }
+.quick-link span { color:var(--muted); font-size:.9375rem; }
 .secondary-btn, .mode-btn, .turn-btn, .wifi-btn, .alarm-btn {
   border:1px solid var(--line);
   border-radius:9px;
@@ -810,7 +825,7 @@ h1 { margin-bottom:1px; font-size:20px; letter-spacing:.025em; }
   cursor:pointer;
 }
 .secondary-btn:hover, .mode-btn:hover, .turn-btn:hover, .wifi-btn:hover, .alarm-btn:hover { border-color:rgba(54,216,255,.55); }
-.compact-btn { min-height:38px; padding:7px 12px; font-size:12px; }
+.compact-btn { min-height:44px; padding:8px 12px; font-size:.9375rem; }
 .control-layout { display:grid; grid-template-columns:1fr; gap:12px; }
 .control-column, .radar-column { min-width:0; }
 .control-panel { height:auto; }
@@ -828,16 +843,16 @@ h1 { margin-bottom:1px; font-size:20px; letter-spacing:.025em; }
   border-radius:10px;
   background:rgba(3,12,23,.42);
 }
-.speed-control label { display:flex; justify-content:space-between; gap:12px; color:var(--muted); font-size:12px; font-weight:800; }
-.speed-control strong { color:var(--cyan); font-size:15px; }
-.speed-range { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:10px; margin-top:8px; color:var(--muted); font-size:11px; }
+.speed-control label { display:flex; flex-wrap:wrap; justify-content:space-between; gap:12px; color:var(--muted); font-size:.9375rem; font-weight:600; }
+.speed-control strong { color:var(--cyan); font-size:1.125rem; font-variant-numeric:tabular-nums; }
+.speed-range { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:10px; margin-top:8px; color:var(--muted); font-size:.875rem; }
 .speed-range input { width:100%; accent-color:var(--cyan); cursor:pointer; }
 .control-readouts { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin:12px 0; }
 .control-note {
   min-height:20px;
   margin:4px 0 11px;
   color:var(--amber);
-  font-size:12px;
+  font-size:1rem;
   text-align:center;
 }
 .dpad {
@@ -864,6 +879,8 @@ h1 { margin-bottom:1px; font-size:20px; letter-spacing:.025em; }
   background:linear-gradient(150deg,#185fc5,#12488f);
   color:white;
   font-weight:900;
+  font-size:1rem;
+  overflow-wrap:anywhere;
   touch-action:none;
   -ms-touch-action:none;
   cursor:pointer;
@@ -873,10 +890,10 @@ h1 { margin-bottom:1px; font-size:20px; letter-spacing:.025em; }
   grid-area:stop;
   min-height:86px;
   border-color:rgba(255,161,161,.58);
-  background:linear-gradient(150deg,var(--red),var(--red-strong));
+  background:linear-gradient(150deg,#bd263d,#9d1830);
 }
-.dpad .stop strong { font-size:21px; letter-spacing:.06em; }
-.dpad .stop span { font-size:11px; }
+.dpad .stop strong { font-size:1.625rem; letter-spacing:.03em; }
+.dpad .stop span { font-size:.9375rem; }
 .forward { grid-area:forward; }
 .backward { grid-area:backward; }
 .left { grid-area:left; }
@@ -901,25 +918,26 @@ h1 { margin-bottom:1px; font-size:20px; letter-spacing:.025em; }
   gap:12px;
   margin-bottom:10px;
 }
-.sensor-head-heading h4 { margin:0; color:var(--text); font-size:13px; letter-spacing:.04em; }
+.sensor-head-heading h4 { margin:0; color:var(--text); font-size:1rem; letter-spacing:.025em; }
 .sensor-head-heading .eyebrow { margin-bottom:3px; }
 #sensorHeadOrientation {
   padding:5px 8px;
   border:1px solid var(--line);
   border-radius:999px;
   color:var(--cyan-soft);
-  font-size:11px;
+  font-size:.9375rem;
   font-weight:900;
 }
 .sensor-head-buttons { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
 .sensor-head-btn {
-  min-height:42px;
+  min-height:48px;
   padding:7px 5px;
   border:1px solid rgba(79,151,255,.48);
   border-radius:9px;
   background:#142c46;
   color:var(--text);
-  font-size:11px;
+  font-size:.9375rem;
+  overflow-wrap:anywhere;
   font-weight:900;
   cursor:pointer;
 }
@@ -933,7 +951,7 @@ h1 { margin-bottom:1px; font-size:20px; letter-spacing:.025em; }
 .sensor-head-availability, .sensor-head-status {
   margin:8px 0 0;
   color:var(--muted);
-  font-size:11px;
+  font-size:.9375rem;
   text-align:center;
 }
 .sensor-head-status { color:var(--cyan-soft); }
@@ -960,7 +978,7 @@ h1 { margin-bottom:1px; font-size:20px; letter-spacing:.025em; }
   border-radius:8px;
   background:rgba(3,17,20,.75);
   color:var(--cyan-soft);
-  font-size:12px;
+  font-size:.9375rem;
   font-weight:800;
   text-align:center;
 }
@@ -975,11 +993,11 @@ h1 { margin-bottom:1px; font-size:20px; letter-spacing:.025em; }
   border-radius:11px;
   background:rgba(3,12,23,.42);
 }
-.large-reading strong { color:var(--cyan-soft); font-size:28px; line-height:1.1; }
+.large-reading strong { color:var(--cyan-soft); font-size:clamp(1.75rem, 2vw, 2.125rem); line-height:1.2; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
 .wifi-gauge { height:10px; margin-top:12px; border-radius:999px; background:#07111f; overflow:hidden; }
 .wifi-gauge span { display:block; width:0; height:100%; border-radius:inherit; background:linear-gradient(90deg,var(--blue),var(--green)); transition:width .25s ease; }
 .wifi-form { display:grid; gap:8px; }
-.wifi-form label { color:var(--muted); font-size:11px; font-weight:800; }
+.wifi-form label { color:var(--muted); font-size:.9375rem; font-weight:600; }
 .wifi-form input, .wifi-form select {
   width:100%;
   min-height:44px;
@@ -1000,7 +1018,7 @@ h1 { margin-bottom:1px; font-size:20px; letter-spacing:.025em; }
   border-radius:8px;
   background:rgba(3,12,23,.4);
   color:var(--muted);
-  font-size:11px;
+  font-size:.9375rem;
 }
 .alarm-bar { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-top:10px; }
 .control-alarm-bar { margin:8px 0 12px; }
@@ -1010,17 +1028,17 @@ h1 { margin-bottom:1px; font-size:20px; letter-spacing:.025em; }
   .compact-details { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
 @media (max-width:680px) {
-  .app-shell { padding:0 10px 88px; }
-  .app-header { padding-top:8px; }
+  .app-shell { padding:0 10px calc(8rem + 22px); }
+  .app-header { padding-top:8px; position:static; }
   .header-main { align-items:flex-start; padding:10px 12px; }
   .brand-mark { flex-basis:36px; height:36px; font-size:18px; }
-  h1 { font-size:17px; }
-  .brand p { font-size:10px; }
+  h1 { font-size:1.1875rem; }
+  .brand p { font-size:.875rem; }
   .header-status { flex-direction:column; align-items:flex-end; gap:5px; }
-  .status-badge { min-height:27px; padding:4px 8px; font-size:10px; }
+  .status-badge { min-height:32px; padding:5px 8px; font-size:.875rem; }
   .alarm-indicator { align-items:flex-start; flex-direction:column; gap:2px; min-height:51px; padding:8px 12px; }
-  .alarm-label { font-size:11px; }
-  .alarm-detail { font-size:11px; }
+  .alarm-label { font-size:1rem; }
+  .alarm-detail { font-size:.9375rem; }
   .section-nav {
     position:fixed;
     top:auto;
@@ -1031,29 +1049,44 @@ h1 { margin-bottom:1px; font-size:20px; letter-spacing:.025em; }
     margin:0;
     box-shadow:0 12px 35px rgba(0,0,0,.48);
   }
-  .nav-btn { min-height:48px; padding:4px 2px; font-size:9px; }
+  .nav-btn { min-height:52px; padding:6px 3px; font-size:.875rem; }
   .dashboard-main { padding-top:14px; }
   .section-heading { align-items:flex-start; }
   .section-heading h2 { font-size:24px; }
   .compact-btn { display:none; }
   .summary-grid-primary, .sensor-grid, .system-layout { grid-template-columns:1fr; }
   .metric-card { min-height:116px; }
-  .metric-value { margin:10px 0 6px; font-size:22px; }
+  .metric-value { margin:10px 0 6px; }
   .mini-metric-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .quick-links { grid-template-columns:1fr; }
   .control-readouts, .compact-details { grid-template-columns:1fr 1fr; }
   .panel { padding:13px; }
   .dpad { gap:8px; }
-  .dpad button { min-height:68px; font-size:12px; }
+  .dpad button { min-height:76px; font-size:1rem; }
   .dpad .stop { min-height:80px; }
 }
 @media (max-width:390px) {
   .brand p { display:none; }
-  .mode-badge { display:none; }
   .detail-grid, .large-reading-grid { grid-template-columns:1fr; }
   .detail-item.full { grid-column:auto; }
   .control-readouts { grid-template-columns:1fr; }
   .wifi-actions { grid-template-columns:1fr; }
+}
+/* Enlarged text may wrap; no hidden horizontal overflow or removed controls. */
+.panel-heading, .section-heading, .sensor-head-heading { flex-wrap:wrap; }
+.panel-heading > *, .section-heading > *, .sensor-head-heading > * { min-width:0; max-width:100%; }
+.alarm-btn, .mode-btn, .wifi-btn, .secondary-btn { overflow-wrap:anywhere; }
+@media (max-width:480px) {
+  .header-main { flex-wrap:wrap; gap:10px; }
+  .header-status { flex-direction:row; align-items:center; }
+  .section-nav { grid-template-columns:repeat(6,minmax(0,1fr)); gap:4px; }
+  .nav-btn { grid-column:span 2; }
+  .nav-btn:nth-child(n+4) { grid-column:span 3; }
+  .sensor-head-buttons { grid-template-columns:1fr; }
+}
+@media (max-height:500px) {
+  .app-header, .section-nav { position:static; }
+  .app-shell { padding-bottom:24px; }
 }
 @media (prefers-reduced-motion:reduce) {
   *, *::before, *::after { scroll-behavior:auto !important; transition:none !important; }
@@ -1064,6 +1097,7 @@ const char DASHBOARD_JS[] PROGMEM = R"js(
 let mode = 'AUTO';
 let controlSessionToken = null;
 let sessionRequestInFlight = false;
+let sessionRequestPromise = null;
 let turnMode = 'PIVOT';
 let audioCtx = null;
 let alarmOutput = null;
@@ -1083,10 +1117,44 @@ const PING_TIMEOUT_MS = 1000;
 const HEARTBEAT_OFFLINE_MS = 3000;
 const TELEMETRY_STALE_MS = 3000;
 let commandSequence = 0;
-let moveRequestInFlight = false;
+const moveRequestsInFlight = new Set();
+const MAX_MOVE_REQUESTS_IN_FLIGHT = 3; // bound response overlap; retain capacity for STOP/ping/data
+let acknowledgedCommandSequence = 0;
 let stopRequestsInFlight = 0;
 const stopRequestPromises = new Set();
 let modeRequestGeneration = 0;
+let modeTransition = null;
+let controlRequestUncertain = false;
+let recoveryStateConfirmed = false;
+let automaticControlRecovery = false;
+let controlRecoveryAttempts = 0;
+let nextControlRecoveryMs = 0;
+const MAX_CONTROL_RECOVERY_ATTEMPTS = 3;
+const STOP_REQUEST_TIMEOUT_MS = 1800;
+const MODE_REQUEST_TIMEOUT_MS = 1500;
+const MOVE_REQUEST_TIMEOUT_MS = 1800; // response deadline; firmware independently expires commands at 750 ms
+// Fixed counters only: no request history, extra polling, or per-frame diagnostics.
+const requestDiagnostics = Object.fromEntries(['ping','data','cmd','stop','mode'].map(key =>
+  [key, { completed:0, failed:0, timedOut:0, lastRtt:null, outcome:'NONE' }]));
+
+function recordRequest(kind, outcome, started) {
+  const item = requestDiagnostics[kind];
+  if (outcome === 'OK') { item.completed += 1; lastNodeResponseSuccess = Date.now(); }
+  else { item.failed += 1; if (outcome === 'TIMEOUT') item.timedOut += 1; }
+  item.lastRtt = Math.max(0, Math.round(performance.now() - started));
+  item.outcome = outcome;
+}
+
+function renderRequestDiagnostics() {
+  setText('browserRequestDiagnostics', Object.entries(requestDiagnostics).map(([key, value]) =>
+    key + ' ' + value.completed + '/' + value.failed + ' / ' +
+    (value.lastRtt === null ? '--' : value.lastRtt + ' ms') + ' ' + value.outcome +
+    ' (timeouts ' + value.timedOut + ')').join('; '));
+  const heartbeatAge = lastHeartbeatSuccess ? Math.max(0, Date.now()-lastHeartbeatSuccess) : null;
+  setText('browserConnectionEvidence', 'Successful ping age: ' + (heartbeatAge === null ? '--' : heartbeatAge+' ms') +
+    '; successful telemetry age: ' + (lastTelemetrySuccess ? Math.max(0,Date.now()-lastTelemetrySuccess)+' ms' : '--') +
+    '. Offline means no recent successful HTTP response; control readiness is separate. Compare STA events, uptime and reset reason.');
+}
 let pendingMove = null;
 let activePointerId = null;
 let moveAbortController = null;
@@ -1106,6 +1174,7 @@ let dataRequestInFlight = false;
 let lastTelemetrySuccess = 0;
 let lastTelemetryNodeAgeMs = 0;
 let lastHeartbeatSuccess = 0;
+let lastNodeResponseSuccess = 0;
 let pingRequestInFlight = false;
 let pingTimer = null;
 let wifiScanTimer = null;
@@ -1157,24 +1226,148 @@ function previewSpeed(value) {
       });
   }, 180);
 }
+function transitionStatus(message) {
+  const element = byId('modeTransitionStatus');
+  if (element) { element.hidden = !message; element.textContent = message; }
+}
+
+function inhibitControl(message, recoverable = true) {
+  if (!controlRequestUncertain) {
+    automaticControlRecovery = recoverable;
+    controlRecoveryAttempts = 0;
+    nextControlRecoveryMs = 0;
+  } else if (!recoverable) automaticControlRecovery = false;
+  controlRequestUncertain = true;
+  recoveryStateConfirmed = false;
+  activePress = false;
+  activePointerId = null;
+  pendingMove = null;
+  clearMoveRefresh();
+  transitionStatus(message);
+  updateModeButtons();
+}
+
+function restoreManualReadiness(generation, token) {
+  if (generation !== modeRequestGeneration || modeTransition || mode !== 'MANUAL' ||
+      !token || token !== controlSessionToken || latestData?.controlSessionRevoked || manualRecoverySafetyBlocked()) return;
+  controlRequestUncertain = false;
+  recoveryStateConfirmed = false;
+  automaticControlRecovery = false;
+  transitionStatus('');
+  updateModeButtons(); // held/pending intent was retired; only a fresh press can move
+}
+
+function manualRecoverySafetyBlocked() {
+  return Boolean(latestData && (latestData.temperatureCritical ||
+    ((latestData.flameCritical || latestData.gasCritical) && !latestData.manualFlameGasOverride)));
+}
+
+// Recovery runs only from fresh /data, never from /ping or a retained pointer.
+// At most three non-moving attempts per interruption, using the existing poll cadence.
+function recoverManualControl() {
+  if (!controlRequestUncertain || !automaticControlRecovery || mode !== 'MANUAL' ||
+      modeTransition || document.hidden || lastTelemetryNodeAgeMs > TELEMETRY_STALE_MS ||
+      stopRequestsInFlight || sessionRequestInFlight ||
+      controlRecoveryAttempts >= MAX_CONTROL_RECOVERY_ATTEMPTS || Date.now() < nextControlRecoveryMs) return;
+  if (manualRecoverySafetyBlocked()) {
+    transitionStatus('Safety hold active; control recovery paused');
+    return;
+  }
+  controlRecoveryAttempts += 1;
+  nextControlRecoveryMs = Date.now() + 1500 * (2 ** (controlRecoveryAttempts - 1));
+  transitionStatus('RECONNECTING CONTROL...');
+  sendCmd('STOP', true); // retired Manual only; cannot STOP a newer backend AUTO
+}
+
+// The promise settles on its own deadline even if a transport/mock ignores abort.
+// A deadline is uncertainty, never an acknowledgement or permission to continue.
+function boundedRequest(url, options, duration, controller = new AbortController(), readJson = false) {
+  const kind = url === '/control-session' ? null : url.startsWith('/mode?') ? 'mode' : url.includes('move=STOP') || url.includes('move=RELEASE') ? 'stop' : 'cmd';
+  const started = performance.now();
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const finish = (error, response) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      controller.signal.removeEventListener('abort', aborted);
+      if (kind) recordRequest(kind, error ? (error.message.startsWith('Request timed out') ? 'TIMEOUT' : 'FAILED_OR_ABORTED') : 'OK', started);
+      error ? reject(error) : resolve(response);
+    };
+    const aborted = () => finish(new Error('Request aborted; acknowledgement uncertain'));
+    const timer = setTimeout(() => {
+      finish(new Error('Request timed out; acknowledgement uncertain'));
+      controller.abort();
+    }, duration);
+    controller.signal.addEventListener('abort', aborted, { once:true });
+    if (controller.signal.aborted) { aborted(); return; }
+    fetch(url, { ...options, signal:controller.signal }).then(response => {
+      if (!response.ok) finish(Object.assign(new Error('Request rejected (' + response.status + ')'), { status:response.status }));
+      else if (readJson) Promise.resolve().then(() => response.json()).then(body => finish(null, body), error => finish(error));
+      else finish(null, response);
+    }, error => finish(error));
+  });
+}
+
 function setMode(nextMode) {
-  explicitStop(mode === 'MANUAL');
-  const generation = modeRequestGeneration;
-  // Backend mode acceptance retires old motors atomically. Never let an
-  // already-issued retirement/lifecycle STOP arrive after that admission.
-  return Promise.all(Array.from(stopRequestPromises))
-    .then(() => {
-      if (generation !== modeRequestGeneration) return;
-      mode = nextMode;
-      updateModeButtons();
-      return fetch('/mode?set=' + encodeURIComponent(nextMode), { cache:'no-store' })
-        .then(response => {
-          if (!response.ok) throw new Error('Mode request rejected');
-          controlSessionToken = null;
-          return loadData();
-        });
-    })
-    .catch(() => loadData());
+  if (nextMode !== 'AUTO' && nextMode !== 'MANUAL') return Promise.resolve();
+  if (modeTransition) return modeTransition.promise; // no overlapping transactions
+  if (nextMode === 'MANUAL' && mode === 'MANUAL' && !controlRequestUncertain &&
+      controlSessionToken && latestData?.controlSessionAlive && !activePress &&
+      moveRequestsInFlight.size === 0 && stopRequestsInFlight === 0) {
+    updateModeButtons();
+    return Promise.resolve(); // already ready; no STOP, mode reset or session replacement
+  }
+  if (controlRequestUncertain && !recoveryStateConfirmed) {
+    transitionStatus('Waiting for robot...');
+    return Promise.resolve();
+  }
+  const pendingSession = sessionRequestPromise;
+  explicitStop(!controlRequestUncertain && mode === 'MANUAL');
+  const transaction = { generation:modeRequestGeneration, controller:null, promise:null };
+  modeTransition = transaction;
+  transitionStatus('Transition in progress: waiting for STOP acknowledgement; physical stop unverified.');
+  updateModeButtons();
+  transaction.promise = Promise.all(Array.from(stopRequestPromises)).then(responses => {
+    if (!pendingSession) return responses;
+    // Session creation applies RELEASE. Finish it before obtaining the final STOP ticket.
+    return pendingSession.then(() => {
+      if (modeTransition !== transaction || transaction.generation !== modeRequestGeneration) return [];
+      sendCmd('STOP', !controlRequestUncertain && mode === 'MANUAL');
+      return Promise.all(Array.from(stopRequestPromises));
+    });
+  }).then(responses => {
+    if (modeTransition !== transaction || transaction.generation !== modeRequestGeneration) return;
+    const tickets = responses.map(response => response.headers?.get('X-PIKU-Mode-Fence'))
+      .filter(ticket => /^\d+\.\d+$/.test(ticket || ''));
+    if (!tickets.length) throw new Error('STOP acknowledgement has no fresh mode fence');
+    // The server may complete pending STOPs in a different order from the browser.
+    const ticket = tickets.reduce((latest, value) =>
+      ((Number(value.split('.')[1]) - Number(latest.split('.')[1])) | 0) > 0 ? value : latest);
+    transitionStatus('STOP acknowledged by firmware. Requesting ' + nextMode + '; physical stop unverified.');
+    transaction.controller = new AbortController();
+    return boundedRequest('/mode?set=' + encodeURIComponent(nextMode) + '&fence=' + encodeURIComponent(ticket),
+      { cache:'no-store' }, MODE_REQUEST_TIMEOUT_MS, transaction.controller).then(() => {
+        if (modeTransition !== transaction || transaction.generation !== modeRequestGeneration) return;
+        modeRequestGeneration += 1; // retire telemetry requested before this acknowledgement
+        modeTransition = null;
+        mode = nextMode;
+        controlSessionToken = null;
+        controlRequestUncertain = false;
+        recoveryStateConfirmed = false;
+        transitionStatus('Mode change acknowledged: ' + nextMode + '.');
+        updateModeButtons();
+        // This fresh operator mode acknowledgement authorizes session replacement.
+        return Promise.resolve(nextMode === 'MANUAL' ? ensureControlSession() : null).then(() => loadData());
+      });
+  }).catch(error => {
+    if (modeTransition !== transaction || transaction.generation !== modeRequestGeneration) return;
+    modeTransition = null;
+    inhibitControl('Mode not confirmed; STOP sent.', false);
+    explicitStop(); // revokes the server ticket; never resubmit the failed mode automatically
+    loadData();
+  });
+  return transaction.promise;
 }
 
 function setTurnMode(nextMode) {
@@ -1191,7 +1384,7 @@ function sendCmd(move, retirement = false) {
     // STOP bypasses a slow direction request. The higher sequence makes any
     // older direction harmless if it reaches the ESP32 afterward.
     pendingMove = null;
-    if (moveAbortController) moveAbortController.abort();
+    moveRequestsInFlight.forEach(controller => controller.abort('STOP_OR_RELEASE'));
     moveAbortController = null;
     if (dataAbortController) dataAbortController.abort();
     if (pingAbortController) pingAbortController.abort();
@@ -1208,6 +1401,7 @@ function sendCmd(move, retirement = false) {
   }
 
   // Keep only the newest unsent direction/heartbeat and never build a queue.
+  if (modeTransition || controlRequestUncertain) return Promise.resolve();
   pendingMove = move;
   flushMoveCommand();
   return Promise.resolve();
@@ -1216,25 +1410,77 @@ function sendCmd(move, retirement = false) {
 function issueCmd(move, retirement = false) {
   commandSequence += 1;
   const issuedSequence = commandSequence;
+  const issuedToken = controlSessionToken;
   const query = '/cmd?move=' + encodeURIComponent(move) +
     '&seq=' + encodeURIComponent(issuedSequence) +
     (move === 'STOP' && retirement === true ? '&retire=manual' : '') +
-    (controlSessionToken ? '&token=' + encodeURIComponent(controlSessionToken) : '');
+    (issuedToken ? '&token=' + encodeURIComponent(issuedToken) : '');
   const controller = new AbortController();
-  if (move !== 'STOP' && move !== 'RELEASE') moveAbortController = controller;
+  const direction = move !== 'STOP' && move !== 'RELEASE';
+  if (direction) {
+    moveAbortController = controller;
+    controller.sequence = issuedSequence;
+    moveRequestsInFlight.add(controller);
+  }
   const started = performance.now();
-  return fetch(query, {
-    signal:controller.signal,
+  const generation = modeRequestGeneration;
+  const request = boundedRequest(query, {
     cache:'no-store',
     keepalive:move === 'STOP' || move === 'RELEASE'
-  }).then(response => {
-    if (!response.ok) throw new Error('Control request rejected');
+  }, move === 'STOP' || move === 'RELEASE' ? STOP_REQUEST_TIMEOUT_MS : MOVE_REQUEST_TIMEOUT_MS,
+  controller).then(response => {
+    const serverSequence = Number(response.headers?.get('X-PIKU-Command-Sequence'));
+    if (Number.isSafeInteger(serverSequence) && serverSequence > 0)
+      commandSequence = Math.max(commandSequence, serverSequence);
+    if (generation === modeRequestGeneration && !controller.signal.aborted)
+      acknowledgedCommandSequence = Math.max(acknowledgedCommandSequence, issuedSequence);
     if (issuedSequence === commandSequence) {
       lastControlRttMs = Math.max(0, Math.round(performance.now() - started));
       setText('controlRtt', lastControlRttMs + ' ms');
     }
+    if (!direction && controlRequestUncertain && generation === modeRequestGeneration &&
+        Number.isSafeInteger(serverSequence) && serverSequence > 0 &&
+        !modeTransition && mode === 'MANUAL') {
+      const state = response.headers?.get('X-PIKU-Control-State');
+      if (state === 'MANUAL_AUTHORIZED' && issuedSequence >= acknowledgedCommandSequence)
+        restoreManualReadiness(generation, issuedToken);
+      else if (state === 'MANUAL_REVOKED') {
+        automaticControlRecovery = false;
+        transitionStatus('Control authority revoked; operator authorization required');
+      } else if (state === 'MANUAL_OTHER_SESSION' && !sessionRequestPromise) {
+        automaticControlRecovery = false;
+        transitionStatus('Another control session owns authority; select MANUAL to take control');
+      } else if (state === 'MANUAL_SESSION_EXPIRED' ||
+          (state === 'MANUAL_OTHER_SESSION' && sessionRequestPromise)) {
+        if (state === 'MANUAL_SESSION_EXPIRED') controlSessionToken = null;
+        // STOP is confirmed. Reuse existing session creation, which also applies RELEASE.
+        return Promise.resolve(sessionRequestPromise || ensureControlSession()).then(() => {
+          restoreManualReadiness(generation, controlSessionToken);
+          return response;
+        }, () => response);
+      }
+    }
     return response;
+  });
+  controller.acknowledgement = request;
+  return request.catch(async error => {
+    // An old sequence can be rejected after a newer refresh reaches the server.
+    // Only a successful newer acknowledgement can retire that failure.
+    if (direction && error.status === 409 && controller.signal.reason !== 'STOP_OR_RELEASE') {
+      const newer = Array.from(moveRequestsInFlight)
+        .filter(other => other.sequence > issuedSequence).map(other => other.acknowledgement);
+      if (newer.length) { try { await Promise.any(newer); } catch (_) {} }
+    }
+    if (issuedSequence < acknowledgedCommandSequence) return;
+    if (controller.signal.reason !== 'STOP_OR_RELEASE' &&
+        generation === modeRequestGeneration && !modeTransition) {
+      inhibitControl(move === 'STOP' || move === 'RELEASE' ? 'STOP not confirmed' : 'Command not confirmed',
+        direction || move === 'RELEASE' || retirement);
+      if (direction || move === 'RELEASE') sendCmd('STOP', mode === 'MANUAL'); // obtain explicit stop proof
+    }
+    throw error;
   }).finally(() => {
+    if (direction) moveRequestsInFlight.delete(controller);
     if (move !== 'STOP' && move !== 'RELEASE' && moveAbortController === controller) {
       moveAbortController = null;
     }
@@ -1242,16 +1488,12 @@ function issueCmd(move, retirement = false) {
 }
 
 function flushMoveCommand() {
-  if (moveRequestInFlight || stopRequestsInFlight > 0 || !pendingMove) return;
+  if (modeTransition || controlRequestUncertain || sessionRequestInFlight || moveRequestsInFlight.size >= MAX_MOVE_REQUESTS_IN_FLIGHT || stopRequestsInFlight > 0 || !pendingMove) return;
   const move = pendingMove;
   pendingMove = null;
-  moveRequestInFlight = true;
   issueCmd(move)
     .catch(() => {})
-    .then(() => {
-      moveRequestInFlight = false;
-      flushMoveCommand();
-    });
+    .then(() => flushMoveCommand());
 }
 
 function requestSensorHead(orientation) {
@@ -1285,7 +1527,7 @@ function clearMoveRefresh() {
 }
 
 function startMove(move) {
-  if (mode !== 'MANUAL') return;
+  if (mode !== 'MANUAL' || modeTransition || controlRequestUncertain) return;
   clearMoveRefresh();
   activePress = true;
   activeMove = move;
@@ -1304,7 +1546,14 @@ function stopMove() {
 }
 
 function explicitStop(retirement = false) {
+  automaticControlRecovery = false; // explicit intervention never becomes an automatic rearm
   modeRequestGeneration += 1; // newer genuine/lifecycle STOP cancels waiting AUTO
+  if (modeTransition) {
+    const cancelled = modeTransition;
+    modeTransition = null;
+    if (cancelled.controller) cancelled.controller.abort();
+    inhibitControl('Mode cancelled; STOP sent.', false);
+  }
   activePress = false;
   activePointerId = null;
   clearMoveRefresh();
@@ -1322,6 +1571,10 @@ function updateModeButtons() {
   const dpad = byId('dpad');
   const turnButton = byId('turnModeBtn');
   const manualActive = mode === 'MANUAL';
+  const inhibited = Boolean(modeTransition) || controlRequestUncertain;
+  const modeDisabled = Boolean(modeTransition) || (controlRequestUncertain && !recoveryStateConfirmed);
+  if (autoButton) autoButton.disabled = modeDisabled;
+  if (manualButton) manualButton.disabled = modeDisabled;
   if (!manualActive && activePress) {
     activePress = false;
     clearMoveRefresh();
@@ -1333,7 +1586,7 @@ function updateModeButtons() {
     (latestData.flameCritical || latestData.gasCritical) &&
     !latestData.manualFlameGasOverride;
   document.querySelectorAll('.hold').forEach(button => {
-    button.disabled = !manualActive || hazardBlocked;
+    button.disabled = !manualActive || hazardBlocked || inhibited;
     button.setAttribute('aria-disabled', button.disabled ? 'true' : 'false');
   });
   const stopButton = byId('stopBtn');
@@ -1341,10 +1594,11 @@ function updateModeButtons() {
     stopButton.disabled = false;
     stopButton.setAttribute('aria-disabled', 'false');
   }
-  if (turnButton) turnButton.disabled = !manualActive;
-  setText('controlAvailability', manualActive
-    ? (hazardBlocked ? 'Manual controls paused.' : 'Manual controls ready.')
-    : 'AUTO mode active. STOP is available.');
+  if (turnButton) turnButton.disabled = !manualActive || inhibited;
+  setText('controlAvailability', modeTransition ? 'Mode transition in progress. STOP remains available.' :
+    controlRequestUncertain ? (automaticControlRecovery ? 'RECONNECTING CONTROL...' : 'Control confirmation required; see status.') : manualActive
+    ? (hazardBlocked ? 'Manual controls paused.' : 'MANUAL READY')
+    : 'AUTO ACTIVE');
 }
 
 function updateSensorHeadControls(d) {
@@ -1541,15 +1795,37 @@ function controlPost(path, values) {
 }
 
 function ensureControlSession() {
-  if (mode !== 'MANUAL' || document.hidden || controlSessionToken || sessionRequestInFlight) return;
+  if (mode !== 'MANUAL' || modeTransition || document.hidden || controlSessionToken || sessionRequestInFlight) return;
   sessionRequestInFlight = true;
-  controlPost('/control-session', {}).then(response => response.json())
+  const generation = modeRequestGeneration;
+  const request = boundedRequest('/control-session', { method:'POST', cache:'no-store' },
+      STOP_REQUEST_TIMEOUT_MS, new AbortController(), true)
     .then(result => {
+      if (generation !== modeRequestGeneration || modeTransition || mode !== 'MANUAL') return;
+      if (typeof result.token !== 'string' || !result.token) throw new Error('Invalid control-session reply');
+      const releasedSequence = Number(result.commandSequence);
+      if (controlRequestUncertain && (!Number.isSafeInteger(releasedSequence) || releasedSequence <= 0))
+        throw new Error('Session command sequence not confirmed');
       controlSessionToken = result.token;
+      if (Number.isSafeInteger(releasedSequence) && releasedSequence > 0)
+        commandSequence = Math.max(commandSequence, releasedSequence);
       const button = byId('overrideBtn');
       if (button && !button.hidden) button.disabled = false;
-    }).catch(() => {})
-    .finally(() => { sessionRequestInFlight = false; });
+    });
+  sessionRequestPromise = request;
+  request.catch(() => {
+    if (generation === modeRequestGeneration && !modeTransition && (activePress || pendingMove)) {
+      inhibitControl('Control session unavailable');
+      sendCmd('STOP');
+    }
+  }).finally(() => {
+    if (sessionRequestPromise === request) {
+      sessionRequestInFlight = false;
+      sessionRequestPromise = null;
+      flushMoveCommand();
+    }
+  });
+  return request;
 }
 
 function toggleManualOverride() {
@@ -1697,16 +1973,20 @@ function drawRadar(d) {
   const cx = w / 2;
   const cy = h - 18;
   const radius = Math.min(w / 2 - 18, h - 30);
+  const textScale = Math.max(1, w / canvas.clientWidth);
   ctx.clearRect(0, 0, w, h);
   ctx.strokeStyle = d.nearObstacleHazard ? '#ef4444' : '#155e75';
   ctx.lineWidth = d.nearObstacleHazard ? 3 : 1;
-  RADAR_RINGS_CM.forEach(ring => {
+  RADAR_RINGS_CM.forEach((ring, index) => {
     ctx.beginPath();
     ctx.arc(cx, cy, radius * ring / RADAR_MAX_CM, Math.PI, 0);
     ctx.stroke();
     ctx.fillStyle = '#67e8f9';
-    ctx.font = '10px Arial';
-    ctx.fillText(ring + 'cm', cx + radius * ring / RADAR_MAX_CM - 22, cy - 3);
+    ctx.font = '600 ' + (14 * textScale) + 'px system-ui, "Segoe UI", Arial, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(ring + 'cm', cx + radius * ring / RADAR_MAX_CM - 4 * textScale,
+      cy - (4 + index * 18) * textScale);
+    ctx.textAlign = 'left';
   });
   for (let angle = 0; angle <= 180; angle += 45) {
     const point = angleToCanvas(angle, RADAR_MAX_CM, cx, cy, radius);
@@ -1735,10 +2015,13 @@ function drawRadar(d) {
   ctx.lineTo(sweep.x, sweep.y);
   ctx.stroke();
   ctx.fillStyle = '#e5e7eb';
-  ctx.font = '12px Arial';
+  ctx.font = '700 ' + (16 * textScale) + 'px system-ui, "Segoe UI", Arial, sans-serif';
   ctx.fillText('L', 10, cy - 6);
-  ctx.fillText('F', cx - 4, 14);
-  ctx.fillText('R', w - 18, cy - 6);
+  ctx.textAlign = 'center';
+  ctx.fillText('F', cx, 18 * textScale);
+  ctx.textAlign = 'right';
+  ctx.fillText('R', w - 10, cy - 6);
+  ctx.textAlign = 'left';
   setText('radarReadout',
     'Servo-scanned ultrasonic: ' + d.scanOrientation + ' @ ' + d.servoAngle + ' deg, ' +
     (d.distanceValid ? d.distance + ' cm' : d.ultrasonicState) +
@@ -2102,6 +2385,12 @@ function renderTelemetry(d) {
   setText('systemApplyLag', ageText(d.handlerApplyLagMs));
   setText('systemDhtErrors', d.dht_error_count ?? 0);
   setText('systemUltrasonicFaults', d.ultrasonicFaultCount ?? 0);
+  const navDiagnostics = d.navigationDiagnostics || {};
+  setText('systemScanDiagnostics', (navDiagnostics.scans ?? 0) + ' / ' +
+    (navDiagnostics.scanTimeouts ?? 0) + ' / ' + (navDiagnostics.scanRejected ?? 0) +
+    ' \u2014 last: ' + (navDiagnostics.lastScanRejection || 'NONE'));
+  setText('systemNavigationHolds', (navDiagnostics.forwardUntrustedStops ?? 0) + ' / ' +
+    (navDiagnostics.sonarReacquisitions ?? 0));
   setText('systemImuErrors', imu.error_count ?? 0);
   setText('systemRadioFailures', radio.tx_failure ?? 0);
 
@@ -2153,15 +2442,13 @@ function renderTelemetry(d) {
 
   mode = d.mode;
   turnMode = d.turnMode;
-  if (mode === 'MANUAL' && !d.controlSessionAlive) {
-    controlSessionToken = null;
-    if (activePress) {
-      activePress = false;
-      clearMoveRefresh();
-      sendCmd('STOP');
-    }
+  if (mode === 'MANUAL' && d.controlSessionRevoked) {
+    inhibitControl('Control authority revoked; operator authorization required', false);
+  } else if (mode === 'MANUAL' && !d.controlSessionAlive && controlSessionToken && !controlRequestUncertain && !modeTransition) {
+    inhibitControl('Control session needs confirmation');
+    sendCmd('STOP', true); // keep token until the server distinguishes expiry from another owner
   }
-  if (mode === 'MANUAL') ensureControlSession();
+  if (mode === 'MANUAL' && !controlRequestUncertain) ensureControlSession();
   const hazardActive = Boolean(d.flameCritical || d.gasCritical || d.manualFlameGasOverride);
   const overrideButton = byId('overrideBtn');
   if (overrideButton) {
@@ -2182,6 +2469,7 @@ function renderTelemetry(d) {
   updateTurnModeButton();
   updateAlarmBanner(d);
   updateWiFi(d);
+  renderRequestDiagnostics();
 }
 
 function updateConnectionState(state) {
@@ -2197,15 +2485,17 @@ function updateConnectionState(state) {
 
 function refreshConnectionBadge() {
   const now = Date.now();
-  if (!lastHeartbeatSuccess ||
-      now - lastHeartbeatSuccess > HEARTBEAT_OFFLINE_MS) {
+  const responseAt = Math.max(lastHeartbeatSuccess, lastTelemetrySuccess, lastNodeResponseSuccess);
+  if (!responseAt || now - responseAt > HEARTBEAT_OFFLINE_MS) {
     updateConnectionState('offline');
+    setText('controlAvailability', 'CONNECTION LOST / RECONNECTING');
     return;
   }
   const telemetryAge = lastTelemetrySuccess
     ? now - lastTelemetrySuccess + lastTelemetryNodeAgeMs
     : Number.POSITIVE_INFINITY;
   updateConnectionState(telemetryAge > TELEMETRY_STALE_MS ? 'stale' : 'live');
+  updateModeButtons();
 }
 
 function pollPing() {
@@ -2213,7 +2503,9 @@ function pollPing() {
   pingRequestInFlight = true;
   const controller = new AbortController();
   pingAbortController = controller;
-  const timeout = setTimeout(() => controller.abort(), PING_TIMEOUT_MS);
+  const started = performance.now();
+  let timedOut = false;
+  const timeout = setTimeout(() => { timedOut = true; controller.abort(); }, PING_TIMEOUT_MS);
   const pingUrl = controlSessionToken
     ? '/ping?token=' + encodeURIComponent(controlSessionToken) : '/ping';
   fetch(pingUrl, { signal:controller.signal, cache:'no-store' })
@@ -2224,8 +2516,9 @@ function pollPing() {
     .then(result => {
       if (!result.ok) throw new Error('Heartbeat rejected');
       lastHeartbeatSuccess = Date.now();
+      recordRequest('ping', 'OK', started);
     })
-    .catch(() => {})
+    .catch(() => recordRequest('ping', timedOut ? 'TIMEOUT' : 'FAILED_OR_ABORTED', started))
     .finally(() => {
       clearTimeout(timeout);
       if (pingAbortController === controller) pingAbortController = null;
@@ -2243,13 +2536,16 @@ function loadData() {
     telemetryTimer = null;
   }
   dataRequestInFlight = true;
+  const generation = modeRequestGeneration;
   const controller = new AbortController();
   dataAbortController = controller;
   let timedOut = false;
+  const started = performance.now();
   const timeout = setTimeout(() => {
     timedOut = true;
     controller.abort();
   }, TELEMETRY_TIMEOUT_MS);
+  const telemetryToken = controlSessionToken;
   const dataUrl = controlSessionToken
     ? '/data?token=' + encodeURIComponent(controlSessionToken) : '/data';
   dataRequestPromise = fetch(dataUrl, { signal:controller.signal, cache:'no-store' })
@@ -2258,17 +2554,31 @@ function loadData() {
       return response.json();
     })
     .then(data => {
+      recordRequest('data', 'OK', started);
+      if (generation !== modeRequestGeneration || telemetryToken !== controlSessionToken) return; // stale response cannot restore old controls
       lastTelemetrySuccess = Date.now();
       lastTelemetryNodeAgeMs = Math.max(0, Number(data.telemetry_age_ms) || 0);
       refreshConnectionBadge();
       renderTelemetry(data);
+      if (controlRequestUncertain) {
+        recoveryStateConfirmed = true;
+        if (automaticControlRecovery) {
+          transitionStatus(controlRecoveryAttempts >= MAX_CONTROL_RECOVERY_ATTEMPTS
+            ? 'STOP/session still unconfirmed after 3 attempts; select MANUAL to retry'
+            : 'RECONNECTING CONTROL...');
+          recoverManualControl();
+        }
+        updateModeButtons();
+      }
     })
     .catch(() => {
+      recordRequest('data', timedOut ? 'TIMEOUT' : 'FAILED_OR_ABORTED', started);
       if (timedOut) {
         telemetryTimeoutCount += 1;
         setText('systemTelemetryTimeouts', telemetryTimeoutCount);
       }
       refreshConnectionBadge();
+      renderRequestDiagnostics();
     })
     .then(() => {
       clearTimeout(timeout);

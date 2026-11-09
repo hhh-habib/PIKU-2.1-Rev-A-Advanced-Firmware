@@ -114,7 +114,9 @@ void DashboardPublisher::publishSensorReadings(const String& servoPos,
     data.motorState = motorStateName;
   }
 
-  if (allowSlowOutputs) {
+  dashboard.copyDisplayNetworkState(data); // Existing cache only; no Wi-Fi polling.
+  // A new/changed/cleared confirmed alert must not wait for an idle control pass.
+  if (allowSlowOutputs || display.alertUpdatePending(data)) {
     display.updateDashboard(data);
   }
 
@@ -198,6 +200,12 @@ bool DashboardPublisher::dashboardDataChanged(const DashboardData& current, cons
          current.autoStuckState != previous.autoStuckState ||
          current.autoStuckRecoveryAttempts != previous.autoStuckRecoveryAttempts ||
          current.autoStuckLastReason != previous.autoStuckLastReason ||
+         current.autoScanCount != previous.autoScanCount ||
+         current.autoScanTimeoutCount != previous.autoScanTimeoutCount ||
+         current.autoScanRejectedCount != previous.autoScanRejectedCount ||
+         current.autoForwardUntrustedCount != previous.autoForwardUntrustedCount ||
+         current.autoSonarReacquireCount != previous.autoSonarReacquireCount ||
+         current.autoScanRejectionReason != previous.autoScanRejectionReason ||
          current.controlMode != previous.controlMode ||
          current.turnMode != previous.turnMode ||
          current.softApIp != previous.softApIp ||

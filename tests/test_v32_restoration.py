@@ -3,7 +3,7 @@ from pathlib import Path
 import json,os,re,shutil,subprocess,tempfile,unittest,hashlib
 from test_state_collisions import declaration
 ROOT=Path(__file__).resolve().parents[1]
-REFERENCE=Path(r'C:\Users\User\Downloads\PIKU-2.1-Rev-A-earlier github code')
+REFERENCE=Path(os.environ.get('PIKU_V32_REFERENCE', str(ROOT.parent/'PIKU-2.1-Rev-A-earlier github code')))
 PARITY=['normal','front','left','right','both','clear_single','no_path','history','short','boxed','side4','side6','side7','side_above','increment','front_after','ir_turn','pulse_limit','exhaustion','retry','timeout','exit','open_exit','open','invalid','stale','choice_left','choice_right','tie','single_preference','side20','side_update','normal_fallback','normal_deadline']
 PRESERVED=['stop_reverse','stop_turn','stop_recovery','mode','hazard','critical','environment_sonar','environment_ir','safety_matrix']
 class Restoration(unittest.TestCase):

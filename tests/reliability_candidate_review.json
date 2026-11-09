@@ -1,0 +1,243 @@
+{
+  "schema": "piku-reliability-candidate-v1",
+  "baseline": "fa375a7bf739fc306060048b500c2acf413db7a7",
+  "owner_authorization": "Controlled reliability implementation plus explicit backend fence approval; followed by owner-authorized focused control simplification preserving necessary stale-command protection. Owner persistent Manual correction: separate response deadlines from motor deadman, preserve healthy held refresh and all stale-command safety. Final Manual correction explicitly permits restoring readiness after confirmed STOP and valid authority, without another mode selection.",
+  "production": {
+    "include/ModeTransitionFence.h": {
+      "raw_sha256": "8b778160d4faaa4f0cfe5447cc8ab82039185cdb2cfb5975d98ec3584397751b",
+      "normalized_sha256": "8b778160d4faaa4f0cfe5447cc8ab82039185cdb2cfb5975d98ec3584397751b",
+      "existed_at_freeze": false
+    },
+    "include/WebDashboard.h": {
+      "raw_sha256": "2ed6636e3b6e2a9022c65f9d22ed1a8db0524d50e9345577293a18ac911b42f2",
+      "normalized_sha256": "89767f218d6ea502d461b012e7ed8e8f41365e813bce150931bd0710aeb74e47",
+      "existed_at_freeze": true
+    },
+    "src/NavigationManager.cpp": {
+      "raw_sha256": "64d8fed0f738e6cf278bf0ef99634fa67cd5ddc356ae10a0f9d3c052bf5a82a0",
+      "normalized_sha256": "7d6799f8fb6a0f137d97a4d9d62e93afe3fc029b2e960d01a17c3b752242a626",
+      "existed_at_freeze": true
+    },
+    "src/WebDashboard.cpp": {
+      "raw_sha256": "1b7f66f38a4b4f978e20916d9a85c19dd279a1706e8041c48901a995288504eb",
+      "normalized_sha256": "82cb84486402abeee76955e2bda12ff63b319211900a8d2d6b35b61f58e8591f",
+      "existed_at_freeze": true
+    },
+    "src/WebDashboardAssets.cpp": {
+      "raw_sha256": "c188f811f0c131af90c63ac0fa96c12355e9ebe4dbf5cf1c3de2587ba9dc2733",
+      "normalized_sha256": "e7d111e87454c27d55049467d9f04a66a5248fa9c8a0a5a3b24320d13f4a5b7b",
+      "existed_at_freeze": true
+    },
+    "src/DashboardPublisher.cpp": {
+      "raw_sha256": "aa029450c40ec65baef51f312e3fd25218dac0e2a8b06f70a9c2e593a2530b76",
+      "normalized_sha256": "3f908dca3da51be4426d0ffeda6422402095f2296ca933f70bce886facbd0a25",
+      "existed_at_freeze": true
+    },
+    "include/DisplayManager.h": {
+      "raw_sha256": "2f37e74e32d78d4d2567e22ec166f19e223d9658dd5df7a8545df21fd56c499a",
+      "normalized_sha256": "2f37e74e32d78d4d2567e22ec166f19e223d9658dd5df7a8545df21fd56c499a",
+      "existed_at_freeze": true
+    },
+    "include/PriorityWebServer.h": {
+      "raw_sha256": "1e8f4c47a0b213225f14d032506b384043843963667bc0d6745b47c2e376fa55",
+      "normalized_sha256": "94ead8d415de831ad54b3c589a50cc21a3751795b512ffecf723530bc2be8ed1",
+      "existed_at_freeze": true
+    },
+    "include/RobotConfig.h": {
+      "raw_sha256": "ca5f9a17dbe5b64fb0791d25ec0403d7ab8c67e735734856be5950b4874ac59c",
+      "normalized_sha256": "8d7c55e1e1cbaf88f2b3f54828f7027065be8599ca4b68a1f440f5ac8d2b8790",
+      "existed_at_freeze": true
+    },
+    "src/DisplayManager.cpp": {
+      "raw_sha256": "dad7a245c642c0e76a3940a6a7a6c475d4fb075b9b5bacf2992c5875d4526280",
+      "normalized_sha256": "4eb2ed949bbe8540a671fdd10ddf3ec68ceaea6fae044d90481690cc0d9f42d3",
+      "existed_at_freeze": true
+    },
+    "src/PriorityWebServer.cpp": {
+      "raw_sha256": "f5a7eef861c2cce7b18b83d21404672f2a18e5e3834450dbec5ce544e8fde016",
+      "normalized_sha256": "58611f7ec6b59d4f22e2deb35054ce94a0befe1816c141f5a16b4c5909f8a19c",
+      "existed_at_freeze": true
+    },
+    "include/ImuManager.h": {
+      "raw_sha256": "b4cd71e270488f2dbb1251ec33489779462d1eff9d89b7db9444fdb6f8485572",
+      "normalized_sha256": "bc52899bf7b904b67ff558e6290bf5060c86f3667f09c736007e72149cb925b0",
+      "existed_at_freeze": true
+    },
+    "src/ImuManager.cpp": {
+      "raw_sha256": "98f330f003ebc2d7108ffc0b7a37f9d7fe86992320625fca83efa9753be8904c",
+      "normalized_sha256": "ce5b82ef8f1789e0528910382818324dd4a2b4a3c5e54e9c8c2c290543047e5f",
+      "existed_at_freeze": true
+    },
+    "src/main.cpp": {
+      "raw_sha256": "ae14cdf145b463acc4aae7702eaaeadc7ed35cc75ff95826d38b05908a41c81b",
+      "normalized_sha256": "70c5e653c881ec68a30c8fd9441537e939e604c6b2eb40a1c2399079514add80",
+      "existed_at_freeze": true
+    }
+  },
+  "approved_changes": {
+    "include/ModeTransitionFence.h": "Bounded one-use STOP admission ticket, expiry, revocation and boot identity; no allocation.",
+    "include/WebDashboard.h": "Fence state and bounded additive navigation counters. Add IMU actual-sample flag and cached OLED network-copy interface.",
+    "src/NavigationManager.cpp": "Trusted scan timestamps including zero/wrap, plus counters only; other algorithms and thresholds unchanged.",
+    "src/WebDashboard.cpp": "Existing mode endpoints require STOP-issued ticket; STOP/RELEASE revoke tickets; additive telemetry; existing command validation/authority otherwise unchanged. Focused follow-up: explicit session invalidation also revokes an outstanding mode ticket. Final Manual correction: session reply reports RELEASE command sequence; existing OK acknowledgment adds current command sequence and per-request session/mode evidence. Wi-Fi recovery correction: distinguish explicit revocation from ordinary expiry in existing control-state acknowledgment and additive telemetry. Standalone response mission: only already-live current-owner accepted directions renew session liveness; disable steady framework auto-reconnect, preserve active association/scan windows and use beginStaAssociation for the application retry. Terminal WL_CONNECTION_LOST ends an association attempt so failure recovery does not wait the full active-attempt window. IMU age null until checked sample, and read-only cached STA/IP copy for OLED; no networking/control-handler changes.",
+    "src/WebDashboardAssets.cpp": "Bounded mode/control lifecycle, failure inhibition, request diagnostics, larger responsive type and canvas labels; original IDs/listeners and polling cadence retained. Focused follow-up: intentional direction retirement is not connection failure; ready MANUAL is idempotent; session creation is bounded and serialized before the final STOP ticket, with stale replies discarded. Persistent Manual follow-up: at most three outstanding held-refresh responses, 1800 ms response wait independent of unchanged 750 ms firmware deadman, newer-ACK proof for obsolete failures, and priority STOP on genuine direction failure. Final Manual correction: preserve session across transport uncertainty, recover only from STOP plus own valid authority, synchronize session/ACK sequence, and order held intent after existing session RELEASE. Wi-Fi recovery correction: fresh-telemetry-triggered bounded Manual STOP/session synchronization, preserve transport token, no mode/movement replay, reject revoked/other-owner authority, retain explicit intervention generation and critical-safety holds; explicit Manual acknowledgment may renew authority. Standalone response mission: successful HTTP evidence prevents false Offline; telemetry freshness and movement authority remain independent.",
+    "src/DashboardPublisher.cpp": "Retain diagnostic counters; permit priority OLED alert transition while ordinary slow outputs are deferred. Copy cached STA/IP before display only; sensor acquisition/assignments unchanged.",
+    "include/DisplayManager.h": "Fixed 8x22-byte text cache and environmental alert mask; public display interface retained.",
+    "src/DisplayManager.cpp": "Single compact screen, one-second routine evaluations and redraw only on visible changes. Immediate confirmed environmental entry/change/clear including simultaneous hazards. Distance never an alert overlay.",
+    "include/PriorityWebServer.h": "Bounded complete-request admission and shared response deadlines including flash assets. A fixed 2049-byte receive-peek buffer avoids adding this scratch space to the Arduino loop stack.",
+    "src/PriorityWebServer.cpp": "Peek complete bounded header/body before synchronous parsing; cap aggregate ordinary/telemetry/flash writes and retire failed sockets once.",
+    "include/RobotConfig.h": "Routine OLED500ms/serial2000ms; connection attempt window15000ms; control25ms/telemetry125ms/flash250ms write budgets; header2048/body1024-byte limits. Existing movement, sensing, safety and recovery constants preserved.",
+    "include/ImuManager.h": "Add actual-sample validity and cooperative checked-transport recovery state. No motor authority.",
+    "src/ImuManager.cpp": "MPU6050 identity/configuration checks, complete data-ready frames, bounded Wire operations, three-frame health qualification, failed-boot/runtime retry with backoff, reset/configure only while already stopped. Existing sensor ranges/filter and valid-frame angle/motion formulas preserved.",
+    "src/main.cpp": "Only pass existing stopped state to IMU update, copy actual-sample validity, and compute age honestly across zero timestamp."
+  },
+  "control_simplification": {
+    "pre_edit_source_digest": "ea7c675b6f7d67d20e50c0ce8252f274a72158fbbb121600ab7c591fedaf928e",
+    "retained_guard": "ModeTransitionFence and existing ticket/endpoint contract retained; bare stale modes cannot be distinguished from fresh actions.",
+    "preserved_assets": {
+      "html": "d4660ed3535611e575ecf6f42ee6d357b69560065dc5b367643defa303a75558",
+      "css": "2dbd56bb74dd723f313cfe976392fb82bd450dab04189587f794bbfbc73e31a8"
+    }
+  },
+  "persistent_manual": {
+    "pre_edit_asset_sha256": "111d7563ad4a374fe0da08fa5303249b00e128eecf9bc33c1c39279a5d70e42a",
+    "root_cause": "Single-flight refresh waited on HTTP response; 600 ms browser deadline latched control uncertainty despite successful backend admission.",
+    "response_timeout_ms": 1800,
+    "max_outstanding_direction_responses": 3,
+    "motor_deadman_ms_unchanged": 750,
+    "required_timeline": "One MANUAL selection; three Forward10s/Release/Left1s/Release/Forward10s/Release cycles at response delays20/650/900/1200ms."
+  },
+  "manual_recovery": {
+    "root_causes": [
+      "Session RELEASE increments server command sequence without informing the browser.",
+      "Transport error clears session and latches readiness until a mode click despite subsequent confirmed STOP.",
+      "First direction can race the same browser session RELEASE."
+    ],
+    "safety_proof": "Confirmed STOP or RELEASE acknowledgment plus matching Manual authority; no heartbeat-only recovery; no held-intent replay.",
+    "new_endpoints": false,
+    "healthy_path_extra_requests": 0
+  },
+  "wifi_reconnect_recovery": {
+    "pre_edit_assets_sha256": "9f3a15b30f23a57f52619f7df698b9654fa71be28a1001f8cebba77b5f68735a",
+    "root_cause": "After movement and fallback STOP fail, later fresh telemetry only sets recoveryStateConfirmed and never retries STOP/session synchronization; session creation alone cannot clear uncertainty.",
+    "max_attempts_per_interruption": 3,
+    "backoff_ms": [
+      1500,
+      3000,
+      6000
+    ],
+    "unchanged": "750ms firmware deadman, STA reconnect/configuration, navigation, motor control, HTML and CSS",
+    "verification": "Actual embedded JS with asynchronous HTTP doubles and current native C++ control handlers over loopback HTTP; physical Wi-Fi unverified."
+  },
+  "standalone_response_20261019": {
+    "pre_edit_source_fingerprint": "091a0c944b03248b1da5c17876ac8732635cd1cdf7ced670da6b8b14d74d8d2b",
+    "authorization": "Owner authorized standalone responsiveness repair against earlier GitHub baseline; preserve environmental monitoring, recovery and safety; no Stage4, paper, flashing or Git-history changes.",
+    "protected_raw_sha256": {
+      "src/main.cpp": "88eefbc30f0f6ba7fa597e5aaae8d719736402dd319fa2f7054370449aaeda3e",
+      "src/NavigationManager.cpp": "64d8fed0f738e6cf278bf0ef99634fa67cd5ddc356ae10a0f9d3c052bf5a82a0",
+      "src/SensorManager.cpp": "9c152c356e76b493c445d35bf5acffaef0aefecdd4ed9af668f456877194fdda",
+      "src/SafetyManager.cpp": "b88b30cec93d3cc6ffe8d1cfe3face08ccfc39da695a7e4ebd17fdce720b7444",
+      "src/ImuManager.cpp": "65740f5f2904a165f67c76f1ea8f3565a2c9864827ddb8854360859ca626a14e",
+      "src/MotorController.cpp": "13a70f2817c93a7b08b88cfe0016674fb4b003d60eb57c3018591c9a741c2971",
+      "src/ServoScanner.cpp": "7e5d1fc4bc5a7f6763043e7a130dd5a1e7349221ec58bbdf476fd0b0bae68cf5",
+      "src/RadioManager.cpp": "c7d417a30f68fd63b96177ede04ed24a0a2bd1d18b353c21c75b3976ad2e265f",
+      "include/ManualMotionGate.h": "36b1732aa05fd8dde3caa059db366b37cb21aaa1e1b758224d28683edc4ae9c6",
+      "include/ManualOverridePolicy.h": "44ea8b2d4b1108586e1f082eceedb4c82187e6daa1a7d1f99973df2d5fa42e44",
+      "include/RecoveryIrBackoffPolicy.h": "f7a8e2dde5636755f42cf86359ed7ba98d66c20e5878795161292525018b145b",
+      "include/StuckRecoveryV2Policy.h": "03661c3b6ced509cba96d1c32bf1786f39ee481697168c1d6be71396ec440dc0",
+      "include/V2EscapeDecision.h": "703abf41698d7df00ddbf568ff1d524fa85c77ccf3bf34665a44e9c336a01a0c",
+      "include/WiFiConfig.h": "13befde27c685da56907b632bba1b1610190058ec188ddab2ca3940e910c42e6",
+      "include/PinConfig.h": "e8fd5c4ea23cfd02505b4a53599c96d7aba21db62059dd1b176d625d4492813b",
+      "platformio.ini": "d751a9ce012767687145796a5e7ab493d8afc2c7fb390ed239f2dfaed739056b"
+    },
+    "changes": [
+      "Valid accepted current-owner direction refreshes extend only an already-live session; stale/expired/other tokens do not renew it.",
+      "Any recent successful HTTP response proves node response; fresh telemetry is separately required for Live and control authority remains separate.",
+      "Critical OLED transitions are priority; routine output cadence is lower. Sensor, navigation, motion and safety acquisition/dispatch bodies remain byte-identical.",
+      "Application retry loop owns steady reconnect; in-flight connection and scan work receive their existing opportunity to finish. ESP framework may retain its built-in first-connect retry.",
+      "Incomplete HTTP frames wait cooperatively; malformed/oversized requests expire without entering parser. All responses have a shared write deadline."
+    ],
+    "physical_status": "NOT RUN; owner acceptance required."
+  },
+  "imu_oled_20261107": {
+    "authorization": "Owner authorized compact OLED plus checked IMU reads and cooperative retry/recovery in standalone only; preserve navigation, environmental acquisition/safety, radio and networking behavior. No hardware, Git publication, Stage4 or paper changes.",
+    "baseline_archive_sha256": "8f0a059714d9914482c4ed35fb8637e7e6af8def68a4fc281af6672e801b0ef2",
+    "changed_files": {
+      "include/ImuManager.h": {
+        "before_raw_sha256": "113324981ff1414bf87ccc92aa0380bc2adac4e4f8a948de6722b73d82b6cdfe",
+        "after_raw_sha256": "b4cd71e270488f2dbb1251ec33489779462d1eff9d89b7db9444fdb6f8485572"
+      },
+      "src/ImuManager.cpp": {
+        "before_raw_sha256": "65740f5f2904a165f67c76f1ea8f3565a2c9864827ddb8854360859ca626a14e",
+        "after_raw_sha256": "98f330f003ebc2d7108ffc0b7a37f9d7fe86992320625fca83efa9753be8904c"
+      },
+      "include/DisplayManager.h": {
+        "before_raw_sha256": "6284aa5170a61fc82d1dd102a256baa315f597f430d2292e0c68f8a6e7957aa9",
+        "after_raw_sha256": "2f37e74e32d78d4d2567e22ec166f19e223d9658dd5df7a8545df21fd56c499a"
+      },
+      "src/DisplayManager.cpp": {
+        "before_raw_sha256": "374b1324a3015b3322f90943514166e312006dc5190d0d3a5cbe4543d59fef7f",
+        "after_raw_sha256": "dad7a245c642c0e76a3940a6a7a6c475d4fb075b9b5bacf2992c5875d4526280"
+      },
+      "include/WebDashboard.h": {
+        "before_raw_sha256": "2d64a92ebec699b8e92da52b32445b06eec403ad04cceb645f2df5069282bf18",
+        "after_raw_sha256": "2ed6636e3b6e2a9022c65f9d22ed1a8db0524d50e9345577293a18ac911b42f2"
+      },
+      "src/WebDashboard.cpp": {
+        "before_raw_sha256": "081fbf237037a1c55fc5d636f4b34163d9fbd64fdbd5f3e33b9a0723e72f3a1b",
+        "after_raw_sha256": "1b7f66f38a4b4f978e20916d9a85c19dd279a1706e8041c48901a995288504eb"
+      },
+      "src/main.cpp": {
+        "before_raw_sha256": "88eefbc30f0f6ba7fa597e5aaae8d719736402dd319fa2f7054370449aaeda3e",
+        "after_raw_sha256": "ae14cdf145b463acc4aae7702eaaeadc7ed35cc75ff95826d38b05908a41c81b"
+      },
+      "src/DashboardPublisher.cpp": {
+        "before_raw_sha256": "f7d898be59ebe32bf36d433340fe6ddb98fe4053b125c55720b1bff4be2949d9",
+        "after_raw_sha256": "aa029450c40ec65baef51f312e3fd25218dac0e2a8b06f70a9c2e593a2530b76"
+      }
+    },
+    "protected_raw_sha256": {
+      "platformio.ini": "d751a9ce012767687145796a5e7ab493d8afc2c7fb390ed239f2dfaed739056b",
+      "include/BuzzerManager.h": "e2e5ffe0539d1e2800dd6f7e0d0189f43c281f4f5c5c6da04b1d612e2fa978fc",
+      "include/ControlOriginPolicy.h": "13cb24744beb746c3eb1a53335c3611928715a060e0c438d3c0a5a9ad605d4bb",
+      "include/DashboardPublisher.h": "c05fbc1a03892dde4bdcc9b120c51a70d4f8d39c1895e72343cbb65b3491ec15",
+      "include/DriveCommandHandler.h": "7a0fd330b6ac5181f16ae4979dc76fd563d5829ce182f179c8a82f72f4a230d1",
+      "include/ManualMotionGate.h": "36b1732aa05fd8dde3caa059db366b37cb21aaa1e1b758224d28683edc4ae9c6",
+      "include/ManualOverridePolicy.h": "44ea8b2d4b1108586e1f082eceedb4c82187e6daa1a7d1f99973df2d5fa42e44",
+      "include/ModeTransitionFence.h": "8b778160d4faaa4f0cfe5447cc8ab82039185cdb2cfb5975d98ec3584397751b",
+      "include/MotorController.h": "5c6a55bd219d799f47f7fe9f132be4931bd0575e35d924afdac80e93ee932d55",
+      "include/NavigationManager.h": "69166475e2c3ed8718ce8e91ca779a5c8caaa840993abf66a6e8a26e1e7b8d00",
+      "include/NavigationTrace.h": "03cca4d7af60e4a4060affb544070e44f81cc791a7edb1f2988421099fe5444a",
+      "include/PinConfig.h": "e8fd5c4ea23cfd02505b4a53599c96d7aba21db62059dd1b176d625d4492813b",
+      "include/PriorityWebServer.h": "1e8f4c47a0b213225f14d032506b384043843963667bc0d6745b47c2e376fa55",
+      "include/RadioManager.h": "9cf5537511fcf31741bd7b0d5442006f11199ab4f8af20e72c47a528e2ccf485",
+      "include/RadioTypes.h": "25f732a5ffa5444b94a0f23932df1eedadfb8db1a9913e8bf63826db8a401fc9",
+      "include/RecoveryIrBackoffPolicy.h": "f7a8e2dde5636755f42cf86359ed7ba98d66c20e5878795161292525018b145b",
+      "include/RobotConfig.h": "ca5f9a17dbe5b64fb0791d25ec0403d7ab8c67e735734856be5950b4874ac59c",
+      "include/SafetyManager.h": "31dccf5507da476cdc9afd495008e4e0418b4feb1ccf85eb414108066ac1e520",
+      "include/Secrets.example.h": "ba2b9b257c118bd184c60cb55aac87764ec20a1756b8a1943f1aa5f549a04b7c",
+      "include/SensorManager.h": "4a78f9c0025a7334a0fbc09868de704cc110d43503bd8e63497044d592756123",
+      "include/ServoScanner.h": "795f8b702f35a1b8c39f974884afe0ac020ac3b606579ded1568f0200c42402c",
+      "include/SonarReacquirePolicy.h": "fb47102714e92fff75557ea2e47d97b1676e58fa852a6427090e460026c7f83f",
+      "include/StaReconnectPolicy.h": "76aa6b9812b3f627a9d91eb4982f19bdfcae8b497af596f86c8c3eb10b46a9a8",
+      "include/StuckRecoveryV2Policy.h": "03661c3b6ced509cba96d1c32bf1786f39ee481697168c1d6be71396ec440dc0",
+      "include/TraceChecksum.h": "d4066db75d6cc97cb662383895f2bc9168202712a9d07e024bc7ef760fe73de8",
+      "include/TraceRing.h": "d2283dff56b3cfde2522704bd8140709acefa32513e6e07c036be1577ba3290b",
+      "include/V2EscapeDecision.h": "703abf41698d7df00ddbf568ff1d524fa85c77ccf3bf34665a44e9c336a01a0c",
+      "include/WebDashboardAssets.h": "a4d20e00ed80e2a55b1ded391e1fe91c8b0f3390aa2a4ac3f7ea92773b26d3ca",
+      "include/WebServerLimits.h": "eab67210a606d6bf95f912a1c4d9fe7fdad4d34fb116c389c093bbc167fa48df",
+      "src/BuzzerManager.cpp": "dd22d3eb3e231af621827ee761775c3e7b9cb33dc13393e0cacd16e8d16e171b",
+      "src/DriveCommandHandler.cpp": "1dcac4705c8a8a87a250ed2486c27a34a5edd2c5b35d53e6c1655783a4c6dabc",
+      "src/MotorController.cpp": "13a70f2817c93a7b08b88cfe0016674fb4b003d60eb57c3018591c9a741c2971",
+      "src/NavigationManager.cpp": "64d8fed0f738e6cf278bf0ef99634fa67cd5ddc356ae10a0f9d3c052bf5a82a0",
+      "src/NavigationTrace.cpp": "f24064ff13c184e05ef646fb9bb58bc5a79b538a3cb55df89160350a32dff29f",
+      "src/PriorityWebServer.cpp": "f5a7eef861c2cce7b18b83d21404672f2a18e5e3834450dbec5ce544e8fde016",
+      "src/RadioManager.cpp": "c7d417a30f68fd63b96177ede04ed24a0a2bd1d18b353c21c75b3976ad2e265f",
+      "src/SafetyManager.cpp": "b88b30cec93d3cc6ffe8d1cfe3face08ccfc39da695a7e4ebd17fdce720b7444",
+      "src/SensorManager.cpp": "9c152c356e76b493c445d35bf5acffaef0aefecdd4ed9af668f456877194fdda",
+      "src/ServoScanner.cpp": "7e5d1fc4bc5a7f6763043e7a130dd5a1e7349221ec58bbdf476fd0b0bae68cf5",
+      "src/WebDashboardAssets.cpp": "c188f811f0c131af90c63ac0fa96c12355e9ebe4dbf5cf1c3de2587ba9dc2733"
+    },
+    "historical_evidence": "October source identities remain historical; this is a separate reviewed layer, not a physical validation.",
+    "physical_status": "NOT RUN; software checks do not establish electrical, RF, latency or overspin performance."
+  }
+}

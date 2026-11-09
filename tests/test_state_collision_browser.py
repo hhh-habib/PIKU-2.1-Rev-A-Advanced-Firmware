@@ -87,7 +87,7 @@ class RenderedDashboardTests(unittest.TestCase):
 
     def test_manual_normal_ready_and_directions_enabled(self):
         for case in self.cases(['normal']):
-            self.assertEqual(case['status'], 'Manual controls ready.')
+            self.assertEqual(case['status'], 'MANUAL READY')
             self.assertTrue(all(not b['disabled'] and b['aria'] == 'false' for b in case['holds']))
             self.assertFalse(case['stopDisabled'])
 
@@ -103,7 +103,7 @@ class RenderedDashboardTests(unittest.TestCase):
 
     def test_override_active_exact_button_alert_and_critical_banner(self):
         for case in self.cases(['flame-override', 'gas-override']):
-            self.assertEqual(case['status'], 'Manual controls ready.')
+            self.assertEqual(case['status'], 'MANUAL READY')
             self.assertTrue(all(not b['disabled'] for b in case['holds']))
             self.assertFalse(case['stopDisabled'])
             self.assertEqual(case['overrideText'], 'Disable Override')
@@ -117,7 +117,7 @@ class RenderedDashboardTests(unittest.TestCase):
 
     def test_auto_compact_status_and_stop_enabled(self):
         for case in self.cases(['auto']):
-            self.assertEqual(case['status'], 'AUTO mode active. STOP is available.')
+            self.assertEqual(case['status'], 'AUTO ACTIVE')
             self.assertTrue(all(b['disabled'] for b in case['holds']))
             self.assertFalse(case['stopDisabled'])
 

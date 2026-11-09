@@ -16,7 +16,7 @@ class AuditDispatch(unittest.TestCase):
   doubles=(w/'CollisionDoubles.h').read_text()
   doubles=doubles.replace(native.declaration(doubles,'class SafetyManager'),'#include "SafetyUnderTest.h"')
   doubles=doubles.replace('void stop(){motion=MotorState::Stopped;}', 'String getStateName()const{return motion==MotorState::Stopped?"STOP":motion==MotorState::Forward?"FORWARD":motion==MotorState::Backward?"BACKWARD":"TURN";}MotorState getState()const{return motion;}void leftTurn(){motion=MotorState::LeftTurn;}void rightTurn(){motion=MotorState::RightTurn;}void setSpeedPercent(int n){speed=n;}void stop(){motion=MotorState::Stopped;}')
-  doubles=doubles.replace('class ImuManager {public:', 'class ImuManager {public: void update(){}')
+  doubles=doubles.replace('class ImuManager {public:', 'class ImuManager {public: void update(bool=true){}')
   doubles=doubles.replace('class WebDashboard {public:', '''class WebDashboard {public:
  bool activity=false, flood=false;unsigned long lastCommandMs=0;
  bool live=true;bool sessionAlive()const{return live;}unsigned long pendingCommandSequence()const{return 1;}unsigned long lastCommandReceivedMs()const{return lastCommandMs;}

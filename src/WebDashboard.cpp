@@ -90,12 +90,14 @@ WebDashboard::WebDashboard()
 void WebDashboard::begin(const char* ssid, const char* password, const char* staSsid, const char* staPassword) {
   loadSavedStaCredentials(staSsid, staPassword);
   WiFi.onEvent(recordWifiEvent);
+  _modeFence.reset(esp_random());
 
   WiFi.mode(_staConfigured ? WIFI_AP_STA : WIFI_AP);
   // Motors dominate the robot power budget; disabling modem sleep favors
   // predictable dashboard command latency over small ESP32 energy savings.
   WiFi.setSleep(false);
-  WiFi.setAutoReconnect(true);
+  // This state machine owns retries; do not race steady framework auto-reconnect.
+  WiFi.setAutoReconnect(false);
   WiFi.softAP(ssid, password);
   delay(100);
   refreshWiFiTelemetry(true);
@@ -202,6 +204,8 @@ void WebDashboard::setManualOverrideState(bool enabled) {
 }
 
 void WebDashboard::invalidateControlSession() {
+  _modeFence.revoke();
+  _modeFenceResponsePending = false;
   _sessionToken = "";
   _lastSessionHeartbeatMs = 0;
   _requireFreshSessionAfterOverride = true;
@@ -238,6 +242,10 @@ void WebDashboard::markCommandApplied(const String& command,
     _lastCommandSequence = sequence;
   }
   if (command == "STOP" && stopReason.length() > 0) {
+    if (stopReason != "OPERATOR_STOP" && stopReason != "MANUAL_RELEASE") {
+      _modeFence.revoke();
+      _modeFenceResponsePending = false;
+    }
     _lastStopReason = stopReason;
   }
 }
@@ -385,8 +393,18 @@ void WebDashboard::handleMode() {
     return;
   }
 
+  if (!acceptModeFence()) return;
   applyMode(mode);
   sendOk();
+}
+
+bool WebDashboard::acceptModeFence() {
+  if (!_server.hasArg("fence") ||
+      !_modeFence.consume(_server.arg("fence").c_str(), millis())) {
+    sendError(409, "text/plain", "MODE_FENCE_REQUIRED_OR_EXPIRED");
+    return false;
+  }
+  return true;
 }
 
 void WebDashboard::handleTurnMode() {
@@ -449,7 +467,8 @@ void WebDashboard::handleSession() {
   _requireFreshSessionAfterOverride = false;
   _server.send(200, "application/json",
                String("{\"ok\":true,\"token\":\"") + _sessionToken +
-               "\",\"timeout_ms\":" + RobotConfig::MANUAL_SESSION_TIMEOUT_MS + "}");
+               "\",\"timeout_ms\":" + RobotConfig::MANUAL_SESSION_TIMEOUT_MS +
+               ",\"commandSequence\":" + String(_lastCommandSequence) + "}");
 }
 
 void WebDashboard::handleSessionHeartbeat() {
@@ -662,12 +681,14 @@ void WebDashboard::handleWifiReconnect() {
 
 void WebDashboard::handleModeAuto() {
   if (!controlOriginAllowed()) return;
+  if (!acceptModeFence()) return;
   applyMode("AUTO");
   sendOk();
 }
 
 void WebDashboard::handleModeManual() {
   if (!controlOriginAllowed()) return;
+  if (!acceptModeFence()) return;
   applyMode("MANUAL");
   sendOk();
 }
@@ -744,9 +765,17 @@ bool WebDashboard::applyCommand(const String& command, unsigned long sequence, b
         _lastCommandSequence = 1;
       }
     }
+    if (command == "STOP" || command == "RELEASE") {
+      _modeFence.revoke();
+      _modeFenceResponsePending = command == "STOP";
+    }
     _pendingCommand = command;
     _pendingCommandSequence = _lastCommandSequence;
     _lastCommandReceivedMs = millis();
+    // Fresh accepted commands from the current live owner are liveness too.
+    // This cannot renew an expired/revoked session or one owned by another token.
+    if (command != "STOP" && command != "RELEASE" && validSessionToken())
+      _lastSessionHeartbeatMs = _lastCommandReceivedMs;
     _lastCommandAcceptedMs = _lastCommandReceivedMs;
     _lastAcceptedCommand = command;
     _controlActivity = true;
@@ -873,10 +902,20 @@ void WebDashboard::updateWiFi() {
 
   updateMdns(false);
 
+  if (_scanStarted && WiFi.scanComplete() == WIFI_SCAN_RUNNING) {
+    refreshWiFiTelemetry(true);
+    return;
+  }
+  if (_staConnectStarted &&
+      now - _lastStaAttemptMs < RobotConfig::WIFI_STA_CONNECT_WINDOW_MS) {
+    refreshWiFiTelemetry(true);
+    return; // allow an in-flight association/DHCP attempt to finish
+  }
+
   if (staRetryDue(now, _lastStaAttemptMs, _staRetryIntervalMs)) {
     if (WiFi.getMode() != WIFI_AP_STA) WiFi.mode(WIFI_AP_STA);
     _staState = StaState::Connecting;
-    if (!WiFi.reconnect()) beginStaAssociation();
+    beginStaAssociation(); // begin() does not force-disconnect an in-flight attempt
     _staConnectStarted = true;
     _lastStaAttemptMs = now;
     _staRetryIntervalMs = staNextRetryInterval(
@@ -915,6 +954,11 @@ void WebDashboard::refreshWiFiTelemetry(bool force) {
     _wifiTelemetry.staSignalQuality = 0;
   }
   applyCachedWiFiTelemetry();
+}
+
+void WebDashboard::copyDisplayNetworkState(DashboardData& target) const {
+  target.staConnected = _wifiTelemetry.staConnected;
+  target.staIp = _wifiTelemetry.staIp;
 }
 
 void WebDashboard::applyCachedWiFiTelemetry() {
@@ -1011,6 +1055,10 @@ void WebDashboard::setStaStateFromWiFiStatus() {
       return;
     case WL_NO_SSID_AVAIL:
       _staState = StaState::NoAp;
+      _staConnectStarted = false;
+      return;
+    case WL_CONNECTION_LOST:
+      _staState = StaState::Disconnected;
       _staConnectStarted = false;
       return;
     case WL_IDLE_STATUS:
@@ -1150,6 +1198,19 @@ void WebDashboard::sendError(int status, const char* contentType, const char* bo
 }
 
 void WebDashboard::sendOk() {
+  _server.sendHeader("X-PIKU-Command-Sequence", String(_lastCommandSequence));
+  const char* controlState = _data.controlMode != "MANUAL" ? "AUTO" :
+      _requireFreshSessionAfterOverride ? "MANUAL_REVOKED" :
+      validSessionToken() ? "MANUAL_AUTHORIZED" :
+      sessionAlive() ? "MANUAL_OTHER_SESSION" : "MANUAL_SESSION_EXPIRED";
+  _server.sendHeader("X-PIKU-Control-State", controlState);
+  if (_modeFenceResponsePending) {
+    _modeFenceResponsePending = false;
+    _modeFence.issue(millis());
+    _server.sendHeader("X-PIKU-Mode-Fence",
+        String(_modeFence.boot()) + "." + String(_modeFence.revision()));
+    _server.sendHeader("X-PIKU-Mode-Window-Ms", String(ModeTransitionFence::WINDOW_MS));
+  }
   _server.send(200, "text/plain", "OK");
 }
 
@@ -1268,7 +1329,7 @@ void WebDashboard::sendJson() {
            ",\"pitch\":" + jsonFloat(_data.pitch, 1) +
            ",\"temperature\":" + jsonFloat(_data.imuTemperature, 1) +
            ",\"motion\":\"" + _data.motionState + "\"" +
-           ",\"sample_age_ms\":" + String(_data.imuSampleAgeMs) + "}" +
+           ",\"sample_age_ms\":" + (_data.imuHasSample ? String(_data.imuSampleAgeMs) : String("null")) + "}" +
          ",\"radio\":{" +
            "\"initialized\":" + jsonBool(_data.radioInitialized) +
            ",\"chip_detected\":" + jsonBool(_data.radioChipDetected) +
@@ -1301,6 +1362,7 @@ void WebDashboard::sendJson() {
   appendKey("manualFlameGasOverride"); json += jsonBool(_data.manualFlameGasOverride);
   appendKey("manualMotionInhibitReason"); json += char(34); json += jsonEscape(_data.manualMotionInhibitReason); json += char(34);
   appendKey("controlSessionAlive"); json += jsonBool(sessionAlive());
+  appendKey("controlSessionRevoked"); json += jsonBool(_requireFreshSessionAfterOverride);
   appendKey("commandAcceptedMs"); json += String(_lastCommandAcceptedMs);
   appendKey("commandAppliedMs"); json += String(_lastCommandAppliedMs);
   appendKey("commandAgeMs"); json += _lastCommandAcceptedMs == 0 ? "null" : String(millis() - _lastCommandAcceptedMs);
@@ -1320,6 +1382,13 @@ void WebDashboard::sendJson() {
   appendKey("psramSize"); json += String(_data.psramSize);
   appendKey("resetReason"); json += char(34); json += jsonEscape(_data.resetReason); json += char(34);
   appendKey("maximumServiceLoopGapMs"); json += String(_data.maximumServiceLoopGapMs);
+  appendKey("navigationDiagnostics");
+  json += "{\"scans\":" + String(_data.autoScanCount) +
+      ",\"scanTimeouts\":" + String(_data.autoScanTimeoutCount) +
+      ",\"scanRejected\":" + String(_data.autoScanRejectedCount) +
+      ",\"forwardUntrustedStops\":" + String(_data.autoForwardUntrustedCount) +
+      ",\"sonarReacquisitions\":" + String(_data.autoSonarReacquireCount) +
+      ",\"lastScanRejection\":\"" + String(_data.autoScanRejectionReason) + "\"}";
   json += '}';
   _server.send(200, "application/json", json);
 }

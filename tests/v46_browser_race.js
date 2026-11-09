@@ -6,7 +6,8 @@ socket.onmessage=e=>{const m=JSON.parse(e.data);if(!m.id)return;const p=pending.
 const call=(method,params={})=>new Promise((resolve,reject)=>{const id=++sequence;pending.set(id,{resolve,reject});socket.send(JSON.stringify({id,method,params}));});
 const evaluate=async expression=>{const r=await call('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});if(r.exceptionDetails)throw new Error(JSON.stringify(r.exceptionDetails));return r.result.value;};
 const asset=delimiter=>input.assets.match(new RegExp('R"'+delimiter+'\\(([\\s\\S]*?)\\)'+delimiter+'";'))[1];
-const mock=`window.__requests=[];window.fetch=(url,options)=>new Promise((resolve,reject)=>window.__requests.push({url:String(url),options,resolve,reject}));`;
+// Keep every original ordering assertion; supply the newly required STOP ticket.
+const mock=`window.__requests=[];let fenceRevision=0;window.fetch=(url,options)=>new Promise((resolve,reject)=>window.__requests.push({url:String(url),options,resolve:response=>resolve({...response,headers:new Headers({'X-PIKU-Mode-Fence':'123.'+(++fenceRevision)})}),reject}));`;
 await call('Page.enable');
 const reset=async()=>{
  await call('Page.navigate',{url:'about:blank'});

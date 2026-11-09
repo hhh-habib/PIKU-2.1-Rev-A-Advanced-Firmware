@@ -5,6 +5,7 @@
 #include <Preferences.h>
 #include <WiFi.h>
 #include "PriorityWebServer.h"
+#include "ModeTransitionFence.h"
 
 struct DashboardData {
   String product = "PIKU 2.1 Rev A";
@@ -91,6 +92,9 @@ struct DashboardData {
   uint8_t autoRecoveryTurnsUsed = 0, autoRecoveryTurnsMax = 6, autoRecoveryIrPulses = 0;
   bool autoRecoveryIrActive = false, autoSonarHold = false;
   String autoRecoveryCommittedSide = "NONE", autoRecoveryTransition = "NONE";
+  uint32_t autoScanCount = 0, autoScanTimeoutCount = 0, autoScanRejectedCount = 0;
+  uint32_t autoForwardUntrustedCount = 0, autoSonarReacquireCount = 0;
+  const char* autoScanRejectionReason = "NONE"; // static literals, no control-loop allocation
   String gasStatus = "DISABLED";
   String safetyState = "SAFE";
   String alarmReason = "NONE";
@@ -122,6 +126,7 @@ struct DashboardData {
 
   bool imuInitialized = false;
   bool imuHealthy = false;
+  bool imuHasSample = false;
   String imuHealthState = "NOT_INITIALIZED";
   unsigned long imuErrorCount = 0;
   unsigned long imuConsecutiveFailures = 0;
@@ -185,6 +190,7 @@ public:
   void markCommandApplied(const String& command, unsigned long sequence, const String& stopReason);
   void markStopApplied(const String& stopReason);
   void setData(const DashboardData& data);
+  void copyDisplayNetworkState(DashboardData& target) const;
   void setNavigationDecision(const String& decision);
   void setControlMode(const String& mode);
   void setTurnMode(const String& mode);
@@ -231,6 +237,8 @@ private:
   bool _alarmMuted;
   bool _alarmTestRequested;
   unsigned long _modeCommandCounter;
+  ModeTransitionFence _modeFence;
+  bool _modeFenceResponsePending = false;
   unsigned long _lastCommandReceivedMs;
   unsigned long _lastCommandSequence;
   unsigned long _pendingCommandSequence;
@@ -277,6 +285,7 @@ private:
   void handleData();
   void handlePing();
   void handleMode();
+  bool acceptModeFence();
   void handleTurnMode();
   void handleSpeed();
   void handleCommand();

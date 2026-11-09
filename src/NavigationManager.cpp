@@ -577,7 +577,7 @@ void NavigationManager::updateForward(unsigned long now, unsigned long elapsedMs
       (progress.state == UltrasonicResultState::ClearNoEcho ||
        (progress.state == UltrasonicResultState::DistanceValid && progress.valid &&
         isfinite(progress.distanceCm) && progress.distanceCm > 0.0f));
-  if (!forwardTrusted) { _obstacleForwardClearMs=0; enterInvalidStop("FORWARD_UNTRUSTED_STOP"); return; }
+  if (!forwardTrusted) { ++_dashboardData.autoForwardUntrustedCount; _obstacleForwardClearMs=0; enterInvalidStop("FORWARD_UNTRUSTED_STOP"); return; }
   _obstacleForwardClearMs += elapsedMs;
   if (_obstacleForwardClearMs >= RobotConfig::AUTO_OBSTACLE_RETRY_RESET_FORWARD_MS) {
     if (RobotConfig::ENABLE_STUCK_RECOVERY_V2)
@@ -643,6 +643,7 @@ void NavigationManager::updateReverseSequence(unsigned long now) {
 }
 
 void NavigationManager::beginScan(ScanPurpose purpose, unsigned long now) {
+  ++_dashboardData.autoScanCount;
   _scanPurpose = purpose;
   _motors.stop();
   if (purpose == ScanPurpose::EnvironmentalRecovery)
@@ -724,11 +725,17 @@ void NavigationManager::updateScan(unsigned long now) {
     sample = _sensors.latestUltrasonicSample();
     const bool expectedFront = _scanDirectionIndex == 1;
     if (!requestedSample(sample,now,expectedFront)) {
+      ++_dashboardData.autoScanRejectedCount;
+      _dashboardData.autoScanRejectionReason = sample.facingFront != expectedFront ? "ORIENTATION" :
+          static_cast<int32_t>(static_cast<uint32_t>(sample.sampleMs - _sampleRequestedMs)) < 0 ?
+          "REQUEST_TIME" : "STALE";
       sample = UltrasonicSample();
       sample.state = UltrasonicResultState::Stale;
     }
     finished = true;
   } else if (now - _sampleRequestedMs > RobotConfig::ULTRASONIC_SAMPLE_TIMEOUT_MS + 20UL) {
+    ++_dashboardData.autoScanTimeoutCount;
+    _dashboardData.autoScanRejectionReason = "TIMEOUT";
     sample.state = UltrasonicResultState::Stale;
     finished = true;
   }
@@ -751,14 +758,22 @@ void NavigationManager::updateScan(unsigned long now) {
 }
 
 void NavigationManager::recordScanReading(const UltrasonicSample& sample) {
-  _scanAccumulator.newestSampleMs = sample.sampleMs; // arrival order, including millis wrap
+  const bool finiteDistance = sample.state == UltrasonicResultState::DistanceValid &&
+      sample.valid && isfinite(sample.distanceCm) && sample.distanceCm > 0.0f;
+  const bool trusted = finiteDistance || sample.state == UltrasonicResultState::ClearNoEcho;
+  // updateScan admits only this request's fresh, correctly oriented evidence.
+  // A synthetic timeout has no timestamp; a real trusted sample at millis()==0 does.
+  if (trusted && (_scanAccumulator.trustedCount == 0 ||
+      static_cast<int32_t>(static_cast<uint32_t>(sample.sampleMs -
+          _scanAccumulator.newestSampleMs)) >= 0)) {
+    _scanAccumulator.newestSampleMs = sample.sampleMs;
+  }
   if (sample.state == UltrasonicResultState::SensorFault) {
     _scanAccumulator.sensorFaultCount++;
   } else if (sample.state == UltrasonicResultState::ClearNoEcho) {
     _scanAccumulator.noEchoCount++;
     _scanAccumulator.trustedCount++;
-  } else if (sample.state == UltrasonicResultState::DistanceValid && sample.valid &&
-             isfinite(sample.distanceCm) && sample.distanceCm > 0.0f) {
+  } else if (finiteDistance) {
     if (_scanAccumulator.distanceCount < RobotConfig::AUTO_SCAN_SAMPLES_PER_DIRECTION)
       _scanAccumulator.distances[_scanAccumulator.distanceCount++] = sample.distanceCm;
     _scanAccumulator.trustedCount++;
@@ -1117,6 +1132,7 @@ void NavigationManager::enterInvalidStop(const char* reason) {
 }
 
 void NavigationManager::beginSonarReacquire(unsigned long now) {
+  ++_dashboardData.autoSonarReacquireCount;
   _motors.stop();
   _servoScanner.center();
   _currentServoPosition = "FRONT";
@@ -1574,7 +1590,7 @@ void NavigationManager::beginStuckRecovery(unsigned long now) {
 }
 
 bool NavigationManager::scanSampleTrusted(const NavigationScanSample& sample) const {
-  if (!sample.completed || sample.trustedReadings < 2 || sample.ultrasonic.sampleMs == 0 ||
+  if (!sample.completed || sample.trustedReadings < 2 ||
       millis() - sample.ultrasonic.sampleMs > RobotConfig::NAVIGATION_SCAN_SET_MAX_AGE_MS)
     return false;
   return (sample.ultrasonic.state == UltrasonicResultState::DistanceValid &&

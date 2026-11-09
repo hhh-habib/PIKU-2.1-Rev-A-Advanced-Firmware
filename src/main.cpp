@@ -315,6 +315,7 @@ void publishCurrentTelemetry(bool force) {
   dashboardData.flameSampleAgeMs = sampleAge(snapshot.flameSampleMs, now);
   dashboardData.imuInitialized = imuState.initialized;
   dashboardData.imuHealthy = imuState.healthy;
+  dashboardData.imuHasSample = imuState.hasSample;
   dashboardData.imuHealthState = imuState.healthState;
   dashboardData.imuErrorCount = imuState.errorCount;
   dashboardData.imuConsecutiveFailures = imuState.consecutiveFailures;
@@ -328,7 +329,7 @@ void publishCurrentTelemetry(bool force) {
   dashboardData.pitch = imuState.pitch;
   dashboardData.imuTemperature = imuState.temperature;
   dashboardData.motionState = imuState.motionState;
-  dashboardData.imuSampleAgeMs = sampleAge(imuState.lastSuccessMs, now);
+  dashboardData.imuSampleAgeMs = imuState.hasSample ? now - imuState.lastSuccessMs : 0;
   dashboardData.radioInitialized = radioState.initialized;
   dashboardData.radioEnabled = RobotConfig::ENABLE_NRF24;
   dashboardData.radioChipDetected = radioState.chipDetected;
@@ -634,7 +635,7 @@ bool serviceLoop() {
     dashboard.markStopApplied("CRITICAL_SAFETY");
   }
   dashboard.updateBackground();
-  imu.update();
+  imu.update(motors.getState() == MotorState::Stopped);
   if (allowBackgroundWork) {
     radio.update(currentEnvironmentalAlarmMask());
   }
