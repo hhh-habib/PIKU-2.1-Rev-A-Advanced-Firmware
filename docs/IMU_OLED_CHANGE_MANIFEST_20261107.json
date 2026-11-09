@@ -1,0 +1,228 @@
+{
+  "schema": "piku-imu-oled-mission-v1",
+  "date": "2026-11-07",
+  "evidence": "verified software checks; physical NOT RUN",
+  "mission_id": "mission-20261107-065827-1c4b363c",
+  "archive_sha256": "8f0a059714d9914482c4ed35fb8637e7e6af8def68a4fc281af6672e801b0ef2",
+  "manifest_self_excluded": true,
+  "private_configuration_unchanged": true,
+  "repositories": [
+    {
+      "project": "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development",
+      "baseline_file_count": 227,
+      "changed_files": {
+        "README.md": {
+          "before": "e8babc790e88558651223765aae312fc062512f350c3ca3ce379793d0c9ee6c8",
+          "after": "fc4fa9689720d6aac0e4a3504919570e309c0f6c1cf08c4d08ed3bf9d49d0470"
+        },
+        "SOFTWARE_EXPLANATION.md": {
+          "before": "869a618f921733321b451c116513bd2b4a65470ceb6a1bddc65082f984ffb1e1",
+          "after": "e781b4fac19e87ccbd0c1f5c3bc1009a00ccee7de211fb89bcfd28df38d79f60"
+        },
+        "include/DisplayManager.h": {
+          "before": "6284aa5170a61fc82d1dd102a256baa315f597f430d2292e0c68f8a6e7957aa9",
+          "after": "2f37e74e32d78d4d2567e22ec166f19e223d9658dd5df7a8545df21fd56c499a"
+        },
+        "include/ImuManager.h": {
+          "before": "113324981ff1414bf87ccc92aa0380bc2adac4e4f8a948de6722b73d82b6cdfe",
+          "after": "b4cd71e270488f2dbb1251ec33489779462d1eff9d89b7db9444fdb6f8485572"
+        },
+        "include/WebDashboard.h": {
+          "before": "2d64a92ebec699b8e92da52b32445b06eec403ad04cceb645f2df5069282bf18",
+          "after": "2ed6636e3b6e2a9022c65f9d22ed1a8db0524d50e9345577293a18ac911b42f2"
+        },
+        "src/DashboardPublisher.cpp": {
+          "before": "f7d898be59ebe32bf36d433340fe6ddb98fe4053b125c55720b1bff4be2949d9",
+          "after": "aa029450c40ec65baef51f312e3fd25218dac0e2a8b06f70a9c2e593a2530b76"
+        },
+        "src/DisplayManager.cpp": {
+          "before": "374b1324a3015b3322f90943514166e312006dc5190d0d3a5cbe4543d59fef7f",
+          "after": "dad7a245c642c0e76a3940a6a7a6c475d4fb075b9b5bacf2992c5875d4526280"
+        },
+        "src/ImuManager.cpp": {
+          "before": "65740f5f2904a165f67c76f1ea8f3565a2c9864827ddb8854360859ca626a14e",
+          "after": "98f330f003ebc2d7108ffc0b7a37f9d7fe86992320625fca83efa9753be8904c"
+        },
+        "src/main.cpp": {
+          "before": "88eefbc30f0f6ba7fa597e5aaae8d719736402dd319fa2f7054370449aaeda3e",
+          "after": "ae14cdf145b463acc4aae7702eaaeadc7ed35cc75ff95826d38b05908a41c81b"
+        },
+        "src/WebDashboard.cpp": {
+          "before": "081fbf237037a1c55fc5d636f4b34163d9fbd64fdbd5f3e33b9a0723e72f3a1b",
+          "after": "1b7f66f38a4b4f978e20916d9a85c19dd279a1706e8041c48901a995288504eb"
+        },
+        "tests/native_standalone_response.cpp": {
+          "before": "6d005b88f75e4ee32390cde00cf8bd24e1550ff436a9942c4b901fd8f1be2390",
+          "after": "cf978502384cc076857526969cda016f6ab35cea5177bfb786529893e201e099"
+        },
+        "tests/reliability_candidate_review.json": {
+          "before": "78e87e056562a423dad37bcb13ae793f728d75a6a12d741a132b0fd1794364f3",
+          "after": "ad2a45bd7764f64bbdc94d39f3953642e3cb01783502e822c921e01b1797e87b"
+        },
+        "tests/test_standalone_response.py": {
+          "before": "c7e92fe26663f131eba976d5274d3fcbf6816215a84b70190f8c2291e57b9792",
+          "after": "649a196c6cda5eab46affb9f049724ab429f07660f7b5105459fbfb2436c846d"
+        },
+        "tests/test_v45_audit_dispatch.py": {
+          "before": "834242e4fd9f1ed0cfeb7bd3144055d903ea567b7fc693c1fc7720b6f6404333",
+          "after": "c3b53b7d0121eae3ceae580bd070e909017f720d251376feaea2377cbf27f92c"
+        }
+      },
+      "added_files": {
+        "tests/imu_oled_wire.h": "486d1408978f7ba5a1d1db051e8fd139f2c4b685b3df23f6e2112704877ad495",
+        "tests/native_imu_oled.cpp": "c16f21cf0fda02453f7180f3e172584d84eb847fa6e7433a32083a2bc8646677",
+        "tests/imu_oled_arduino.h": "f49717750fe4fb01d159ce99105a013bdbbdd7611d975b55057a1b2c0f57d310",
+        "docs/IMU_OLED_SOFTWARE_VERIFICATION_20261107.md": "6e16a7b8d321e48b6c2cc98472f0d7412eb81662062631725f68da4e58ab90c7",
+        "tests/test_imu_oled.py": "e1e5a7b63aff4bf012b2f9457f755037656c4dfabbc55bad36baf849f860457f"
+      },
+      "unchanged_file_count": 213,
+      "git": {
+        "head_unchanged": true,
+        "branch_unchanged": true,
+        "observed_added_application_refs": {},
+        "staged_diff_empty": true,
+        "raw_index_hash_unchanged": false
+      }
+    },
+    {
+      "project": "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU-2.1-Rev-A-earlier github code",
+      "baseline_file_count": 90,
+      "changed_files": {},
+      "added_files": {},
+      "unchanged_file_count": 90,
+      "git": {}
+    },
+    {
+      "project": "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Physical Development",
+      "baseline_file_count": 92,
+      "changed_files": {},
+      "added_files": {},
+      "unchanged_file_count": 92,
+      "git": {}
+    },
+    {
+      "project": "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Stage 4 CPS Integration",
+      "baseline_file_count": 163,
+      "changed_files": {},
+      "added_files": {},
+      "unchanged_file_count": 163,
+      "git": {
+        "head_unchanged": true,
+        "branch_unchanged": true,
+        "observed_added_application_refs": {},
+        "staged_diff_empty": true,
+        "raw_index_hash_unchanged": true,
+        "working_status_unchanged": true
+      }
+    },
+    {
+      "project": "Research/Meo/CPS Node V1/CPS Node V1 Stage 4 Coordinator Integration",
+      "baseline_file_count": 219,
+      "changed_files": {},
+      "added_files": {},
+      "unchanged_file_count": 219,
+      "git": {
+        "head_unchanged": true,
+        "branch_unchanged": true,
+        "observed_added_application_refs": {
+          "refs/codex/turn-diffs/captures/1794013401454/101e3488-f729-43a7-83a4-a4d91a67537c/base": {
+            "before": null,
+            "after": "b445870e209e9b9f023931ac303eab3549e39519"
+          }
+        },
+        "staged_diff_empty": true,
+        "raw_index_hash_unchanged": true,
+        "working_status_unchanged": true
+      }
+    },
+    {
+      "project": "Research/Meo/CPS Node V1/Node V1 Software development",
+      "baseline_file_count": 46,
+      "changed_files": {},
+      "added_files": {},
+      "unchanged_file_count": 46,
+      "git": {
+        "head_unchanged": true,
+        "branch_unchanged": true,
+        "observed_added_application_refs": {},
+        "staged_diff_empty": true,
+        "raw_index_hash_unchanged": true,
+        "working_status_unchanged": true
+      }
+    }
+  ],
+  "verification": {
+    "baseline": {
+      "passed": 237,
+      "skipped": 11,
+      "failures": 0,
+      "errors": 0,
+      "native_policies": 13
+    },
+    "full_run": {
+      "native_policies_passed": 13,
+      "tests_run": 277,
+      "passed": 266,
+      "failures": 0,
+      "errors": 0,
+      "skips": [
+        [
+          "test_collision_closure.ClosureNavigation.test_watchdog_integration_pause_cannot_refill_or_resume_old_motion",
+          "CPS integration authority is absent from Standalone"
+        ],
+        [
+          "test_collision_closure_inventory.ClosureInventory.test_exact_current_production_delta_and_baseline",
+          "frozen scope replaced by exact candidate manifest and function invariants"
+        ],
+        [
+          "test_state_collision_browser.RenderedDashboardTests.test_other_pages_and_bottom_navigation_have_no_new_visual_regression",
+          "larger typography intentionally changes bounds; all panels verified at requested widths, zoom and enlarged text"
+        ],
+        [
+          "test_state_collision_browser.RenderedDashboardTests.test_shared_computed_styles_and_state_match_actual_frozen_assets",
+          "larger typography intentionally changes computed styles; candidate rendering checks replace equality"
+        ],
+        [
+          "test_state_collisions.StateCollisions.test_integration_environmental_fresh_scan",
+          "CPS seam only"
+        ],
+        [
+          "test_state_collisions.StateCollisions.test_nested_integration_then_sonar",
+          "CPS seam only"
+        ],
+        [
+          "test_state_collisions.StateCollisions.test_nested_sonar_then_integration",
+          "CPS seam only"
+        ],
+        [
+          "test_v45_inventory.V45Inventory.test_reviewed_current_source_delta",
+          "historical V4.5 scope superseded by candidate manifest"
+        ],
+        [
+          "test_v46_inventory.V46Inventory.test_exact_current_scope_and_hashes",
+          "historical V4.6 scope superseded by candidate manifest"
+        ],
+        [
+          "test_v46_inventory.V46Inventory.test_explicit_stop_and_atomic_mode_backend_are_unchanged",
+          "owner-authorized additive STOP fence checked by live handler tests and exact remaining-body invariant"
+        ],
+        [
+          "test_v46_inventory.V46Inventory.test_restoration_source_and_preserved_infrastructure",
+          "restoration hashes remain frozen; candidate has its own exact source manifest"
+        ]
+      ]
+    },
+    "final_focused": {
+      "passed": 30,
+      "note": "29 overlap full run; one added final exact bridge preservation check"
+    },
+    "build": {
+      "environment": "esp32-s3-n16r8",
+      "status": "SUCCESS",
+      "static_ram_bytes": 61188,
+      "flash_bytes": 1061465,
+      "firmware_sha256": "e1e4d57f0335e00a2c86d2733aa62627a594e19d2c1b7362cd17aa4904b03087",
+      "uploaded": false
+    }
+  }
+}

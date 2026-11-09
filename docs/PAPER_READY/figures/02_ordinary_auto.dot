@@ -1,0 +1,18 @@
+digraph G { graph [rankdir=TB,bgcolor="white",nodesep=.26,ranksep=.33]; node [shape=box,style="rounded",fontname="Arial",fontsize=12,color="#334155",margin=".14,.09"]; edge [fontname="Arial",fontsize=10,color="#475569"];
+ guards [label="STOP and safety interruption checks"];
+ ir [shape=diamond,label="Confirmed IR event?"];
+ front [label="Request fresh front evidence\nvalidate time sequence facing and state"];
+ clear [shape=diamond,label="Trusted and above 20 cm\nor operational OPEN?"];
+ forward [label="300 ms Forward step\ncurrent IR and sonar guards remain"];
+ reverse [label="STOP then ordinary reverse sequence\n50 ms prepare 220 ms reverse 150 ms settle"];
+ scan [label="New L F R scan\nthree samples per direction and trusted quorum"];
+ boxed [shape=diamond,label="All finite positive below 30 cm\nor valid stuck history?"];
+ recovery [label="Enter committed side recovery\nsee recovery state flow"];
+ side [label="Choose trusted side above 20 cm\nrespect IR and single IR opposite preference"];
+ turn [label="About 35 degree turn then STOP\nnew front validation"];
+ wait [label="No usable side\nSTOP and bounded retry wait then rescan"];
+ guards -> ir; ir -> reverse [label="yes"]; ir -> front [label="no"];
+ front -> clear; clear -> forward [label="yes"]; clear -> reverse [label="blocked"]; clear -> guards [label="untrusted STOP",style=dashed];
+ forward -> guards; reverse -> scan; scan -> boxed; boxed -> recovery [label="yes"]; boxed -> side [label="no"];
+ side -> turn [label="eligible"]; side -> wait [label="none"]; wait -> scan; turn -> guards;
+}

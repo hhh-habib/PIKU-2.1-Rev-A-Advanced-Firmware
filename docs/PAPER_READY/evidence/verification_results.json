@@ -1,0 +1,125 @@
+{
+  "date": "2026-10-18",
+  "python": {
+    "native_policies_passed": 13,
+    "tests_run": 218,
+    "passed": 207,
+    "failures": 0,
+    "errors": 0,
+    "skips": [
+      [
+        "test_collision_closure.ClosureNavigation.test_watchdog_integration_pause_cannot_refill_or_resume_old_motion",
+        "CPS integration authority is absent from Standalone"
+      ],
+      [
+        "test_collision_closure_inventory.ClosureInventory.test_exact_current_production_delta_and_baseline",
+        "frozen scope replaced by exact candidate manifest and function invariants"
+      ],
+      [
+        "test_state_collision_browser.RenderedDashboardTests.test_other_pages_and_bottom_navigation_have_no_new_visual_regression",
+        "larger typography intentionally changes bounds; all panels verified at requested widths, zoom and enlarged text"
+      ],
+      [
+        "test_state_collision_browser.RenderedDashboardTests.test_shared_computed_styles_and_state_match_actual_frozen_assets",
+        "larger typography intentionally changes computed styles; candidate rendering checks replace equality"
+      ],
+      [
+        "test_state_collisions.StateCollisions.test_integration_environmental_fresh_scan",
+        "CPS seam only"
+      ],
+      [
+        "test_state_collisions.StateCollisions.test_nested_integration_then_sonar",
+        "CPS seam only"
+      ],
+      [
+        "test_state_collisions.StateCollisions.test_nested_sonar_then_integration",
+        "CPS seam only"
+      ],
+      [
+        "test_v45_inventory.V45Inventory.test_reviewed_current_source_delta",
+        "historical V4.5 scope superseded by candidate manifest"
+      ],
+      [
+        "test_v46_inventory.V46Inventory.test_exact_current_scope_and_hashes",
+        "historical V4.6 scope superseded by candidate manifest"
+      ],
+      [
+        "test_v46_inventory.V46Inventory.test_explicit_stop_and_atomic_mode_backend_are_unchanged",
+        "owner-authorized additive STOP fence checked by live handler tests and exact remaining-body invariant"
+      ],
+      [
+        "test_v46_inventory.V46Inventory.test_restoration_source_and_preserved_infrastructure",
+        "restoration hashes remain frozen; candidate has its own exact source manifest"
+      ]
+    ]
+  },
+  "native_policy_executables": 13,
+  "browser_behavior_scenarios": [
+    "timeout_confirmed_stop_next_fresh_press",
+    "session_release_sequence_before_first_direction",
+    "first_press_waits_own_session_release",
+    "released_press_not_replayed_after_session",
+    "failed_session_cannot_replay_held_press",
+    "confirmed_stop_waits_own_pending_authority",
+    "release_timeout_stop_proof_restores_manual",
+    "live_does_not_replace_stop_proof",
+    "another_client_authority_does_not_unlock",
+    "expired_session_after_confirmed_stop",
+    "older_failed_stop_after_newer_stop_ack",
+    "late_recovery_cannot_cancel_new_mode",
+    "persistent_manual_650ms",
+    "persistent_manual_20ms",
+    "persistent_manual_900ms",
+    "persistent_manual_1200ms",
+    "manual_deadman_on_delivery_loss",
+    "obsolete_direction_rejection_before_newer_ack",
+    "old_response_timeout_with_newer_ack",
+    "rejected_old_refresh_without_newer_ack",
+    "priority_stop_aborts_entire_refresh_window",
+    "expired_manual_session_requires_fresh_press_only",
+    "healthy_release_before_direction_ack",
+    "normal_stop_then_auto",
+    "telemetry_during_transition",
+    "auto_to_manual",
+    "multiple_stops",
+    "repeated_clicks",
+    "stop_reject",
+    "stop_timeout",
+    "stop_abort",
+    "late_stop_failure",
+    "stop_rejection_status",
+    "missing_fence",
+    "explicit_stop_cancels_wait",
+    "mode_reject",
+    "mode_timeout",
+    "mode_abort",
+    "stop_cancels_sent_mode",
+    "manual_intent_retired",
+    "direction_deadline",
+    "fresh_action_after_reconnect",
+    "heartbeat_vs_telemetry",
+    "stop_always_accessible",
+    "already_manual_ready",
+    "manual_refresh_and_temporary_stale",
+    "one_click_mode_round_trip",
+    "no_background_session_during_mode",
+    "pending_session_then_mode",
+    "pending_session_timeout",
+    "session_body_timeout",
+    "real_release_failure_stays_safe",
+    "unrelated_direction_abort_stays_safe",
+    "manual_priority_stop_remains_ready",
+    "reconnect_does_not_replay_motion"
+  ],
+  "browser_layout_cases": 75,
+  "navigation_scenarios": 34,
+  "modeled_control_passes": 3161,
+  "RAM_bytes": 58996,
+  "RAM_budget_bytes": 327680,
+  "flash_bytes": 1059977,
+  "application_flash_budget_bytes": 6553600,
+  "source_fingerprint": "f979ca73108a358b06e3f2f733f97bcb9ecde6d7a69f7323cd5c9ec3251f34b6",
+  "build_binary_sha256": "a2fbf661719c39734656a2a246457b9c5830a08668840c69d182179aa3c16aaf",
+  "organization_before_after": "Both complete runs match: outcomes, 11 skips, traces, resources and binary; no executable changes.",
+  "evidence_qualification": "Software/source/browser/model tests, not physical measurements. Counts overlap and are not additive."
+}

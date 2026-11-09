@@ -1,0 +1,15 @@
+digraph G { graph [rankdir=TB,bgcolor="white",nodesep=.28,ranksep=.34]; node [shape=box,style="rounded",fontname="Arial",fontsize=12,color="#334155",margin=".13,.09"]; edge [fontname="Arial",fontsize=10,color="#475569"];
+ ready [label="MANUAL selected and ready\nonly a fresh press creates intent"];
+ press [label="Hold direction\nfinish own session RELEASE first and synchronize sequence"];
+ http [label="HTTP direction refresh every 250 ms\nat most three outstanding response waits"];
+ backend [label="Backend admission and safety guards\napply motor command when permitted"];
+ expire [label="No fresh accepted command for 750 ms\nserviced firmware deadman stops motors"];
+ release [label="Release or STOP\nretire old held and pending directions"];
+ stop [label="Apply motor STOP before acknowledgment\nMANUAL mode stays selected"];
+ uncertain [label="Current delivery failure\nretire intent and send STOP"];
+ proof [shape=diamond,label="STOP or RELEASE confirmed\nand current own authority valid?"];
+ hold [label="Remain stopped and uncertain\nheartbeat alone cannot unlock"];
+ ready -> press; press -> http; http -> backend; backend -> http [label="still held"]; backend -> expire [style=dashed,label="delivery gap"];
+ http -> release [label="operator releases"]; release -> stop; stop -> ready [label="healthy acknowledgment"];
+ http -> uncertain [label="unproved failure"]; uncertain -> proof; proof -> ready [label="yes fresh press only"]; proof -> hold [label="no"];
+}

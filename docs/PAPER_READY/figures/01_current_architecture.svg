@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="510" viewBox="0 0 900 510">
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#475569"/></marker></defs>
+<rect width="900" height="510" fill="white"/>
+<polyline points="450,74 450,105" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+<polyline points="450,169 450,205" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+<polyline points="285,240 320,240" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+<polyline points="580,240 620,240" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+<polyline points="385,275 150,320" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+<polyline points="450,275 450,320" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+<polyline points="450,390 450,430" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+<polyline points="150,390 150,463 320,463" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+<polyline points="580,355 620,355" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+<polyline points="580,263 605,263 605,462 620,462" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)" stroke-dasharray="6 4"/>
+<rect x="320" y="10" width="260" height="64" rx="7" fill="#f3f6fa" stroke="#475569" stroke-width="1.5"/>
+<text x="450.0" y="37.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">Human browser</text>
+<text x="450.0" y="59.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">embedded dashboard</text>
+<rect x="320" y="105" width="260" height="64" rx="7" fill="#f3f6fa" stroke="#475569" stroke-width="1.5"/>
+<text x="450.0" y="132.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">WebDashboard HTTP</text>
+<text x="450.0" y="154.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">and admission callbacks</text>
+<rect x="320" y="205" width="260" height="70" rx="7" fill="#f3f6fa" stroke="#475569" stroke-width="1.5"/>
+<text x="450.0" y="235.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">main.cpp</text>
+<text x="450.0" y="257.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">cooperative mode dispatch</text>
+<rect x="15" y="205" width="270" height="70" rx="7" fill="#f3f6fa" stroke="#475569" stroke-width="1.5"/>
+<text x="150.0" y="235.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">SensorManager</text>
+<text x="150.0" y="257.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">SafetyManager guards</text>
+<rect x="620" y="205" width="265" height="70" rx="7" fill="#f3f6fa" stroke="#475569" stroke-width="1.5"/>
+<text x="752.5" y="235.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">DashboardPublisher</text>
+<text x="752.5" y="257.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">telemetry and OLED</text>
+<rect x="15" y="320" width="270" height="70" rx="7" fill="#f3f6fa" stroke="#475569" stroke-width="1.5"/>
+<text x="150.0" y="350.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">MANUAL</text>
+<text x="150.0" y="372.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">DriveCommandHandler</text>
+<rect x="320" y="320" width="260" height="70" rx="7" fill="#f3f6fa" stroke="#475569" stroke-width="1.5"/>
+<text x="450.0" y="350.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">AUTO</text>
+<text x="450.0" y="372.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">NavigationManager</text>
+<rect x="620" y="320" width="265" height="70" rx="7" fill="#f3f6fa" stroke="#475569" stroke-width="1.5"/>
+<text x="752.5" y="350.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">ServoScanner</text>
+<text x="752.5" y="372.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">IMU relative turn evidence</text>
+<rect x="320" y="430" width="260" height="64" rx="7" fill="#f3f6fa" stroke="#475569" stroke-width="1.5"/>
+<text x="450.0" y="457.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">MotorController</text>
+<text x="450.0" y="479.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">wheel PWM and direction</text>
+<rect x="620" y="430" width="265" height="64" rx="7" fill="#f3f6fa" stroke="#475569" stroke-width="1.5"/>
+<text x="752.5" y="457.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">RadioManager</text>
+<text x="752.5" y="479.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">experimental status</text>
+</svg>

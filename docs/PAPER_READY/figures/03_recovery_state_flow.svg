@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="650" viewBox="0 0 900 650">
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#475569"/></marker></defs>
+<rect width="900" height="650" fill="white"/>
+<polyline points="410,45 500,45" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+<polyline points="690,80 690,110 215,110 215,150" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="410" y="104" font-family="Arial" font-size="14" fill="#111827">permitted</text>
+<polyline points="410,185 500,185" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="414" y="174" font-family="Arial" font-size="14" fill="#111827">turn verified</text>
+<polyline points="630,220 215,300" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="345" y="267" font-family="Arial" font-size="14" fill="#111827">clear</text>
+<polyline points="690,220 690,300" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="699" y="272" font-family="Arial" font-size="14" fill="#111827">blocked</text>
+<polyline points="500,335 460,335 460,123 215,123 215,150" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)" stroke-dasharray="6 4"/>
+<text x="471" y="138" font-family="Arial" font-size="14" fill="#111827">same side safe</text>
+<polyline points="590,370 215,450" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="322" y="413" font-family="Arial" font-size="14" fill="#111827">IR or veto</text>
+<polyline points="215,520 215,550 470,550 470,185 500,185" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)" stroke-dasharray="6 4"/>
+<text x="240" y="541" font-family="Arial" font-size="14" fill="#111827">fresh front</text>
+<polyline points="690,370 690,450" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="695" y="414" font-family="Arial" font-size="14" fill="#111827">limit / unsafe</text>
+<polyline points="690,520 550,580" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+<polyline points="240,609 5,609 5,45 20,45" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)" stroke-dasharray="6 4"/>
+<text x="12" y="576" font-family="Arial" font-size="14" fill="#111827">fresh scan</text>
+<rect x="20" y="10" width="390" height="70" rx="7" fill="#f3f6fa" stroke="#475569" stroke-width="1.5"/>
+<text x="215.0" y="40.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">EscapeScan</text>
+<text x="215.0" y="62.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">fresh trusted L F R or scan reuse</text>
+<rect x="500" y="10" width="380" height="70" rx="7" fill="#f3f6fa" stroke="#475569" stroke-width="1.5"/>
+<text x="690.0" y="40.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">Commit usable side once</text>
+<text x="690.0" y="62.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">finite side &gt;7 cm and fresh IMU</text>
+<rect x="20" y="150" width="390" height="70" rx="7" fill="#f3f6fa" stroke="#475569" stroke-width="1.5"/>
+<text x="215.0" y="180.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">EscapeTurn</text>
+<text x="215.0" y="202.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">count start and target about 25 deg</text>
+<rect x="500" y="150" width="380" height="70" rx="7" fill="#f3f6fa" stroke="#475569" stroke-width="1.5"/>
+<text x="690.0" y="180.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">STOP settle and fresh front</text>
+<text x="690.0" y="202.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">EscapeVerify</text>
+<rect x="20" y="300" width="390" height="70" rx="7" fill="#f3f6fa" stroke="#475569" stroke-width="1.5"/>
+<text x="215.0" y="330.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">Front &gt;=30 cm or OPEN</text>
+<text x="215.0" y="352.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">retire mission and normal AUTO</text>
+<rect x="500" y="300" width="380" height="70" rx="7" fill="#f3f6fa" stroke="#475569" stroke-width="1.5"/>
+<text x="690.0" y="330.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">Front blocked and budget remains</text>
+<text x="690.0" y="352.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">inspect committed side only</text>
+<rect x="20" y="450" width="390" height="70" rx="7" fill="#f3f6fa" stroke="#475569" stroke-width="1.5"/>
+<text x="215.0" y="469.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">IR or close-side veto</text>
+<text x="215.0" y="491.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">STOP and 200 ms reverse pulses</text>
+<text x="215.0" y="513.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">at most five per mission</text>
+<rect x="500" y="450" width="380" height="70" rx="7" fill="#f3f6fa" stroke="#475569" stroke-width="1.5"/>
+<text x="690.0" y="469.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">Seven starts or 30000 ms</text>
+<text x="690.0" y="491.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">or pulse/evidence failure</text>
+<text x="690.0" y="513.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">STOP in TrappedHold</text>
+<rect x="240" y="580" width="420" height="60" rx="7" fill="#f3f6fa" stroke="#475569" stroke-width="1.5"/>
+<text x="450.0" y="605.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">2500 ms stopped cooldown</text>
+<text x="450.0" y="627.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">new round and fresh full scan</text>
+</svg>

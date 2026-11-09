@@ -1,3 +1,21 @@
+Current narrow IMU/OLED update (2026-11-07): checked MPU6050 frames and cooperative idle-only reconfiguration; compact fixed OLED with priority environmental alerts and cached STA IP. Software checks/build passed; physical acceptance is pending. Navigation, environmental sensing/safety, networking and radio behavior remain preserved. See [verification and owner checklist](docs/IMU_OLED_SOFTWARE_VERIFICATION_20261107.md). The dated records below retain their historical scope.
+
+Documentation: [organized documentation index](docs/README.md) and [five editable research documents](docs/PAPER_READY/README.md).
+
+## CURRENT IMPLEMENTED FIRMWARE - 2026-10-18
+
+This working tree contains the restored V3.2 navigation plus the later sonar-evidence, command/session, persistent Manual-control, diagnostics and dashboard-readability corrections. HEAD remains `fa375a7bf739fc306060048b500c2acf413db7a7`; the newer working source is uncommitted. See the [final comparison and cleanup report](docs/FINAL_RELEASE_REVIEW_20261018.md) and [file-level preservation/cleanup manifest](docs/FINAL_RELEASE_CLEANUP_MANIFEST_20261018.csv).
+
+- **Manual:** select once, hold a fresh direction, release to stop, then press another direction. Browser refresh is 250 ms; the independent firmware deadman stops expired movement at 750 ms when serviced. Transport uncertainty retires the held command; confirmed STOP/RELEASE and valid current authority restore readiness for the next fresh press. Heartbeat alone cannot establish STOP success.
+- **AUTO/recovery:** ordinary obstacles and IR use the restored reverse/scan/turn path. Boxed recovery commits a usable side, uses approximately 25-degree turns, at most **7 started turns**, **5 IR reverse pulses**, and a **30,000 ms elapsed mission timeout**. Exhaustion stops, then the **2,500 ms cooldown** permits a fresh scan/retry. These are per-mission bounds, not a lifetime escape guarantee.
+- **Evidence and safety:** trusted sonar quorum/timestamps, STOP priority, one-use delayed-mode protection, known-obstacle and environmental guards remain. Missing DHT/MQ-2 monitoring alone does not inhibit motion; a confirmed hazard is not cleared by a failed read. Sonar/hazard interruptions discard old actuator work; unfinished environmental recovery requires fresh evidence.
+
+**OWNER PHYSICALLY OBSERVED / OWNER-REPORTED:** the owner reports the latest firmware is performing well. This audit did not operate or flash the robot and did not independently identify its flashed binary. **SOFTWARE-ONLY VERIFICATION:** full pre/post host/browser tests and ESP32-S3 builds are recorded in the report. Measured latency, turn accuracy, reverse distance and RF reliability remain unverified. Future CPS integration is outside this standalone release.
+
+## Historical development snapshots (preserved)
+
+The version-labelled descriptions below record earlier development states. In particular, V4.5 six-turn/45-second/phase-resumption descriptions and old pending-physical labels are historical; the CURRENT section and source-backed report above describe this working tree. Dated experiments and their original claims remain intact.
+
 ## Current standalone restoration (2026-10-08)
 
 The existing project now restores V3.2 ordinary AUTO and stuck/boxed-in recovery, with the owner-approved environmental decisions and existing V4.6 STOP/control infrastructure preserved. See [the source and software verification report](docs/V32_RESTORATION_SOFTWARE_VERIFICATION.md) for the current behavior, evidence, limitations, and physical test checklist. Earlier V4.5/V4.6 navigation descriptions below remain historical development records. Physical validation of this restored build is pending.

@@ -1,0 +1,93 @@
+ M README.md
+ M include/NavigationManager.h
+ M include/RecoveryIrBackoffPolicy.h
+ M include/RobotConfig.h
+ M include/SafetyManager.h
+ M include/SensorManager.h
+ M include/StuckRecoveryV2Policy.h
+ M include/V2EscapeDecision.h
+ M src/NavigationManager.cpp
+ M src/SafetyManager.cpp
+ M src/SensorManager.cpp
+ M src/WebDashboard.cpp
+ M src/WebDashboardAssets.cpp
+ M src/main.cpp
+ M tests/native_collision_closure.cpp
+ M tests/native_motor_backoff.cpp
+ M tests/native_navigation_v33.cpp
+ M tests/native_state_collisions.cpp
+ M tests/recovery_active_time.cpp
+ M tests/recovery_episode_v33.cpp
+ M tests/stuck_recovery_v2_policy.cpp
+ M tests/test_collision_closure.py
+ M tests/test_collision_closure_inventory.py
+ M tests/test_recovery_source_contract.py
+ M tests/test_state_collisions.py
+ M tests/test_v32_source_contract.py
+ M tests/test_v33_contracts.py
+ M tests/v2_recovery_integration.cpp
+ M tests/v33_doubles.h
+?? docs/V32_RESTORATION_CONTINUITY_UPDATE.json
+?? docs/V32_RESTORATION_FINAL_DIFF_STAT.txt
+?? docs/V32_RESTORATION_FINAL_GIT_STATUS.txt
+?? docs/V32_RESTORATION_FINAL_SOURCE.diff
+?? docs/V32_RESTORATION_PREFLIGHT_BASELINE.json
+?? docs/V32_RESTORATION_PREFLIGHT_REPORT.md
+?? docs/V32_RESTORATION_SOFTWARE_VERIFICATION.md
+?? docs/V32_RESTORATION_SOURCE_AUDIT.json
+?? docs/V32_RESTORATION_TRACE_SUMMARY.json
+?? docs/V45_SOFTWARE_VERIFICATION.md
+?? docs/V46_SOFTWARE_VERIFICATION.md
+?? figures/Circuit_Diagram.png
+?? figures/PIKU_2.1_Rev_A_Software_Architecture.png
+?? figures/PIKU_2.1_Rev_A_System_Architecture.png
+?? figures/PIKU_2.1_Rev_A_Technical_Blueprint_Black.png
+?? tests/__pycache__/test_capture_nav_trace.cpython-311.pyc
+?? tests/__pycache__/test_collision_closure.cpython-311.pyc
+?? tests/__pycache__/test_collision_closure_dispatch.cpython-311.pyc
+?? tests/__pycache__/test_collision_closure_inventory.cpython-311.pyc
+?? tests/__pycache__/test_control_pass_collisions.cpython-311.pyc
+?? tests/__pycache__/test_recovery_source_contract.cpython-311.pyc
+?? tests/__pycache__/test_state_collision_browser.cpython-311.pyc
+?? tests/__pycache__/test_state_collisions.cpython-311.pyc
+?? tests/__pycache__/test_v32_source_contract.cpython-311.pyc
+?? tests/__pycache__/test_v331_motor.cpython-311.pyc
+?? tests/__pycache__/test_v33_contracts.cpython-311.pyc
+?? tests/__pycache__/test_v33_native.cpython-311.pyc
+?? tests/__pycache__/test_v45_audit_dispatch.cpython-311.pyc
+?? tests/__pycache__/test_v45_availability.cpython-311.pyc
+?? tests/__pycache__/test_v45_inventory.cpython-311.pyc
+?? tests/__pycache__/test_v45_navigation.cpython-311.pyc
+?? tests/__pycache__/test_v45_producers.cpython-311.pyc
+?? tests/__pycache__/test_v46_backend.cpython-311.pyc
+?? tests/__pycache__/test_v46_browser.cpython-311.pyc
+?? tests/__pycache__/test_v46_inventory.cpython-311.pyc
+?? tests/__pycache__/test_v46_normal.cpython-311.pyc
+?? tests/__pycache__/v45_approved_delta.cpython-311.pyc
+?? tests/__pycache__/v46_approved_delta.cpython-311.pyc
+?? tests/native_v32_restoration.cpp
+?? tests/native_v45_availability.cpp
+?? tests/native_v45_navigation.cpp
+?? tests/native_v45_producers.cpp
+?? tests/native_v45_standalone_dispatch.cpp
+?? tests/native_v46_backend.cpp
+?? tests/native_v46_normal.cpp
+?? tests/test_v32_restoration.py
+?? tests/test_v45_audit_dispatch.py
+?? tests/test_v45_availability.py
+?? tests/test_v45_inventory.py
+?? tests/test_v45_navigation.py
+?? tests/test_v45_producers.py
+?? tests/test_v46_backend.py
+?? tests/test_v46_browser.py
+?? tests/test_v46_inventory.py
+?? tests/test_v46_normal.py
+?? tests/v32_restoration_approved_delta.py
+?? tests/v32_restoration_reviewed_delta.json
+?? tests/v45_approved_delta.py
+?? tests/v45_reviewed_delta.json
+?? tests/v46_approved_delta.py
+?? tests/v46_browser_race.js
+?? tests/v46_reviewed_delta.json
+?? tests/v46_starting_source.json
+?? tools/__pycache__/capture_nav_trace.cpython-311.pyc

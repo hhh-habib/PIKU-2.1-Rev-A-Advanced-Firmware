@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="610" viewBox="0 0 900 610">
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#475569"/></marker></defs>
+<rect width="900" height="610" fill="white"/>
+<polyline points="350,70 215,110" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="62" y="97" font-family="Arial" font-size="14" fill="#111827">obstacle / IR</text>
+<polyline points="560,70 690,110" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="670" y="97" font-family="Arial" font-size="14" fill="#111827">clear</text>
+<polyline points="215,175 215,235" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+<polyline points="420,36 465,36 465,268 500,268" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)" stroke-dasharray="6 4"/>
+<text x="470" y="218" font-family="Arial" font-size="14" fill="#111827">untrusted</text>
+<polyline points="215,300 215,360" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="70" y="343" font-family="Arial" font-size="14" fill="#111827">boxed / history</text>
+<polyline points="410,268 450,268 450,395 500,395" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="450" y="330" font-family="Arial" font-size="14" fill="#111827">otherwise</text>
+<polyline points="215,430 215,510" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+<polyline points="690,430 690,510" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="697" y="482" font-family="Arial" font-size="14" fill="#111827">eligible side</text>
+<rect x="240" y="5" width="420" height="65" rx="7" fill="#f3f6fa" stroke="#475569" stroke-width="1.5"/>
+<text x="450.0" y="32.5" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">STOP safety and sonar gates</text>
+<text x="450.0" y="54.5" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">before navigation motion</text>
+<rect x="20" y="110" width="390" height="65" rx="7" fill="#f3f6fa" stroke="#475569" stroke-width="1.5"/>
+<text x="215.0" y="137.5" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">Confirmed IR event</text>
+<text x="215.0" y="159.5" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">or finite front at or below 20 cm</text>
+<rect x="500" y="110" width="380" height="65" rx="7" fill="#f3f6fa" stroke="#475569" stroke-width="1.5"/>
+<text x="690.0" y="137.5" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">Trusted clear front and no IR</text>
+<text x="690.0" y="159.5" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">Forward step with current guards</text>
+<rect x="20" y="235" width="390" height="65" rx="7" fill="#f3f6fa" stroke="#475569" stroke-width="1.5"/>
+<text x="215.0" y="262.5" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">STOP then bounded reverse</text>
+<text x="215.0" y="284.5" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">new full L F R scan</text>
+<rect x="500" y="235" width="380" height="65" rx="7" fill="#f3f6fa" stroke="#475569" stroke-width="1.5"/>
+<text x="690.0" y="262.5" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">Untrusted front or scan</text>
+<text x="690.0" y="284.5" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">STOP and reacquire or retry</text>
+<rect x="20" y="360" width="390" height="70" rx="7" fill="#f3f6fa" stroke="#475569" stroke-width="1.5"/>
+<text x="215.0" y="379.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">All finite below 30 cm</text>
+<text x="215.0" y="401.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">or valid stuck history</text>
+<text x="215.0" y="423.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">admit recovery</text>
+<rect x="500" y="360" width="380" height="70" rx="7" fill="#f3f6fa" stroke="#475569" stroke-width="1.5"/>
+<text x="690.0" y="390.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">Otherwise choose usable side</text>
+<text x="690.0" y="412.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">above 20 cm and clear IR</text>
+<rect x="20" y="510" width="390" height="70" rx="7" fill="#f3f6fa" stroke="#475569" stroke-width="1.5"/>
+<text x="215.0" y="540.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">Committed side recovery</text>
+<text x="215.0" y="562.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">see next state diagram</text>
+<rect x="500" y="510" width="380" height="70" rx="7" fill="#f3f6fa" stroke="#475569" stroke-width="1.5"/>
+<text x="690.0" y="540.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">Normal turn then STOP</text>
+<text x="690.0" y="562.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">new front decision</text>
+<text x="450" y="603" text-anchor="middle" font-family="Arial" font-size="17" fill="#111827">No usable side: STOP, bounded retry wait, then a fresh full scan</text>
+</svg>

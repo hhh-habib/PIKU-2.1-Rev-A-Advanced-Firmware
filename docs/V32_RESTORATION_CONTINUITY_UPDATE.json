@@ -1,0 +1,126 @@
+{
+  "baseline_refs": [
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/docs/V32_RESTORATION_PREFLIGHT_BASELINE.json"
+  ],
+  "files_changed": [
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/README.md",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/include/NavigationManager.h",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/include/RecoveryIrBackoffPolicy.h",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/include/RobotConfig.h",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/include/StuckRecoveryV2Policy.h",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/include/V2EscapeDecision.h",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/src/NavigationManager.cpp",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/tests/native_collision_closure.cpp",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/tests/native_navigation_v33.cpp",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/tests/native_state_collisions.cpp",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/tests/native_v45_availability.cpp",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/tests/native_v45_navigation.cpp",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/tests/native_v45_standalone_dispatch.cpp",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/tests/native_v46_backend.cpp",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/tests/native_v46_normal.cpp",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/tests/recovery_active_time.cpp",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/tests/recovery_episode_v33.cpp",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/tests/recovery_ir_backoff_policy.cpp",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/tests/stuck_recovery_v2_policy.cpp",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/tests/test_collision_closure.py",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/tests/test_state_collisions.py",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/tests/test_v45_audit_dispatch.py",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/tests/test_v45_availability.py",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/tests/test_v45_inventory.py",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/tests/test_v45_navigation.py",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/tests/test_v46_inventory.py",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/tests/test_v46_normal.py",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/tests/v2_recovery_integration.cpp",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/tests/v45_approved_delta.py",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/tests/v46_approved_delta.py"
+  ],
+  "artifacts_added": [
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/docs/V32_RESTORATION_AVAILABILITY.log",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/docs/V32_RESTORATION_BASELINE_BUILD.log",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/docs/V32_RESTORATION_BASELINE_TESTS.log",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/docs/V32_RESTORATION_BUILD.log",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/docs/V32_RESTORATION_CONTINUITY_UPDATE.json",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/docs/V32_RESTORATION_FINAL_DIFF_STAT.txt",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/docs/V32_RESTORATION_FINAL_GIT_STATUS.txt",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/docs/V32_RESTORATION_FINAL_SOURCE.diff",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/docs/V32_RESTORATION_FIRST_TESTS.log",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/docs/V32_RESTORATION_HOST_CHECKS.log",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/docs/V32_RESTORATION_PARITY.log",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/docs/V32_RESTORATION_PREFLIGHT_BASELINE.json",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/docs/V32_RESTORATION_PREFLIGHT_REPORT.md",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/docs/V32_RESTORATION_SOFTWARE_VERIFICATION.md",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/docs/V32_RESTORATION_SOURCE_AUDIT.json",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/docs/V32_RESTORATION_TESTS.log",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/docs/V32_RESTORATION_TRACE_SUMMARY.json",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/tests/native_v32_restoration.cpp",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/tests/test_v32_restoration.py",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/tests/v32_restoration_approved_delta.py",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/tests/v32_restoration_reviewed_delta.json"
+  ],
+  "operations": [
+    "Inspected initial branch/HEAD/dirty working tree and read-only reference provenance before source edits.",
+    "Applied scoped function/header/policy restoration directly in the existing standalone project after both owner approvals.",
+    "Ran same-project native/runtime/main/HTTP/browser tests and configured ESP32-S3 compile; no hardware actions.",
+    "Checked exact allowed deltas, protected file hashes, reference hashes and Git whitespace; wrote full A-K handoff."
+  ],
+  "verification": [
+    {
+      "kind": "verified",
+      "description": "61 non-secret reference source/test/config files match frozen V3.2 commit 41281d8325d88c70e074e008a2550a1164102132 after CRLF normalization."
+    },
+    {
+      "kind": "verified",
+      "description": "34 whole chronological traces equal between independently compiled actual reference/current navigation sources: 3161 control passes and 481 requested sonar samples in each aggregate."
+    },
+    {
+      "kind": "verified",
+      "description": "Nine preservation scenarios pass, including a 54-combination state/event interruption matrix."
+    },
+    {
+      "kind": "verified",
+      "description": "Final run_host_checks exit 0: 12 native policy executables passed; 172 Python tests, 168 passed, 4 explicit CPS scope skips, zero failures; actual backend/Chromium ordering and JavaScript parsing passed."
+    },
+    {
+      "kind": "verified",
+      "description": "Final PlatformIO esp32-s3-n16r8 build exit 0: RAM 58908 bytes, flash 1042541 bytes; deltas -48 RAM/-1392 flash against starting tree."
+    },
+    {
+      "kind": "verified",
+      "description": "117 of 147 baseline target files byte unchanged; exactly 30 authorized existing files changed, six production. Prior README body intact; all 90 reference files and protected non-navigation production/configuration unchanged; branch/HEAD unchanged; git diff --check passed."
+    }
+  ],
+  "factual_outcomes": [
+    "The preflight mission continued into the original owner-authorized implementation after both policy decisions were resolved.",
+    "V3.2 ordinary AUTO and stuck/boxed recovery restored inside existing standalone foundation; no software blocker or final failing regression remains.",
+    "Source/model verification complete; no physical validation is claimed."
+  ],
+  "authorized_decisions": [
+    "Original pasted contract authorizes existing-project standalone implementation, necessary tests/evidence and configured compile; forbids Stage 4/Node V1 work, hardware actions, destructive Git and commit/push.",
+    "Owner explicitly approved V3.2 environmental-hazard abort and mission reset.",
+    "Owner explicitly approved retaining V4.6 unfinished environmental job and fresh environmental scan after sonar reacquisition as a parity exception."
+  ],
+  "documentation_synchronized": [
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/README.md",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/docs/V32_RESTORATION_SOFTWARE_VERIFICATION.md",
+    "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/docs/V32_RESTORATION_PREFLIGHT_REPORT.md"
+  ],
+  "unresolved": [
+    "Owner physical robot validation and subsequent independent physical-result review are pending; physical latency, electrical/RF behavior, motion and safety are unverified. Stage 4 remains future work."
+  ],
+  "failures": [
+    "Default exec sandbox helper failed; narrow authorized elevated commands were used. Continuity execution policy was handled with process-local Bypass only.",
+    "Intermediate wiring, obsolete-policy expectations and fixture-timing failures were resolved. A genuine introduced environmental post-turn request cancellation was corrected and tested. Earlier failing logs remain historical; final suite/build pass.",
+    "One long report-writing shell command exceeded Windows command-line length; the report was written using the file patch tool and validated."
+  ],
+  "escalations": [
+    "Both contract-required environmental-policy decisions were requested and explicitly approved before dependent changes."
+  ],
+  "backup_references": [],
+  "git_state": {
+    "branch": "codex/reva-collision-closure-20261005",
+    "head": "cbbf3599d0a6192976f40d991250cd38a02c7abb",
+    "status_reference": "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/docs/V32_RESTORATION_FINAL_GIT_STATUS.txt",
+    "source_diff_reference": "Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Software Development/docs/V32_RESTORATION_FINAL_SOURCE.diff",
+    "unexpected_changes": []
+  }
+}

@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="460" viewBox="0 0 900 460">
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#475569"/></marker></defs>
+<rect width="900" height="460" fill="white"/>
+<polyline points="285,44 315,44" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+<polyline points="585,44 615,44" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+<polyline points="750,78 750,160" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+<polyline points="615,194 585,194" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)" stroke-dasharray="6 4"/>
+<text x="507" y="150" font-family="Arial" font-size="14" fill="#111827">delivery gap</text>
+<polyline points="750,78 750,115 150,115 150,160" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="170" y="107" font-family="Arial" font-size="14" fill="#111827">release / STOP</text>
+<polyline points="150,228 150,310" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+<polyline points="285,344 315,344" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+<polyline points="585,344 615,344" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="15" y="10" width="270" height="68" rx="7" fill="#f3f6fa" stroke="#475569" stroke-width="1.5"/>
+<text x="150.0" y="39.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">MANUAL ready</text>
+<text x="150.0" y="61.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">fresh intent only</text>
+<rect x="315" y="10" width="270" height="68" rx="7" fill="#f3f6fa" stroke="#475569" stroke-width="1.5"/>
+<text x="450.0" y="28.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">Fresh press</text>
+<text x="450.0" y="50.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">own session RELEASE</text>
+<text x="450.0" y="72.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">then sequence sync</text>
+<rect x="615" y="10" width="270" height="68" rx="7" fill="#f3f6fa" stroke="#475569" stroke-width="1.5"/>
+<text x="750.0" y="39.0" text-anchor="middle" font-family="Arial" font-size="17.44" fill="#111827">Held HTTP refresh 250 ms</text>
+<text x="750.0" y="61.0" text-anchor="middle" font-family="Arial" font-size="17.44" fill="#111827">three response waits maximum</text>
+<rect x="15" y="160" width="270" height="68" rx="7" fill="#f3f6fa" stroke="#475569" stroke-width="1.5"/>
+<text x="150.0" y="189.0" text-anchor="middle" font-family="Arial" font-size="18.70" fill="#111827">Release or STOP</text>
+<text x="150.0" y="211.0" text-anchor="middle" font-family="Arial" font-size="18.70" fill="#111827">retire held and pending intent</text>
+<rect x="315" y="160" width="270" height="68" rx="7" fill="#f3f6fa" stroke="#475569" stroke-width="1.5"/>
+<text x="450.0" y="189.0" text-anchor="middle" font-family="Arial" font-size="18.19" fill="#111827">Serviced 750 ms deadman</text>
+<text x="450.0" y="211.0" text-anchor="middle" font-family="Arial" font-size="18.19" fill="#111827">since last accepted command</text>
+<rect x="615" y="160" width="270" height="68" rx="7" fill="#f3f6fa" stroke="#475569" stroke-width="1.5"/>
+<text x="750.0" y="189.0" text-anchor="middle" font-family="Arial" font-size="17.12" fill="#111827">Backend admission and guards</text>
+<text x="750.0" y="211.0" text-anchor="middle" font-family="Arial" font-size="17.12" fill="#111827">motor command if permitted</text>
+<rect x="15" y="310" width="270" height="68" rx="7" fill="#f3f6fa" stroke="#475569" stroke-width="1.5"/>
+<text x="150.0" y="339.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">Apply motor STOP</text>
+<text x="150.0" y="361.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">before acknowledgment</text>
+<rect x="315" y="310" width="270" height="68" rx="7" fill="#f3f6fa" stroke="#475569" stroke-width="1.5"/>
+<text x="450.0" y="328.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">Current STOP or RELEASE</text>
+<text x="450.0" y="350.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">proof and valid</text>
+<text x="450.0" y="372.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">own authority</text>
+<rect x="615" y="310" width="270" height="68" rx="7" fill="#f3f6fa" stroke="#475569" stroke-width="1.5"/>
+<text x="750.0" y="339.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">Next fresh press permitted</text>
+<text x="750.0" y="361.0" text-anchor="middle" font-family="Arial" font-size="19.00" fill="#111827">no retired direction replay</text>
+<text x="450" y="420" text-anchor="middle" font-family="Arial" font-size="17" fill="#111827">Unproved current delivery failure: discard intent and send STOP</text>
+<text x="450" y="450" text-anchor="middle" font-family="Arial" font-size="17" fill="#111827">Without STOP and authority proof remain stopped; LIVE alone cannot unlock</text>
+</svg>

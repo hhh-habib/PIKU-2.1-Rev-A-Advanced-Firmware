@@ -1,3 +1,19 @@
+Latest IMU/OLED delta (2026-11-07): [implementation, preservation evidence and pending physical checks](docs/IMU_OLED_SOFTWARE_VERIFICATION_20261107.md). IMU acquisition now checks real data-ready bus frames and retries faults cooperatively; reset/configuration waits for existing stopped motors. OLED uses a compact fixed screen. The existing navigation, environmental sensing/safety, Wi-Fi/control and radio policies remain unchanged. Older walkthroughs below describe their dated baselines.
+
+## CURRENT execution guide - 2026-10-18
+
+The active standalone uses restored V3.2 navigation with later safety, sonar-evidence and persistent Manual-control corrections. The [final source comparison](docs/FINAL_RELEASE_REVIEW_20261018.md) takes precedence over the historical walkthrough below.
+
+`setup()` initializes stopped motors; `loop()` and `serviceLoop()` service HTTP, current sensors, safety and the selected mode. STOP/RELEASE apply motor STOP before acknowledgment. The 750 ms Manual deadman is independent of the browser's 1800 ms response deadline. Held refresh is 250 ms with at most three direction responses outstanding. Release stops movement while keeping MANUAL selected. Uncertain delivery discards old intent; STOP/RELEASE acknowledgment plus matching current authorization permits the next fresh press without another MANUAL selection. A live heartbeat alone does not unlock uncertain control.
+
+AUTO uses fresh front evidence and restored bounded reverse/full-scan/side-turn handling. Trusted positive finite L/F/R below 30 cm can admit boxed recovery. The committed side must exceed the 7 cm veto; turns target approximately 25 degrees, with at most 7 starts, 5 timed IR backoff pulses and a 30-second elapsed mission timeout. A 2500 ms stopped cooldown admits a fresh retry. This restored policy has no V4.5 45-second direction ledger. Sonar fault and confirmed environmental hazards stop and discard the old recovery actuator work; sonar recovery needs two new trusted front samples, and an unfinished environmental job restarts its required scan. Ordinary recovery backoff currently calls `MotorController::backward()`; the retained cap API/test does not establish an active 75% navigation cap.
+
+**OWNER PHYSICALLY OBSERVED / OWNER-REPORTED:** latest operation is reported good by the owner. **SOFTWARE-ONLY VERIFICATION:** this audit ran host/browser checks and builds, with no flashing or robot operation. No latency/angle/range statistics were measured. No new AI, mapping, localization or CPS control feature is claimed.
+
+## Historical walkthrough (preserved)
+
+The following version-specific descriptions are retained as development history, including old six-turn and pause/resume contracts. Use the current source and report for present behavior; dated physical observations retain their original scope.
+
 > Current collision-closure software evidence (2026-10-05): [verification, regressions and residual limits](docs/COLLISION_CLOSURE_SOFTWARE_VERIFICATION.md). Physical validation and RF PA/range engineering NOT RUN.
 
 # How the PIKU 2.1 Rev A firmware works

@@ -1,0 +1,18 @@
+digraph G { graph [rankdir=TB,bgcolor="white",nodesep=.25,ranksep=.30]; node [shape=box,style="rounded",fontname="Arial",fontsize=12,color="#334155",margin=".13,.08"]; edge [fontname="Arial",fontsize=10,color="#475569"];
+ scan [label="EscapeScan\nfresh trusted L F R or admitted scan reuse"];
+ commit [label="Commit usable LEFT or RIGHT\nfinite side must exceed 7 cm and IMU must be fresh"];
+ turn [label="EscapeTurn\ncount started turn and target about 25 degrees"];
+ front [label="EscapeVerify\nSTOP settle and request new front"];
+ success [shape=diamond,label="Front at least 30 cm\nor operational OPEN?"];
+ normal [label="Retire mission and return to normal AUTO"];
+ side [label="Inspect committed side only\nrecheck invalid evidence once"];
+ back [label="IR or close side\nSTOP and bounded 200 ms reverse pulses\nat most five per mission then fresh front"];
+ hold [label="TrappedHold motors STOPPED\nturn budget 7 or elapsed time 30000 ms\nor unsafe evidence or pulse exhaustion"];
+ retry [label="After 2500 ms cooldown\nnew round with fresh full scan"];
+ scan -> commit; commit -> turn [label="permitted"]; commit -> hold [label="unsafe"];
+ turn -> front [label="verified turn"]; front -> success; success -> normal [label="yes"]; success -> side [label="no budget remains"];
+ side -> turn [label="same side safe"]; side -> back [label="IR or side veto"]; back -> front [label="clear"];
+ turn -> back [label="IR veto"]; turn -> hold [label="timeout or budget"]; side -> hold [label="invalid or exhausted"];
+ back -> hold [label="pulse limit"]; success -> hold [label="blocked and 7 starts"];
+ hold -> retry; retry -> scan;
+}

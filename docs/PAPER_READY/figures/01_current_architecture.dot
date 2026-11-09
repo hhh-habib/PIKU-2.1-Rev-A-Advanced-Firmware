@@ -1,0 +1,18 @@
+digraph G { graph [rankdir=TB,bgcolor="white",nodesep=.32,ranksep=.38]; node [shape=box,style="rounded",fontname="Arial",fontsize=12,color="#334155",margin=".14,.10"]; edge [fontname="Arial",fontsize=10,color="#475569"];
+ web [label="Human browser\nembedded dashboard and HTTP"];
+ main [label="main.cpp\ncooperative service and mode dispatch"];
+ sense [label="SensorManager and ImuManager\ncurrent samples and freshness"];
+ safety [label="SafetyManager\nhazard and directional guards"];
+ manual [label="MANUAL\nDriveCommandHandler"];
+ auto [label="AUTO\nNavigationManager state machine"];
+ motors [label="MotorController\nPWM and direction output"];
+ servo [label="ServoScanner\nhead orientation and detach"];
+ publish [label="DashboardPublisher\nHTTP telemetry and OLED"];
+ radio [label="RadioManager\nexperimental heartbeat and status"];
+ web -> main [label="commands and STOP"];
+ sense -> safety; safety -> main; sense -> auto [label="evidence"];
+ main -> manual; main -> auto; manual -> motors; auto -> motors;
+ auto -> servo; main -> publish; publish -> web [label="state"];
+ main -> radio [style=dashed,label="background when allowed"];
+ {rank=same;manual;auto;} {rank=same;motors;servo;}
+}
