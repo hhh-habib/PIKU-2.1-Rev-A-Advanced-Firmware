@@ -1,5 +1,17 @@
 # PIKU reviewer audit reconciliation
 
+## Current authority: Task 3 checkpoint, 9 November 2026
+
+Read the [Task 3 methodology and physical-angle record](07_TASK_03_METHODOLOGY_AND_TURN_ANGLES_20261109.md) for the owner-confirmed pilot protocol, separate corridor tests, 40 turn-angle measurements and firmware identity reconciliation. The [Task 1–2 record](06_TASKS_01_02_EVIDENCE_PRESERVATION_20261109.md) retains original counts, voltage evidence, revisions and media limitations. Its checksum manifest is unchanged.
+
+**Firmware project: PIKU 2.1 Rev A Software Development (OWNER-CONFIRMED). Exact tested binary/commit: NOT INDEPENDENTLY VERIFIED.** Reviewed source is master `004cf73521de2e67470bad40648e09770befda53`, PlatformIO `esp32-s3-n16r8`, before this documentation/data-only checkpoint. Existing local images have been hashed; no experiment-linked upload/readback was located. Archived build/SHA placeholders do not make project identity unknown.
+
+The owner confirms indoor AUTO tests at 80%, a stopwatch-controlled 60 s observation limit, approximately 40 cm starts for T01–T10, inside-area starts for T11–T20, and success as autonomous travel more than 30 cm beyond the obstacle after passing it. Primary results remain 20/20 goals, 23 contacts, 6 recovery-activation entries and zero reported human interventions. T21–T22 are separate corridor escapes (2/2, 12 contacts, no reported intervention). The 40 angle readings form four separate characterization groups and are not measurements during those corridor tests.
+
+The B0–B4 500-encounter aggregates retain their historical scope. Statements below about unmeasured recovery time concern that historical comparison, not the new pilot's owner-confirmed observation limit. The following earlier review remains dated history; its listed HEAD is not the current checkout. No paper, firmware, hardware or original evidence is edited by this checkpoint.
+
+## Earlier reviewer reconciliation
+
 Read-only review: 9 November 2026, Asia/Dhaka. Mission: `mission-20261109-051052-127894b6`.
 
 ব্রো, সবচেয়ে জরুরি সংশোধন Fig. 6-এর statistics। তুমি নিশ্চিত করেছ—প্রতিটি ধাক্কা আলাদা গোনা হয়েছে। তাই ৩৮টি ধাক্কা মানে ৩৮% encounter-এ collision নয়; binomial Wilson interval-ও প্রযোজ্য নয়। আগের সম্পাদনায় graph রেখে দেওয়া ভুল ছিল। সংখ্যা অক্ষত রেখে মোট contact-event bar chart প্রস্তাব করেছি। এই ধাপে পেপার বদলাইনি।

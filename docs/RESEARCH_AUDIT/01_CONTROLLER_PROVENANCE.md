@@ -1,5 +1,11 @@
 # B0–B4 controller provenance
 
+## Current firmware-project clarification
+
+The owner confirms that the physical robot's firmware was uploaded from **PIKU 2.1 Rev A Software Development**. Project identity is OWNER-CONFIRMED. Missing identity in the historical table below means the exact experiment-specific source revision or compiled image. It does not mean that the project is unknown. The confirmation does not identify five comparator binaries or map B0–B4 to the newest Git SHA.
+
+The separate T01–T20 pilot, T21–T22 corridor tests and 40 angle-characterization readings are covered by [Task 3](07_TASK_03_METHODOLOGY_AND_TURN_ANGLES_20261109.md). Its owner-confirmed stopwatch limit and 80% primary-pilot setting do not fill missing historical B0–B4 protocol fields.
+
 Read-only review, 9 November 2026. No firmware was reconstructed or changed.
 
 | ID | Team manuscript description | Physical outcome provenance | Tested source/build | Relationship to current source | Status |
@@ -22,4 +28,4 @@ Tags `v2.1-revA-final` and `revA-standalone-v3.2-physical-validated-20261001` al
 
 Every impact counts, including repeated impacts within one encounter. Thus 38/10/17/17/19 are contact-event totals over 100 reported encounters per configuration, not counts of unique collision-positive encounters. Recovery means clearing the obstacle and continuing; time was not measured. Do not reinstate the original 0.55 m/20 s/40 s criteria as the physical protocol.
 
-Table V angles/gaps were measured using protractor/ruler according to the owner. Instrument resolution, placement/reference points and reading protocol remain unspecified. Trial dates, firmware identity, geometry/material, speed/battery and original sheets/videos would strengthen reproducibility if available. Label retrospective recollection as retrospective. Do not create 500 individual trial rows from aggregates.
+Table V angles/gaps were measured using protractor/ruler according to the owner. Instrument resolution, placement/reference points and reading protocol remain unspecified. Historical trial dates, exact tested-build identity, geometry/material, speed/battery and original sheets/videos would strengthen reproducibility if available. Label retrospective recollection as retrospective. Do not create 500 individual trial rows from aggregates.

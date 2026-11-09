@@ -1,6 +1,6 @@
 # PIKU 2.1 Rev A Tasks 1 and 2 evidence preservation
 
-Initial preservation review and owner-authorized documentation checkpoint: 9 November 2026, Asia/Dhaka. Scope: Task 1–2 research records only. Hardware, resistor values, firmware, manuscript and all original evidence remain unchanged. Task 3 is in progress separately; its workbooks are outside this checkpoint. Tasks 4–6 are outside scope. This is an additive current record; earlier audit documents and their original conclusions remain preserved as dated history.
+Initial preservation review and owner-authorized documentation checkpoint: 9 November 2026, Asia/Dhaka. Scope: Task 1–2 research records only. Hardware, resistor values, firmware, manuscript and all original evidence remain unchanged. Task 3 is now documented separately in the [Task 3 record](07_TASK_03_METHODOLOGY_AND_TURN_ANGLES_20261109.md); its angle measurements remain separate from this Task 1–2 evidence. Tasks 4–6 are outside scope. This is an additive current record; earlier audit documents and their original conclusions remain preserved as dated history.
 
 ## Preservation plan
 
@@ -77,7 +77,7 @@ Success is distinct from contact-free travel and from a recovery activation. Con
 
 The fourth condition is described by the owner/photo as a constrained L-/U-like course with an available exit. Keep its original `Pocket / boxed-in` sheet label, but do not treat its geometry or success result as equivalent to the historical pocket condition. The photo supports a multi-obstacle arrangement; no measured course dimensions or difficulty comparison are established.
 
-The worksheet defines a 30 cm goal line, 60 s observation window and approximately 40 cm start spacing. These are recorded protocol/settings; no per-trial stopwatch, dimensioned setup image or video independently verifies adherence for all 20 rows. `START_HERE!E15:E17` records 40, 30 and 60. `E18` (same settings) is blank. `E9` says Unknown and `E10` Not verified for the flashed firmware. The date entry `E6` is blank, although `A6` contains a date in its label. Battery values E12/E13 are owner-entered 11.6 V/11.2 V, with measurement conditions unverified.
+Current owner-confirmed T01–T20 method: indoor physical tests, AUTO motor-speed setting 80%, and a stopwatch-controlled 60-second observation limit per trial. T01–T10 started approximately 40 cm before the obstacle; T11–T20 started inside the constrained obstacle area. Success required passing the obstacle and autonomously traveling more than 30 cm beyond it within the observation limit; contacts were counted separately. This is OWNER-CONFIRMED methodology, not independent re-observation or supplied individual completion times. The archived workbook records 40, 30 and 60 in `START_HERE!E15:E17`, but its generic start-distance field does not describe the inside-start subgroup. E18 remains blank. A9 labels E9 as **Flashed firmware build/tag/SHA (if known)**, so Unknown concerns exact tested-build identity; A10 labels E10 **Firmware identification method**, which says Not verified. The firmware project is **PIKU 2.1 Rev A Software Development (OWNER-CONFIRMED)**; the exact tested binary/commit is **NOT INDEPENDENTLY VERIFIED**. Archived cells remain unchanged. E6 is blank although A6 contains a date in its label. Battery entries E12/E13 remain owner-entered 11.6 V/11.2 V, with measurement conditions unverified. These primary-pilot parameters are not automatically assigned to T21–T22.
 
 ### Revisions and discrepancies remain preserved
 
@@ -99,7 +99,7 @@ Other preserved issues:
 
 ### Speed-format issue resolved at the workbook-display level
 
-Earlier handoff/audit notes call numeric `START_HERE!E11 = 0.8` ambiguous. Inspection found cell style 42 with built-in `numFmtId=9` (`0%`). Opening a temporary byte-identical copy read-only in native Excel independently confirmed **Value2 = 0.8, NumberFormat = 0%, displayed Text = 80%**. Thus the current workbook displays an 80% setting. This resolves the spreadsheet-format question; it does not independently prove the actual speed used in every physical trial. The source workbook and old audit statements were not edited.
+Earlier handoff/audit notes call numeric `START_HERE!E11 = 0.8` ambiguous. Inspection found cell style 42 with built-in `numFmtId=9` (`0%`). Opening a temporary byte-identical copy read-only in native Excel independently confirmed **Value2 = 0.8, NumberFormat = 0%, displayed Text = 80%**. Thus the current workbook displays an 80% setting. This resolves the spreadsheet-format question. The later owner clarification additionally confirms 80% for the primary T01–T20 pilot; independent per-trial setting traces remain unavailable. It does not establish T21–T22 speed settings. The source workbook and old audit statements were not edited.
 
 ## Supplementary owner-reported corridor experiments (T21–T22)
 
@@ -139,7 +139,7 @@ Current local source was inspected read-only at clean software `master` **0b680f
 - `src/WebDashboardAssets.cpp:2361–2367` displays the generic Recovering summary for a non-NORMAL/OFF V2 state, a non-IDLE hazard state, or an active avoidance source (with assistance-required handled separately). Thus **Recovering is a composite UI indicator**, not a unique V2 activation/completion proof.
 - `src/WebDashboard.cpp:1299–1302` exposes more specific episode fields including active, committed side, turns used and IR pulses. No synchronized capture of those fields tied to the decisive video movement or all 20 trials was supplied.
 
-The video audit addendum inspected a November 8 source archive. This review confirms the relevant composite-display logic in the current local checkout; neither fact identifies the firmware flashed during the pilot or demonstration.
+The video audit addendum inspected a November 8 source archive. This review confirms the relevant composite-display logic in the current local checkout; neither fact independently identifies the exact binary/commit flashed during the pilot or demonstration. The owner confirms that the robot firmware was uploaded from PIKU 2.1 Rev A Software Development; project identity is OWNER-CONFIRMED.
 
 The sampled MP4 close-ups around 27 s and 57 s show a Manual-mode screen and 80% setting near AUTO-button taps. The separate screenshot confirms an acknowledged AUTO session at 74%. No synchronized timestamps/log establish that those screenshots describe the same movement segment. Do not use the sampled Manual views to deny the separate AUTO acknowledgement, or use the screenshot to assert AUTO throughout the MP4.
 
@@ -153,16 +153,9 @@ Keep the historical five-configuration, 500-encounter owner aggregates in their 
 
 The supplied independent reviewer audit is a simulated technical assessment of its stated manuscript/source archive. It supports the need to separate source verification, reported physical aggregates and calculations. It did not independently execute the current 20 trials, measure voltages, reproduce the November 9 build, or verify the post-merge checkout. Its hardware/paper/release recommendations are preserved for later authorized work, not executed here. Tasks 3–6 and any future manuscript disposition of historical versus pilot results remain outside this mission.
 
-## Task 3 boundary: evidence awareness only
+## Task 3 supersession: separate angle characterization
 
-Task 3 remains in progress separately. Its two workbooks are located at:
-
-`Research/Meo/The PIKU/PIKU 2.1 Rev A/PIKU 2.1 Rev A Physical Development/Task_03_Turn_Angle_Evidence_20261109/`
-
-- `PIKU_RevA_Recovery_Turn_Angles_75pct_80pct_Recorded_20261109.xlsx`
-- `PIKU_RevA_Task3_Turn_Angle_Evidence_Added_20261109.xlsx`
-
-The owner reports earlier angle observations and 20 NEW physical Recovery V2 angle-characterization measurements: ten at 75% motor speed and ten at 80%, each with a nominal 25-degree target. These were separate characterization tests, **not measurements during T21–T22**. Normal 35-degree obstacle-avoidance measurements and a consolidated Task 3 workbook are to be supplied later. This checkpoint acknowledges location and owner-reported scope only; it does not inspect or reinterpret workbook contents, calculate angle results, duplicate the workbooks, edit them or include them in Git. No Task 3 angle result is claimed as a Task 1–2 result.
+The preceding Task 1–2 checkpoint acknowledged two intermediate workbooks without inspecting their contents. A subsequent owner-supplied consolidated workbook now contains 40 separate physical angle-characterization readings. [Task 3](07_TASK_03_METHODOLOGY_AND_TURN_ANGLES_20261109.md) documents the four 10-turn groups and updated owner-confirmed primary-pilot method. Its one canonical Git copy is byte-identical to the original Excel-resaved file. Earlier intermediate workbooks remain unchanged in Physical Development. No angle-characterization reading is assigned to T21–T22 or used to change the primary pilot's recovery count. The Task 1–2 original-evidence checksum manifest remains unchanged.
 
 ## Verification and unchanged originals
 
@@ -170,4 +163,4 @@ Review performed: five-file SHA256 inventory; all ZIP-member decompression/hashe
 
 No stored spreadsheet error cells were found. Counts were independently calculated from row inputs rather than treated as valid solely because a cached summary matched. No original workbook was authored, saved or repaired. Temporary workbook copies, extracted review images and analysis outputs remain outside the repository.
 
-Only this additive record and the CSV manifest are included in the owner-authorized local documentation checkpoint. The nine pre-existing audit records, source files, original five evidence files, all manuscript DOCX files and original physical documents remain unchanged. The T21–T22 supplement changes this record only; the original evidence checksum manifest remains byte-identical. Task 3 workbook byte integrity is checked without opening their worksheets, and both workbooks remain outside Git. The initial preservation pass performed no commit; this later checkpoint explicitly authorizes only the two-file local commit after verification. No merge, push, publication, hardware change, firmware edit, manuscript edit or rewrite of original experimental records is authorized/performed. The large MP4 stays outside ordinary Git history.
+The earlier Task 1–2 checkpoint included only this additive record and the CSV manifest. At that point the nine pre-existing audit records, source, original evidence and manuscripts remained unchanged. The original-evidence checksum manifest remains byte-identical. The two then-available Task 3 workbooks were checked by hash only and remained outside Git. The later Task 3 checkpoint inspects the originals read-only, corrects current authoritative documentation and tracks only its separate consolidated workbook; see the supersession note above. The initial preservation pass performed no commit; the Task 1–2 checkpoint was then explicitly authorized and committed as `004cf73521de2e67470bad40648e09770befda53`. No merge, push, publication, hardware change, firmware edit, manuscript edit or rewrite of original experimental records is authorized/performed. The large MP4 stays outside ordinary Git history.
