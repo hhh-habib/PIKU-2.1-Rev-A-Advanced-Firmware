@@ -117,3 +117,29 @@ tests/v46_browser_race.js -text
 tests/v46_reviewed_delta.json -text
 tests/v46_starting_source.json -text
 tools/capture_nav_trace.py -text
+
+# PIKU source-control freeze: preserve current working-tree bytes.
+SOFTWARE_EXPLANATION.md -text
+docs/DOCUMENTATION_INDEX.csv -text
+docs/FINAL_RELEASE_CLEANUP_MANIFEST_20261018.csv -text
+docs/IMU_OLED_CHANGE_MANIFEST_20261107.json -text
+docs/PAPER_READY/evidence/navigation_trace_summary.json -text
+docs/PAPER_READY/evidence/source_identity.json -text
+docs/PAPER_READY/evidence/verification_results.json -text
+docs/PAPER_READY/figures/01_current_architecture.dot -text
+docs/PAPER_READY/figures/01_current_architecture.svg -text
+docs/PAPER_READY/figures/02_ordinary_auto.dot -text
+docs/PAPER_READY/figures/02_ordinary_auto.svg -text
+docs/PAPER_READY/figures/03_recovery_state_flow.dot -text
+docs/PAPER_READY/figures/03_recovery_state_flow.svg -text
+docs/PAPER_READY/figures/04_manual_command_lifecycle.dot -text
+docs/PAPER_READY/figures/04_manual_command_lifecycle.svg -text
+docs/STANDALONE_RELIABILITY_CANDIDATE_20261018.md -text
+docs/STANDALONE_RESPONSE_SOFTWARE_VERIFICATION_20261019.md -text
+docs/V32_RESTORATION_CONTINUITY_UPDATE.json -text
+docs/V32_RESTORATION_PREFLIGHT_REPORT.md -text
+docs/V46_SOFTWARE_VERIFICATION.md -text
+tests/native_mode_fence.cpp -text
+tests/reconnect_backend_bridge.py -text
+tests/reliability_candidate_browser.js -text
+tests/test_reliability_candidate.py -text
