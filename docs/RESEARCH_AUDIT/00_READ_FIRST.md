@@ -1,5 +1,14 @@
 # PIKU reviewer audit reconciliation
 
+## Current Task 4 checkpoint and working manuscript authority — 11 November 2026
+
+Read [Task 4 contributions and related work](08_TASK_04_CONTRIBUTIONS_AND_RELATED_WORK_20261111.md) for the completed 12-paper review (six full-text, six abstract-only), four evidence-bounded contribution statements and Task 5 recommendations. The [claim matrix](03_SOURCE_TO_RESULTS_MATRIX.csv) now appends C25–C30 for the primary pilot, contacts/recovery entries, supplementary corridor tests, recovery angles, avoidance angles and firmware identity; C01–C24 are unchanged.
+
+**Sole active manuscript:** Physical Development/`paper/PIKU_RevA_IEEE_Revised.docx`. Its SHA-256, byte-identical backup outside the active paper folder, and the [complete preservation inventory](08_TASK_04_ASSET_INVENTORY_20261111.csv) are recorded in Task 4. The older team-manuscript path and hash below, including C24, remain dated history rather than current editing authority. Uploaded Revised(2) is a reported differing version, not a replacement authority; its exact differences were not independently compared because that file was not located.
+
+No paper, figure, firmware, hardware or original experimental-evidence changes are made. Historical B0–B4 data stay preserved; Task 4 recommends foregrounding current physical evidence in Task 5, without making that edit now. Task 3 methodology and evidence distinctions below remain applicable.
+
+
 ## Current authority: Task 3 checkpoint, 9 November 2026
 
 Read the [Task 3 methodology and physical-angle record](07_TASK_03_METHODOLOGY_AND_TURN_ANGLES_20261109.md) for the owner-confirmed pilot protocol, separate corridor tests, 40 turn-angle measurements and firmware identity reconciliation. The [Task 1–2 record](06_TASKS_01_02_EVIDENCE_PRESERVATION_20261109.md) retains original counts, voltage evidence, revisions and media limitations. Its checksum manifest is unchanged.
