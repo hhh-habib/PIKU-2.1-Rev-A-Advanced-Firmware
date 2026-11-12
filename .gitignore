@@ -53,3 +53,6 @@ credentials.*
 
 # Approved standalone freeze: keep private configuration local.
 /include/Secrets.h
+
+# Preserve original large video locally; checksum is in the Task 1-2 evidence manifest.
+/docs/RESEARCH_AUDIT/Task_02_Physical_Evidence_20261109/PXL_20261109_064836104.mp4
