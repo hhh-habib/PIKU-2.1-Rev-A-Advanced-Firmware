@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "Please cite this versioned software release with its evidence qualifications."
+type: software
+title: "PIKU 2.1 Rev A standalone robot firmware"
+authors:
+  - family-names: "Habib"
+    given-names: "MD Habibur Rahman"
+version: "revA-standalone-software-checkpoint-20261113"
+date-released: 2026-11-13
+repository-code: "https://github.com/hhh-habib/PIKU-2.1-Rev-A-Advanced-Firmware"
+url: "https://github.com/hhh-habib/PIKU-2.1-Rev-A-Advanced-Firmware/releases/tag/revA-standalone-software-checkpoint-20261113"
+abstract: "Complete ESP32-S3 standalone firmware, embedded dashboard, host tests and dated research evidence. This checkpoint does not independently identify historical experiment-to-flashed-image mappings."
+keywords:
+  - embedded firmware
+  - mobile robot
+  - ESP32-S3
+  - environmental inspection

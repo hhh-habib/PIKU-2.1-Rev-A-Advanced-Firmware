@@ -1,88 +1,39 @@
-# PIKU standalone documentation
+# Documentation guide ? 13 November 2026
 
-Start with [PAPER_READY](PAPER_READY/README.md): five current-source-backed editable Word documents for manuscript preparation. Current source remains the restored V3.2 navigation plus the October 18 sonar/control/readability corrections. Historical version names and test counts below describe their own dated snapshots.
+Current software guides coexist with preserved dated evidence. A historical document's ?current? wording refers to its original task/date. This entrypoint and the root README identify the new package; original measurements, manifests and test assertions are not rewritten.
 
-## Current implementation and verification
+## Current package
 
-- [Current source comparison and release audit](FINAL_RELEASE_REVIEW_20261018.md)
-- [Previous conservative cleanup manifest](FINAL_RELEASE_CLEANUP_MANIFEST_20261018.csv)
-- [Navigation trace format](NAV_TRACE_SCHEMA.md)
-- [Complete file classification and path mapping](DOCUMENTATION_INDEX.csv)
-- [Frozen identity and evidence](STANDALONE_FREEZE_20261008.md)
+- [Root README](../README.md) and [execution guide](../SOFTWARE_EXPLANATION.md): current behavior, hardware and module ownership.
+- [Build and reproduce](REPRODUCIBILITY.md): download/build/upload instructions, prerequisites and full-clone regression entrypoint.
+- [Release record](RELEASE_20261113.md), [verification summary](release/verification_20261113.json) and [source hashes](release/source_identity_20261113.json).
+- [Paper citation and provenance](CITING_AND_EVIDENCE.md), [CITATION.cff](../CITATION.cff).
+- [Complete delivered-file inventory](REPOSITORY_CONTENTS_20261113.md) and [current schematic](../architecture_source/current_standalone_20261113.mmd).
+- [Optional navigation trace format](NAV_TRACE_SCHEMA.md): telemetry semantics, with dated validation wording bounded by the evidence below.
 
-The latest good physical operation is **OWNER-REPORTED PHYSICAL TESTING**. Software tests and build resource values are separate evidence. No new latency, turn-error, displacement or RF benchmark was measured during documentation work.
+## Dated implementation evidence
 
-## Archived intermediate development reports
+Latest implementation layer: [IMU/OLED, 7 November](IMU_OLED_SOFTWARE_VERIFICATION_20261107.md). Earlier layers: [19 October response repair](STANDALONE_RESPONSE_SOFTWARE_VERIFICATION_20261019.md), [18 October comparison](FINAL_RELEASE_REVIEW_20261018.md), [reliability candidate](STANDALONE_RELIABILITY_CANDIDATE_20261018.md). HEAD/uncommitted wording and numerical totals are historical snapshots; the implementation was subsequently committed.
 
-[Archive index and byte-preserving move hashes](archive/README.md). Two unpinned October 18 development reports moved to `archive/development_history/`; no original report was rewritten. The standalone reliability report stays at its original path because its relative screenshot links depend on that location. The Word package supersedes these for current reading while retaining their unique failure/reproduction history.
+Restored navigation: [verification](V32_RESTORATION_SOFTWARE_VERIFICATION.md), [preflight](V32_RESTORATION_PREFLIGHT_REPORT.md), [source audit](V32_RESTORATION_SOURCE_AUDIT.json), [trace summary](V32_RESTORATION_TRACE_SUMMARY.json). The [8 October freeze](STANDALONE_FREEZE_20261008.md), [manifest](STANDALONE_FREEZE_20261008_MANIFEST.json) and [verification extract](STANDALONE_FREEZE_20261008_VERIFICATION.txt) remain immutable historical identities.
 
-## Historical evidence retained at original paths
+Collision provenance: [system-state verification](SYSTEM_STATE_COLLISION_VERIFICATION.md), [closure](COLLISION_CLOSURE_SOFTWARE_VERIFICATION.md), [matrix guide](COLLISION_CLOSURE_MATRIX_GUIDE.md), [ledger](COLLISION_CLOSURE_F4_LEDGER.md) and JSON/CSV companions. These provide historical regression context, not new hardware validation.
 
-Most older reports are explicitly named by historical/frozen manifests or documentation. Their original paths and bytes remain; they are organized here by subject rather than moved or duplicated.
+## Physical evidence and paper methodology
 
-## Physical observations and methodology
+- [Tasks 1?2](RESEARCH_AUDIT/06_TASKS_01_02_EVIDENCE_PRESERVATION_20261109.md), [original hashes](RESEARCH_AUDIT/06_TASKS_01_02_SHA256_20261109.csv).
+- [Task 3](RESEARCH_AUDIT/07_TASK_03_METHODOLOGY_AND_TURN_ANGLES_20261109.md): T01?T20, separate T21?T22, four ten-turn groups, and unverified exact deployed-image linkage.
+- [Research entrypoint](RESEARCH_AUDIT/00_READ_FIRST.md), [controller provenance](RESEARCH_AUDIT/01_CONTROLLER_PROVENANCE.md), [source identity](RESEARCH_AUDIT/03_SOURCE_IDENTITY.md), claim registers and source/results matrices.
+- [Task 4 literature/evidence](RESEARCH_AUDIT/08_TASK_04_CONTRIBUTIONS_AND_RELATED_WORK_20261111.md): dated research reconciliation, not a new implementation/publication claim.
+- [Historical V3.2 physical report](PIKU_2.1_REVA_V32_PHYSICAL_VALIDATION.md), [earlier Rev A tests](PIKU_2.1_REV_A_TESTING.md), [Stage 1](PIKU_2_1_REV_A_STAGE1.md), [Stage 2](PIKU_2_1_REV_A_STAGE2.md), [older V2.0.1 tests](TESTING.md).
+- [V3.3 physical checklist](PIKU_2.1_REVA_V33_PHYSICAL_VALIDATION.md) and [response checklist](STANDALONE_RESPONSE_PHYSICAL_CHECKLIST_20261019.md) retain their original pending/task scope.
 
-- [PIKU_2.1_REVA_V32_PHYSICAL_VALIDATION.md](PIKU_2.1_REVA_V32_PHYSICAL_VALIDATION.md)
-- [PIKU_2.1_REVA_V33_PHYSICAL_VALIDATION.md](PIKU_2.1_REVA_V33_PHYSICAL_VALIDATION.md)
-- [PIKU_2.1_REV_A_TESTING.md](PIKU_2.1_REV_A_TESTING.md)
-- [TESTING.md](TESTING.md)
-- [PIKU_2_1_REV_A_STAGE1.md](PIKU_2_1_REV_A_STAGE1.md)
-- [PIKU_2_1_REV_A_STAGE2.md](PIKU_2_1_REV_A_STAGE2.md)
+Tracked original XLSX/reviewer Markdown remain unchanged. Original video and ZIP evidence packages stay local with their recorded hashes; a manifest entry does not promise those recordings inside the source ZIP.
 
-## Historical algorithms and verification
+## Historical algorithms and reading packages
 
-- [APPROVED_V2_EXECUTION.md](APPROVED_V2_EXECUTION.md)
-- [COMMUNICATION_LATENCY_AUDIT.md](COMMUNICATION_LATENCY_AUDIT.md)
-- [FOCUSED_CORRECTION_PASS.md](FOCUSED_CORRECTION_PASS.md)
-- [RECOVERY_V3_SOFTWARE_VERIFICATION.md](RECOVERY_V3_SOFTWARE_VERIFICATION.md)
-- [RECOVERY_V31_SOFTWARE_VERIFICATION.md](RECOVERY_V31_SOFTWARE_VERIFICATION.md)
-- [RECOVERY_V32_SOFTWARE_VERIFICATION.md](RECOVERY_V32_SOFTWARE_VERIFICATION.md)
-- [RECOVERY_V33_SOFTWARE_VERIFICATION.md](RECOVERY_V33_SOFTWARE_VERIFICATION.md)
-- [V33_1_HARDENING_SOFTWARE_VERIFICATION.md](V33_1_HARDENING_SOFTWARE_VERIFICATION.md)
-- [STAGE5D_CORE_DIFFERENCE_AUDIT.md](STAGE5D_CORE_DIFFERENCE_AUDIT.md)
-- [V45_SOFTWARE_VERIFICATION.md](V45_SOFTWARE_VERIFICATION.md)
-- [V46_SOFTWARE_VERIFICATION.md](V46_SOFTWARE_VERIFICATION.md)
+[V3](RECOVERY_V3_SOFTWARE_VERIFICATION.md), [V3.1](RECOVERY_V31_SOFTWARE_VERIFICATION.md), [V3.2](RECOVERY_V32_SOFTWARE_VERIFICATION.md), [V3.3](RECOVERY_V33_SOFTWARE_VERIFICATION.md), [V3.3.1](V33_1_HARDENING_SOFTWARE_VERIFICATION.md), [V4.5](V45_SOFTWARE_VERIFICATION.md), [V4.6](V46_SOFTWARE_VERIFICATION.md), [core difference](STAGE5D_CORE_DIFFERENCE_AUDIT.md), [approved V2 execution](APPROVED_V2_EXECUTION.md), [focused correction](FOCUSED_CORRECTION_PASS.md) and [communication audit](COMMUNICATION_LATENCY_AUDIT.md) remain dated evidence. Intermediate six-turn/45-second/resume descriptions do not describe final restored navigation.
 
-## Collision and state arbitration evidence
+The five [PAPER_READY Word documents](PAPER_READY/README.md), diagrams and JSON evidence describe the **18 October documentation snapshot**. Fingerprints/counts and uncommitted wording are not upgraded to November. Later Markdown records govern subsequent changes and supplied measurements. Original Mermaid/image assets remain inventoried without claiming every old diagram is current.
 
-- [COLLISION_CLOSURE_F4_LEDGER.md](COLLISION_CLOSURE_F4_LEDGER.md)
-- [COLLISION_CLOSURE_MATRIX_GUIDE.md](COLLISION_CLOSURE_MATRIX_GUIDE.md)
-- [COLLISION_CLOSURE_PROTECTION.json](COLLISION_CLOSURE_PROTECTION.json)
-- [COLLISION_CLOSURE_REPRODUCTION.json](COLLISION_CLOSURE_REPRODUCTION.json)
-- [COLLISION_CLOSURE_SOFTWARE_VERIFICATION.md](COLLISION_CLOSURE_SOFTWARE_VERIFICATION.md)
-- [COLLISION_CLOSURE_STATE_EVENT_MATRIX.csv](COLLISION_CLOSURE_STATE_EVENT_MATRIX.csv)
-- [SYSTEM_STATE_COLLISION_VERIFICATION.md](SYSTEM_STATE_COLLISION_VERIFICATION.md)
-
-## Restoration and immutable freeze evidence
-
-- [V32_RESTORATION_AVAILABILITY.log](V32_RESTORATION_AVAILABILITY.log)
-- [V32_RESTORATION_BASELINE_BUILD.log](V32_RESTORATION_BASELINE_BUILD.log)
-- [V32_RESTORATION_BASELINE_TESTS.log](V32_RESTORATION_BASELINE_TESTS.log)
-- [V32_RESTORATION_BUILD.log](V32_RESTORATION_BUILD.log)
-- [V32_RESTORATION_CONTINUITY_UPDATE.json](V32_RESTORATION_CONTINUITY_UPDATE.json)
-- [V32_RESTORATION_FINAL_DIFF_STAT.txt](V32_RESTORATION_FINAL_DIFF_STAT.txt)
-- [V32_RESTORATION_FINAL_GIT_STATUS.txt](V32_RESTORATION_FINAL_GIT_STATUS.txt)
-- [V32_RESTORATION_FINAL_SOURCE.diff](V32_RESTORATION_FINAL_SOURCE.diff)
-- [V32_RESTORATION_FIRST_TESTS.log](V32_RESTORATION_FIRST_TESTS.log)
-- [V32_RESTORATION_HOST_CHECKS.log](V32_RESTORATION_HOST_CHECKS.log)
-- [V32_RESTORATION_PARITY.log](V32_RESTORATION_PARITY.log)
-- [V32_RESTORATION_PREFLIGHT_BASELINE.json](V32_RESTORATION_PREFLIGHT_BASELINE.json)
-- [V32_RESTORATION_PREFLIGHT_REPORT.md](V32_RESTORATION_PREFLIGHT_REPORT.md)
-- [V32_RESTORATION_SOFTWARE_VERIFICATION.md](V32_RESTORATION_SOFTWARE_VERIFICATION.md)
-- [V32_RESTORATION_SOURCE_AUDIT.json](V32_RESTORATION_SOURCE_AUDIT.json)
-- [V32_RESTORATION_TESTS.log](V32_RESTORATION_TESTS.log)
-- [V32_RESTORATION_TRACE_SUMMARY.json](V32_RESTORATION_TRACE_SUMMARY.json)
-- [STANDALONE_FREEZE_20261008_MANIFEST.json](STANDALONE_FREEZE_20261008_MANIFEST.json)
-- [STANDALONE_FREEZE_20261008_VERIFICATION.txt](STANDALONE_FREEZE_20261008_VERIFICATION.txt)
-
-## Figures tests and source provenance
-
-The six original owner PNGs remain in `figures/`; four original Mermaid files remain in `architecture_source/`. The recovery diagram and some image labels describe historical behavior. New current software diagrams are clearly identified inside PAPER_READY; originals were not edited. All 67 test assets and both tools retain their original paths and bytes. The active source-verification manifest and historical assertions remain unchanged.
-
-The two direct documentation dependencies read/written by the current verification stack are `STANDALONE_FREEZE_20261008_MANIFEST.json` and `V32_RESTORATION_TRACE_SUMMARY.json`. The unchanged candidate runner redirects newly generated traces away from the historical summary. Complete indirect/baseline dependencies are recorded in DOCUMENTATION_INDEX.csv.
-
-## Organization verification 18 October 2026
-
-The classification index records 133 inspected items: 4 current essential, 45 historical research evidence, 2 safely archived, 71 active test dependencies, 10 uncertain preserved and 1 private configuration entry whose content is excluded. The original 50 documentation assets, 67 test assets, 2 tools, 4 Mermaid sources, 6 owner figures and 3 root documents are individually listed. Both archived reports match their verified pre-documentation backup hashes.
-
-All original production/configuration/test/tool/figure bytes, local private configuration and frozen Git identity are preserved. README gained only the navigation pointer above its original bytes. Existing working-tree changes and two originally missing figure paths remain as found. No other project changed. Both complete software-suite/build runs passed with unchanged results and binary identity; see PAPER_READY Document 04 and its compact evidence. All five Word documents opened, rendered and passed visual review across 38 pages. Current local Markdown and package links resolve; package privacy checks passed. Historical source wording and separate publication-security findings remain qualified rather than rewritten. Private preservation and rendering receipts are recorded in Research Continuity V1.
+[18 October classification](DOCUMENTATION_INDEX.csv) and [cleanup manifest](FINAL_RELEASE_CLEANUP_MANIFEST_20261018.csv) are historical. Use the new complete inventory for this release. Ignored `docs/archive/`, `.log` files, local preservation receipts and machine paths in old records are provenance references, not missing build inputs/promised public downloads. All dated manifests, binary documents, original figures and historical assertions retain pre-publication bytes.

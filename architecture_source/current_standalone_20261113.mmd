@@ -1,0 +1,19 @@
+flowchart TB
+    supervisor["Human supervisor / browser"] --> web["WebDashboard + PriorityWebServer<br/>HTTP framing, sessions and STOP/mode fence"]
+    web --> loop["main.cpp cooperative control pass<br/>current authority / STOP priority"]
+    sensing["SensorManager<br/>trusted directional sonar, IR, environment"] --> safety["SafetyManager<br/>confirmed hazards / obstacle gates"]
+    sensing --> loop
+    safety --> loop
+    loop --> manual["DriveCommandHandler<br/>Manual / serviced 750 ms deadman"]
+    loop --> navigation["NavigationManager<br/>restored V3.2 AUTO / committed-side recovery"]
+    navigation <--> servo["ServoScanner<br/>fresh compatible L/F/R evidence"]
+    imu["ImuManager<br/>checked frames, idle-only reconfiguration"] --> navigation
+    manual --> motor["MotorController<br/>physical output"]
+    navigation --> motor
+    motor -->|"existing stopped state"| imu
+    navigation --> limits["Per mission: 7 turns / 5 IR pulses / 30 s<br/>STOP, 2.5 s cooldown, new evidence<br/>configured bounds, not guaranteed escape"]
+    loop --> presentation["DashboardPublisher + DisplayManager<br/>compact OLED / priority environmental alerts"]
+    loop <--> radio["RadioManager<br/>secondary nRF24 experimental path"]
+    presentation --> web
+    fault["Sonar / hazard / authority interruption<br/>STOP, discard old actuator execution<br/>renew required evidence"] --> navigation
+    note["Software relationships, not real-time threads.<br/>Historical diagrams retain dated scope.<br/>No physical-performance guarantee."] -.-> loop

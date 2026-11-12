@@ -1,3 +1,19 @@
+# Release history
+
+## Standalone software checkpoint ? 2026-11-13
+
+- Complete current source and owner-authorized robot SoftAP configuration, preserving production/build-input bytes.
+- Current README, execution/build guides, documentation classification, citation metadata and release checks; original dated evidence and binary assets retained.
+- Add full-clone verification wrapper reconstructing non-secret V3.2 reference from Git history; original assertions/candidate runner unchanged.
+- Software results remain separate from owner-reported physical observations and measured turns; historical exact-image linkage is unverified.
+- Version `revA-standalone-software-checkpoint-20261113`; see [release record](docs/RELEASE_20261113.md).
+
+## Restored V3.2 and later implementation ? 2026-10-08 to 2026-11-07
+
+The 8 October freeze restored V3.2 navigation with approved environmental/STOP infrastructure. Later layers corrected sensor evidence, Manual/session/mode reliability, HTTP/STA response, dashboard readability, checked IMU recovery and compact OLED alerts. Production implementation commit is `7ee2b03b17657c0e2d79813560130594af73c5c2`. Dated verification keeps its original scope/totals.
+
+## Earlier history (preserved)
+
 ## V3.3.1 software candidate - 2026-10-04
 
 - Cap RecoveryIrBackoff reverse output at 75 on the calibrated user-speed scale. Preserve selected preference, Manual Backward, forward/turn semantics, five-pulse budget and 200 ms policy.

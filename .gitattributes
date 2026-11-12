@@ -143,3 +143,21 @@ tests/native_mode_fence.cpp -text
 tests/reconnect_backend_bridge.py -text
 tests/reliability_candidate_browser.js -text
 tests/test_reliability_candidate.py -text
+
+# Complete release: preserve newly reviewed publication bytes.
+AGENTS.md -text
+CITATION.cff -text
+architecture_source/current_standalone_20261113.mmd -text
+README.md -text
+SOFTWARE_EXPLANATION.md -text
+docs/README.md -text
+docs/REPRODUCIBILITY.md -text
+docs/CITING_AND_EVIDENCE.md -text
+include/Secrets.h -text
+docs/PAPER_READY/README.md -text
+CHANGELOG.md -text
+tools/verify_release.py -text
+docs/RELEASE_20261113.md -text
+docs/REPOSITORY_CONTENTS_20261113.md -text
+docs/release/verification_20261113.json -text
+docs/release/source_identity_20261113.json -text

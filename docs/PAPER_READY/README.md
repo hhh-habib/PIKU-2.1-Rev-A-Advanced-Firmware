@@ -1,3 +1,5 @@
+> Historical documentation snapshot: 18 October 2026. The five Word documents, figures and JSON evidence retain their original bytes and source identity. For subsequent changes, current test counts, supplied physical measurements and citation provenance, start with [current documentation](../README.md) and [the release record](../RELEASE_20261113.md).
+
 # PIKU standalone research documentation
 
 Five editable Word documents explain the current PIKU 2.1 Rev A standalone firmware and its evidence. Start with Document 01, use Documents 02 and 03 for algorithms/control, Document 04 for independently checked software results, and Document 05 for manuscript evidence and owner measurement forms.

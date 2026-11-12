@@ -1,137 +1,47 @@
-Latest IMU/OLED delta (2026-11-07): [implementation, preservation evidence and pending physical checks](docs/IMU_OLED_SOFTWARE_VERIFICATION_20261107.md). IMU acquisition now checks real data-ready bus frames and retries faults cooperatively; reset/configuration waits for existing stopped motors. OLED uses a compact fixed screen. The existing navigation, environmental sensing/safety, Wi-Fi/control and radio policies remain unchanged. Older walkthroughs below describe their dated baselines.
+# How the current PIKU 2.1 Rev A firmware works
 
-## CURRENT execution guide - 2026-10-18
+Scope: standalone checkpoint, 13 November 2026. Production implementation remains `7ee2b03b17657c0e2d79813560130594af73c5c2`. This guide supersedes the former mixed V3.3/V4.5 walkthrough; [dated records](docs/README.md) retain their algorithms and evidence.
 
-The active standalone uses restored V3.2 navigation with later safety, sonar-evidence and persistent Manual-control corrections. The [final source comparison](docs/FINAL_RELEASE_REVIEW_20261018.md) takes precedence over the historical walkthrough below.
+## Control and ownership
 
-`setup()` initializes stopped motors; `loop()` and `serviceLoop()` service HTTP, current sensors, safety and the selected mode. STOP/RELEASE apply motor STOP before acknowledgment. The 750 ms Manual deadman is independent of the browser's 1800 ms response deadline. Held refresh is 250 ms with at most three direction responses outstanding. Release stops movement while keeping MANUAL selected. Uncertain delivery discards old intent; STOP/RELEASE acknowledgment plus matching current authorization permits the next fresh press without another MANUAL selection. A live heartbeat alone does not unlock uncertain control.
+`src/main.cpp` services inputs, sensing, safety/control, motors/navigation, networking and presentation cooperatively. Modules are not independent real-time threads. `WebDashboard` manages HTTP commands/sessions/sequences; `DriveCommandHandler` and `NavigationManager` dispatch admitted Manual/AUTO work through `MotorController`. Current authority, safety and obstacle gates can stop/reject motion. Presentation never creates movement authority. See the [module schematic](architecture_source/current_standalone_20261113.mmd).
 
-AUTO uses fresh front evidence and restored bounded reverse/full-scan/side-turn handling. Trusted positive finite L/F/R below 30 cm can admit boxed recovery. The committed side must exceed the 7 cm veto; turns target approximately 25 degrees, with at most 7 starts, 5 timed IR backoff pulses and a 30-second elapsed mission timeout. A 2500 ms stopped cooldown admits a fresh retry. This restored policy has no V4.5 45-second direction ledger. Sonar fault and confirmed environmental hazards stop and discard the old recovery actuator work; sonar recovery needs two new trusted front samples, and an unfinished environmental job restarts its required scan. Ordinary recovery backoff currently calls `MotorController::backward()`; the retained cap API/test does not establish an active 75% navigation cap.
+STOP/release retire held/intended work. A delayed request, stale session or successful heartbeat cannot replay an old direction. The STOP/mode fence protects ordering across outstanding responses. Restored Manual readiness requires confirmed current authority and a fresh user press; its serviced command deadman is 750 ms.
 
-**OWNER PHYSICALLY OBSERVED / OWNER-REPORTED:** latest operation is reported good by the owner. **SOFTWARE-ONLY VERIFICATION:** this audit ran host/browser checks and builds, with no flashing or robot operation. No latency/angle/range statistics were measured. No new AI, mapping, localization or CPS control feature is claimed.
+## Sensor evidence
 
-## Historical walkthrough (preserved)
+`SensorManager` tracks validity, timestamps and orientation/generation for sonar. Trusted finite distance, operational clear/no-echo, fault and stale evidence are distinct. Scan decisions require compatible new evidence; an incidental sample cannot replace quorum. Front IR remains independent local obstacle evidence. Failed environmental reads neither renew successful timestamps nor clear confirmed hazards.
 
-The following version-specific descriptions are retained as development history, including old six-turn and pause/resume contracts. Use the current source and report for present behavior; dated physical observations retain their original scope.
+Manual forward hysteresis blocks at 20 cm or less, clears at 25 cm or more and retains state in between. Trusted no-echo is operational open; unavailable sonar is unknown. Front IR and independent safety still apply. Backward/turns remain supervised: there is no complete swept-volume or rear view.
 
-> Current collision-closure software evidence (2026-10-05): [verification, regressions and residual limits](docs/COLLISION_CLOSURE_SOFTWARE_VERIFICATION.md). Physical validation and RF PA/range engineering NOT RUN.
+## Restored ordinary AUTO and recovery
 
-# How the PIKU 2.1 Rev A firmware works
+Final navigation follows restored V3.2 behavior. Ordinary front/IR interventions use existing bounded reverse, fresh directional scans and nominal 35-degree turns, with fresh accepted evidence before forward admission.
 
-This guide describes the collision-hardened V3.3.1 software candidate. The V3.2 physically validated baseline remains historical evidence at `41281d8325d88c70e074e008a2550a1164102132`. See [current verification](docs/RECOVERY_V33_SOFTWARE_VERIFICATION.md) and the [pending owner checklist](docs/PIKU_2.1_REVA_V33_PHYSICAL_VALIDATION.md).
+`StuckRecoveryV2Policy` and `V2EscapeDecision` support committed-side recovery. A chosen side at or below the configured 7 cm veto is unusable. Each mission permits at most seven started nominal 25-degree increments, five IR reverse pulses and 30 seconds elapsed time. STOP, authority, hazards or sensing can interrupt sooner. Exhaustion stops motors; after 2.5 seconds new scan/retry can be admitted. Repeated bounded missions are not a lifetime escape guarantee.
 
-## The control path
+Sonar faults stop/cancel actuator execution, center/reacquire fresh front evidence and retain only context allowed by restored policy. Confirmed environmental hazards abort old recovery motion. Unfinished environmental recovery needs a new compatible scan after interruption. Intermediate V4.5 six-turn/45-second/saved-turn-resumption descriptions are historical.
 
-PIKU repeatedly services browser commands, current sensors, safety decisions, and the selected mode. Motion is owned by `MotorController`; the dashboard displays state but does not drive GPIO itself.
+Nominal angle, internal gyro completion threshold and measured chassis turn are distinct. Existing completion addition is 1 degree (26/36 degrees in the applicable gyro path), with bounded deadlines. Constants do not establish physical accuracy; [Task 3](docs/RESEARCH_AUDIT/07_TASK_03_METHODOLOGY_AND_TURN_ANGLES_20261109.md) qualifies source behavior and independent protractor readings.
 
-```text
-Sensors -> current evidence -> safety and operator STOP
-                                 |
-                                 +-> MANUAL: supervised held command
-                                 |
-                                 +-> AUTO: normal navigation
-                                           |-> locked-side recovery
-                                           +-> sonar reacquisition
-                                 |
-                                 +-> MotorController -> wheels
-```
+## Manual hazard permission
 
-`main.cpp` starts the components and runs the cooperative loop. Accepted STOP/RELEASE and mode changes stop motors promptly; the loop also services Wi-Fi, sensors, telemetry, the OLED, and the secondary radio. Navigation and recovery use timestamps and phases so the service loop can keep running. This is priority-aware cooperative firmware, not a hard real-time safety controller.
+Explicit Manual Override bypasses only eligible flame/gas inhibition. Critical temperature, STOP, session/deadman, known obstacles and other gates remain. Permission can persist across release/temporary link loss, while each movement still requires current authority. Mode exit, reboot, stable hazard clear and applicable non-overridable safety revoke it. Permission does not declare environmental safety.
 
-## How evidence reaches a decision
+## IMU and display
 
-`SensorManager` schedules ultrasonic, IR, flame, gas, temperature/humidity, and other samples. The HC-SR04 can face front or move with the SG90 head for a left/front/right scan. The ultrasonic state carries meaning separately from the centimetre field:
+`ImuManager` checks identity, transaction/byte counts and complete data-ready frames. Zero/FF/incomplete frames cannot renew health/age; stationary zero gyro with gravity remains valid. Boot absence/runtime faults retry cooperatively. Reset/configuration waits for existing stopped-motor state; health restoration needs new accepted samples. The manager commands no movement.
 
-| State | Meaning in V3.3 |
-| --- | --- |
-| `DistanceValid` | Fresh trusted finite distance; compare the numeric range |
-| `ClearNoEcho` | No useful echo; operationally OPEN, without inventing a distance |
-| `SensorFault` | Untrusted fault evidence |
-| `Stale` | Old/untrusted evidence |
+`DisplayManager` shows compact distance, temperature/humidity, relative gas, flame, radio and cached STA address. Unchanged text avoids redraws; normal evaluation is capped at one second. Confirmed environmental alert transitions bypass routine display deferral. Distance/IR do not create environmental full-screen alerts. Module presence alone does not prove a live radio peer.
 
-`ClearNoEcho` is useful for path choice, but it is not a proof that all space beyond the sensor is empty. A disconnected LOW echo line may resemble a true no-return. The dashboard presents these states as VALID with centimetres, OPEN, FAULT, and STALE.
+## Communication
 
-`SafetyManager` combines environmental hazards, low front IR zones, and near-obstacle evidence. It preserves immediate STOP and critical-hazard authority. IR covers a different low chassis zone from the higher servo-mounted HC-SR04; neither sensor gives a complete swept-volume guarantee.
+The onboard browser uses existing HTTP command/session/mode paths, `/ping` and `/data`. Live/Stale/Offline describes response/telemetry evidence, never motion authority. Request admission/write budgets retire failed sockets; STA application retry preserves association/scan state. These are configured software budgets, not measured whole-loop deadlines. `RadioManager` remains a bounded secondary experimental path.
 
-## Manual: the operator holds authority
+The package includes owner-authorized robot SoftAP defaults unchanged. Personal STA credentials may be provisioned locally and are outside published defaults. Use the delivered configuration and addresses reported by serial/dashboard/OLED status.
 
-The browser offers Forward, Backward, Left, Right, STOP, Pivot/Spin selection, and speed. A held movement command is refreshed; release, STOP, mode change, command timeout, and applicable control-session loss stop motion. Backward has no rear-clearance certificate, and turns are supervised by the operator with the existing near/side vetoes.
+## Verification boundaries
 
-The front ultrasonic Forward latch uses a **fresh finite** front result. At **20 cm or less**, Forward blocks or stops; at **25 cm or more**, it clears; between these values it keeps the prior state. Trusted no-echo clears the sonar latch. SensorFault or Stale is unknown and does not, by itself, remove Manual movement authority. The two front IR sensors still block Forward independently, including with unavailable sonar. Known close-obstacle guards and higher-priority safety conditions still apply.
+[Reproduction](docs/REPRODUCIBILITY.md) describes the supported suite and full-clone dependencies. Hardware doubles execute production bodies without proving real stop latency, RF reliability or sensor calibration. [Release checks](docs/release/verification_20261113.json) identify current software verification.
 
-Flame/gas override is an intentional persistent Manual permission. RELEASE/STOP/configuration actions and session loss preserve it, while every hazardous movement still needs a current live session. Explicit disable, AUTO, reboot, stable clear, and non-overridable safety revoke it. It bypasses the local flame/gas motion lock only while its other control conditions hold. Flame/gas evidence remains visible. STOP, dead-man/session rules, critical temperature, known obstacles, and other independent protections remain authoritative. The override never certifies the environment as safe.
-
-## AUTO: ordinary navigation first
-
-`NavigationManager` starts with current front validation. Trusted no-echo or a finite clear front permits normal Forward steps; a finite front reading at or below **20 cm** calls the ordinary obstacle path. Normal handling is roughly:
-
-```text
-Obstacle -> STOP -> short bounded reverse -> fresh L/F/R scan
-         -> safe-side choice -> ~35-degree relative turn
-         -> STOP -> fresh obstacle decision
-```
-
-Normal AUTO also arbitrates low front IR evidence and can stop/retry if neither side is safe. The ordinary turn target and obstacle thresholds are separate from boxed-in recovery. No second AUTO press is needed to clear an ordinary recoverable obstacle.
-
-`MotorController` owns PWM and direction primitives. `ImuManager` provides fresh gyro-Z samples for short-term relative turns. The gyro does not give a compass heading, localization, or wheel odometry. Normal obstacle turning retains its existing bounded fallback and timeout; recovery requires a usable relative-turn path and has its own safety bounds.
-
-## Boxed-in recovery: one side, then return to AUTO
-
-After a **trusted complete L/F/R scan**, all three directions must be finite and **strictly below 30 cm** to trigger immediate boxed-in recovery. A trusted `ClearNoEcho` makes that scan not fully boxed. Less obvious oscillation can still be detected by the existing history policy. The initial recovery decision reuses the scan when fresh and complete.
-
-The recovery mission chooses LEFT or RIGHT once and locks it. It does not re-rank the opposite side after every turn:
-
-```text
-Choose and lock side -> ~25-degree turn -> STOP -> front-only check
-    front >=30 cm or ClearNoEcho -> handoff candidate -> stable forward proof
-    front still blocked -> inspect locked side only -> next bounded turn if safe
-```
-
-A selected-side finite range of 7 cm or less vetoes the pivot. At most six 25-degree turn attempts belong to the entire episode. Interruptions consume an attempt; the 2500 ms cooldown preserves counts and commitment. Fresh stationary front evidence can find a handoff in HOLD without another turn. Handoff alone does not reset the episode: the existing 5000 ms trusted-forward window must complete without IR/sonar re-block. Every body turn during that situation stays inside episode accounting. A fresh complete scan may replace a side only when the old side is proved invalid and another is safe.
-
-### IR clearance within a recovery mission
-
-Either front IR sensor can stop recovery motion, including an active pivot. IR is a close-obstacle veto, not a direction planner. The interrupted gyro target is discarded, but the locked side remains.
-
-```text
-IR active -> STOP -> backward pulse, timed 200 ms
-          -> STOP and check IR
-          -> another pulse only if still blocked
-IR clear -> STOP -> fresh front check -> continue same side only if needed
-```
-
-The software caps commanded reverse at **five pulses per episode**; each pulse uses min(current selected motor speed,75%). The robot has no rear sensor, so reverse distance is not verified. STOP, mode change, hazards, and sonar fault preempt backoff.
-
-## Sonar fault: stop, reacquire, decide fresh
-
-AUTO is not operator-supervised in the same way as Manual. `SensorFault` or `Stale` in AUTO/recovery therefore stops motors, cancels the current gyro target and IR backoff, preserves recovery commitment and episode budgets, centers the sensor, and enters `SONAR_REACQUIRE`. `ClearNoEcho` does not enter this state.
-
-During reacquisition the robot stays stopped, takes normal-cadence **front-only** samples, and does not spin, reverse, or perform full directional sweeps. The first new trusted front result keeps it stopped. A **second consecutive fresh trusted front result**, finite or no-echo, restarts a fresh L/F/R scan when EnvironmentalRecovery is incomplete, retains TrappedHold when applicable, otherwise enters a fresh episode checkpoint or normal front decision. Current Robot safety and remaining episode budget determine whether motion is possible. It never replays an interrupted turn.
-
-The **1,000 ms** fast window changes diagnostic status; it is not a one-second blocking wait or a deadline to drive blind. If the fault persists, front sampling and Wi-Fi/control service continue with motors off. Trusted sensing later resumes AUTO automatically without reboot or another AUTO click.
-
-## Environmental hazards and priority
-
-Flame and gas can stop local AUTO motion. After a recoverable hazard remains continuously clear for about two seconds, AUTO always completes a fresh EnvironmentalRecovery L/F/R scan before returning to the existing episode decision or normal operation. A recurring hazard resets that clear wait. Critical temperature and other nonrecoverable conditions retain their separate stop/re-arm authority.
-
-In practical order, explicit STOP and mode changes, critical safety, and required sensor validity outrank navigation commands. This prevents a stale forward, turn, or backoff command from being replayed after an interruption.
-
-## Web dashboard, radio, and traces
-
-`WebDashboard` provides the embedded browser page and HTTP endpoints. SoftAP allows direct local access; STA joins a provisioned network and has bounded reconnect handling. The browser separates `/ping` heartbeat from `/data` telemetry. `DashboardPublisher` updates telemetry without increasing control-loop polling. The Control page keeps operational buttons before diagnostics. The SH1106 OLED reports local status. nRF24 is a secondary experimental heartbeat/status path, not the browser control channel.
-
-An optional RAM-only navigation trace can be enabled for supervised diagnostic capture. It does not write continuous flash logs. Its unchanged format is documented in [NAV_TRACE_SCHEMA.md](docs/NAV_TRACE_SCHEMA.md).
-
-## What validation establishes
-
-The project owner reported a supervised functional physical PASS for final V3.2 behavior on **2026-10-01**. That baseline software evidence is historical; the V3.3 software candidate is verified separately. Earlier dated trials are kept as history in [PIKU_2.1_REV_A_TESTING.md](docs/PIKU_2.1_REV_A_TESTING.md).
-
-Neither the owner report nor host tests provide a latency distribution, turn-angle error distribution, reverse displacement, RF reliability statistic, or industrial safety certification. The no-rear-sensor, partial IR coverage, HC-SR04 no-return ambiguity, and uncalibrated MQ-2 remain evidence boundaries for this research prototype.
-
-## Current watchdog and interruption contract
-
-Recovery retains six started 25-degree turns, five 200 ms IR backoff pulses at min(selected speed,75%), the committed side, fresh front checks, and the 2500 ms cooldown. Handoff is provisional until 5000 ms of trusted forward progress; it does not grant a new episode budget.
-
-The secondary 30000 ms watchdog accumulates active scanning, deciding, turning, and backoff work. Sonar, hazard/clear-wait, integration holds, and retry cooldown exclude waiting time while preserving spent time. Exhaustion immediately stops the current episode and permits fresh stationary reassessment after the existing cooldown. A fresh clear front permits provisional normal AUTO while the old work, turn and pulse ledgers remain until the existing 5000 ms sustained safe-forward proof. If blockage persists, complete fresh trusted L/F/R and all current safety gates permit an explicit new episode with a new 30000 ms budget, six-turn limit and five-pulse mission limit. Cooldown never refills the same exhausted episode; ordinary turn/pulse holds cannot use this renewal exception. Repeated distinct episodes have no claimed lifetime movement bound. Explicit AUTO STOP still terminates the episode and latches until an explicit mode command; ordinary MANUAL STOP/RELEASE retain eligible Override and require fresh movement authority.
-
-EnvironmentalRecovery stays incomplete across temporary sonar or integration loss. Restoration restarts all L/F/R evidence. Two trusted front reacquisition samples permit that fresh scan; they do not complete the environmental job. Persistent or new directional IR stops environmental scan/turn/post-turn and every active-episode completion overlay, invalidates the scan and requires a full fresh scan after IR clears. Unresolved environmental context cannot enter ordinary IR reverse. Post-turn completion requires newly requested fresh trusted front clearance and current clear IR. A watchdog exhausted during environmental work stops immediately, finishes required evidence stationary and then uses the separately gated exhausted-episode reassessment. Higher-priority STOP, temperature re-arm, sonar and integration holds remain authoritative.
+Historical V3.2 owner reports and November pilot/corridor/angle records retain separate scope. Current hashes, successful builds and reused Stage-2 runtime labels do not independently identify historical experiment images. Preserve those distinctions in the paper.
