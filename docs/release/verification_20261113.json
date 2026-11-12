@@ -125,6 +125,8 @@
     "whitespace_review": {
       "all_other_staged_paths": "PASS",
       "preserved_header_exception": "Existing final blank line in owner-authorized SoftAP header retained byte-for-byte; no credential/configuration rewrite."
-    }
+    },
+    "exported_build_inputs_exact": 50,
+    "export_line_endings": "Added -text for existing ModeTransitionFence.h after detecting archive-only CRLF conversion; working source unchanged."
   }
 }

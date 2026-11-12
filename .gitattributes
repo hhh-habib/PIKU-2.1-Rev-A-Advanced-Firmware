@@ -161,3 +161,6 @@ docs/RELEASE_20261113.md -text
 docs/REPOSITORY_CONTENTS_20261113.md -text
 docs/release/verification_20261113.json -text
 docs/release/source_identity_20261113.json -text
+
+# Keep the existing LF mode-fence header identical in exported source archives.
+include/ModeTransitionFence.h -text
